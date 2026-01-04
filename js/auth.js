@@ -13,6 +13,11 @@ export class AuthManager {
 
     if (session) {
       await this.handleAuthSuccess(session.user);
+    } else {
+      // No session - trigger callback to show login screen
+      if (this.onAuthStateChange) {
+        this.onAuthStateChange(null);
+      }
     }
 
     // Listen for auth state changes
