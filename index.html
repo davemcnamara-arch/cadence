@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadence - Music Skill Progression Tracker</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="loading-screen">
+    <div class="loading-spinner"></div>
+    <p>Loading Cadence...</p>
+  </div>
+
+  <!-- Login Screen -->
+  <div id="login-screen" class="login-screen hidden">
+    <div class="login-container">
+      <div class="logo">
+        <h1>🎵 Cadence</h1>
+        <p class="tagline">Track Your Musical Journey</p>
+      </div>
+      <div class="login-card">
+        <h2>Welcome</h2>
+        <p>Sign in with your Google account to start tracking your music skills</p>
+        <button id="google-login-btn" class="btn btn-primary btn-google">
+          <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            <path fill="none" d="M0 0h48v48H0z"/>
+          </svg>
+          Sign in with Google
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="app" class="app hidden">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-content">
+        <div class="logo-small">🎵 Cadence</div>
+        <nav class="nav-tabs">
+          <button class="nav-tab active" data-view="pathway">My Pathway</button>
+          <button class="nav-tab" data-view="songs">Song Library</button>
+          <button class="nav-tab" data-view="progress">My Progress</button>
+        </nav>
+        <div class="user-menu">
+          <span id="user-name" class="user-name"></span>
+          <button id="logout-btn" class="btn-text">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="app-main">
+      <!-- Instrument Selection (shown first time) -->
+      <div id="instrument-selection" class="instrument-selection hidden">
+        <div class="selection-container">
+          <h2>Choose Your Instrument</h2>
+          <p>Select an instrument to begin your musical journey</p>
+          <div id="instrument-grid" class="instrument-grid">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Pathway View -->
+      <div id="pathway-view" class="view active">
+        <div class="view-header">
+          <div class="instrument-selector">
+            <label for="current-instrument">Instrument:</label>
+            <select id="current-instrument" class="instrument-dropdown">
+              <!-- Populated by JS -->
+            </select>
+            <button id="add-instrument-btn" class="btn-text">+ Add Another</button>
+          </div>
+        </div>
+
+        <div id="pathway-container" class="pathway-container">
+          <!-- Pathway visualization populated by JS -->
+        </div>
+      </div>
+
+      <!-- Songs View -->
+      <div id="songs-view" class="view">
+        <div class="view-header">
+          <h2>Song Library</h2>
+          <div class="song-actions">
+            <button id="grade-new-song-btn" class="btn btn-primary">+ Grade New Song</button>
+          </div>
+        </div>
+
+        <div class="song-filters">
+          <input type="text" id="song-search" placeholder="Search songs..." class="search-input">
+          <select id="filter-instrument" class="filter-select">
+            <option value="">All Instruments</option>
+          </select>
+          <select id="filter-level" class="filter-select">
+            <option value="">All Levels</option>
+            <option value="1">Level 1</option>
+            <option value="2">Level 2</option>
+            <option value="3">Level 3</option>
+            <option value="4">Level 4</option>
+            <option value="5">Level 5</option>
+          </select>
+        </div>
+
+        <div id="songs-grid" class="songs-grid">
+          <!-- Songs populated by JS -->
+        </div>
+      </div>
+
+      <!-- Progress View -->
+      <div id="progress-view" class="view">
+        <div class="view-header">
+          <h2>My Progress</h2>
+          <button id="export-progress-btn" class="btn btn-secondary">Export Data</button>
+        </div>
+
+        <div class="progress-summary">
+          <div id="progress-stats" class="progress-stats">
+            <!-- Stats populated by JS -->
+          </div>
+        </div>
+
+        <div class="progress-sections">
+          <div class="progress-section">
+            <h3>Currently Learning</h3>
+            <div id="learning-songs" class="song-list">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <div class="progress-section">
+            <h3>Mastered Songs</h3>
+            <div id="mastered-songs" class="song-list">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal for Song Grading -->
+  <div id="song-grading-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Grade a Song</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="song-grading-form">
+          <div class="form-step active" data-step="1">
+            <h3>Song Details</h3>
+            <div class="form-group">
+              <label for="song-title">Song Title *</label>
+              <input type="text" id="song-title" required>
+            </div>
+            <div class="form-group">
+              <label for="song-artist">Artist *</label>
+              <input type="text" id="song-artist" required>
+            </div>
+            <div class="form-group">
+              <label for="song-youtube">YouTube URL (optional)</label>
+              <input type="url" id="song-youtube" placeholder="https://youtube.com/watch?v=...">
+            </div>
+            <div class="form-group">
+              <label for="song-spotify">Spotify URL (optional)</label>
+              <input type="url" id="song-spotify" placeholder="https://open.spotify.com/track/...">
+            </div>
+            <div class="form-group">
+              <label for="grading-instrument">Instrument *</label>
+              <select id="grading-instrument" required>
+                <!-- Populated by JS -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="grading-level">What level do you think this song is?</label>
+              <select id="grading-level" required>
+                <option value="">Select a level...</option>
+                <option value="1">Level 1 - Foundation</option>
+                <option value="2">Level 2 - Expanding Vocabulary</option>
+                <option value="3">Level 3 - Technical Development</option>
+                <option value="4">Level 4 - Style Integration</option>
+                <option value="5">Level 5 - Advanced Techniques</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-step" data-step="2">
+            <h3>Grade the Song</h3>
+            <p class="step-description">Answer these questions about the song:</p>
+            <div id="grading-checklist" class="grading-checklist">
+              <!-- Populated dynamically based on selected level -->
+            </div>
+          </div>
+
+          <div class="form-step" data-step="3">
+            <h3>Level Suggestion</h3>
+            <div id="level-suggestion" class="level-suggestion">
+              <!-- Populated after checklist -->
+            </div>
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="add-to-learning">
+                Add this song to "Currently Learning"
+              </label>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" id="prev-step-btn">Previous</button>
+            <button type="button" class="btn btn-primary" id="next-step-btn">Next</button>
+            <button type="submit" class="btn btn-primary hidden" id="submit-grade-btn">Submit</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Export -->
+  <div id="export-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Export Your Progress</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="export-options">
+          <div class="export-option">
+            <h3>CSV Data Export</h3>
+            <p>Download all your progress data in spreadsheet format</p>
+            <button id="export-csv-btn" class="btn btn-primary">Download CSV</button>
+          </div>
+          <div class="export-option">
+            <h3>Student Reflection</h3>
+            <p>First-person text summary for your LMS</p>
+            <button id="export-reflection-btn" class="btn btn-primary">Generate Reflection</button>
+            <textarea id="reflection-text" class="reflection-textarea hidden" readonly></textarea>
+            <button id="copy-reflection-btn" class="btn btn-secondary hidden">Copy to Clipboard</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script type="module" src="js/config.js"></script>
+  <script type="module" src="js/auth.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

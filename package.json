@@ -1,0 +1,20 @@
+{
+  "name": "cadence-music-tracker",
+  "version": "1.0.0",
+  "description": "Skill progression tracker for music students learning guitar, bass, piano, drums, and vocals",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx live-server --port=3000 --host=localhost",
+    "build": "echo 'No build step required for vanilla JS'",
+    "deploy": "vercel --prod"
+  },
+  "keywords": ["music", "education", "skill-tracking", "progression"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  }
+}
