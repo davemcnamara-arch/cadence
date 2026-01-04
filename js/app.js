@@ -15,11 +15,15 @@ class CadenceApp {
   }
 
   async init() {
+    console.log('🎵 Cadence: Initializing app...');
+
     // Show loading screen
     this.showLoading(true);
+    console.log('🎵 Cadence: Loading screen shown');
 
     // Initialize auth
     auth.onAuthStateChange = (user) => {
+      console.log('🎵 Cadence: Auth state changed, user:', user ? 'logged in' : 'not logged in');
       if (user) {
         this.onUserSignedIn(user);
       } else {
@@ -27,6 +31,7 @@ class CadenceApp {
       }
     };
 
+    console.log('🎵 Cadence: Initializing auth...');
     await auth.init();
 
     // Set up event listeners
@@ -942,15 +947,18 @@ class CadenceApp {
   }
 
   showLoading(show) {
+    console.log('🎵 Cadence: showLoading(' + show + ')');
     document.getElementById('loading-screen').classList.toggle('hidden', !show);
   }
 
   showLoginScreen() {
+    console.log('🎵 Cadence: Showing login screen');
     document.getElementById('login-screen').classList.remove('hidden');
     document.getElementById('app').classList.add('hidden');
   }
 
   showApp() {
+    console.log('🎵 Cadence: Showing main app');
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
   }
