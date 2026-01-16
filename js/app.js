@@ -903,8 +903,17 @@ class CadenceApp {
             <button class="btn btn-primary" onclick="app.markSongMastered('${studentSong.id}')">
               Mark Mastered
             </button>
+            <button class="btn btn-secondary" onclick="app.removeSong('${studentSong.id}')">
+              Remove
+            </button>
           ` : `
-            <span style="color: var(--secondary-color); font-weight: 600;">✓ Mastered</span>
+            <span style="color: var(--secondary-color); font-weight: 600; margin-right: 8px;">✓ Mastered</span>
+            <button class="btn btn-secondary" onclick="app.unmasterSong('${studentSong.id}')">
+              Unmaster
+            </button>
+            <button class="btn btn-secondary" onclick="app.removeSong('${studentSong.id}')">
+              Remove
+            </button>
           `}
         </div>
       </div>
@@ -950,21 +959,34 @@ class CadenceApp {
 
     // Get current progress for this instrument
     const progress = this.studentProgress.find(p => p.instrument_id === instrumentId);
-    if (!progress) return;
+    if (!progress) {
+      console.log('No progress found for instrument:', instrumentId);
+      return;
+    }
 
     const currentLevel = progress.current_level;
+    console.log('Checking advancement for level:', currentLevel);
 
     // Count mastered songs at current level for this instrument
-    const { data: masteredSongs } = await supabase
+    const { data: masteredSongs, error: queryError } = await supabase
       .from('student_songs')
       .select('*, songs!inner(*)')
       .eq('user_id', user.id)
       .eq('instrument_id', instrumentId)
-      .eq('status', 'mastered')
-      .eq('songs.suggested_level', currentLevel);
+      .eq('status', 'mastered');
 
-    const masteredCount = masteredSongs?.length || 0;
+    if (queryError) {
+      console.error('Error querying mastered songs:', queryError);
+      return;
+    }
+
+    // Filter by suggested level in JavaScript since Supabase join syntax is tricky
+    const levelSongs = masteredSongs?.filter(ss => ss.songs?.suggested_level === currentLevel) || [];
+    const masteredCount = levelSongs.length;
     const requiredSongs = 3; // Songs needed to advance
+
+    console.log(`Mastered ${masteredCount} songs at level ${currentLevel} (need ${requiredSongs})`);
+    console.log('Mastered songs:', levelSongs);
 
     if (masteredCount >= requiredSongs && currentLevel < 5) {
       // Advance to next level!
@@ -988,8 +1010,49 @@ class CadenceApp {
           await this.loadLevels(instrumentId);
           this.renderPathway();
         }
+      } else {
+        console.error('Error updating level:', error);
       }
     }
+  }
+
+  async unmasterSong(studentSongId) {
+    const { error } = await supabase
+      .from('student_songs')
+      .update({
+        status: 'learning',
+        date_completed: null
+      })
+      .eq('id', studentSongId);
+
+    if (error) {
+      console.error('Error unmarking song:', error);
+      this.showToast('Failed to unmaster song', 'error');
+      return;
+    }
+
+    this.showToast('Song moved back to learning', 'success');
+    this.renderProgress();
+  }
+
+  async removeSong(studentSongId) {
+    if (!confirm('Are you sure you want to remove this song from your progress?')) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from('student_songs')
+      .delete()
+      .eq('id', studentSongId);
+
+    if (error) {
+      console.error('Error removing song:', error);
+      this.showToast('Failed to remove song', 'error');
+      return;
+    }
+
+    this.showToast('Song removed successfully', 'success');
+    this.renderProgress();
   }
 
   showExportModal() {
