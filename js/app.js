@@ -325,8 +325,9 @@ class CadenceApp {
       html += this.renderLevelNode(level, isComplete, isCurrent);
     });
 
-    // Render Level 4 branches
-    if (currentLevel >= 4) {
+    // Always show Level 4 branches (students need to see what's ahead)
+    if (level4Branches.length > 0) {
+      html += '<h3 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--text-secondary);">Level 4: Choose Your Path</h3>';
       html += '<div class="branch-container">';
       level4Branches.forEach(branch => {
         const isSelected = currentBranch === branch.branch_name && currentLevel === 4;
@@ -336,20 +337,16 @@ class CadenceApp {
       html += '</div>';
     }
 
-    // Render Level 5 branches if Level 4 is complete
-    if (currentLevel >= 5 && currentBranch) {
-      const level5ForBranch = level5Branches.filter(b =>
-        b.branch_name && currentBranch && b.branch_name.split(' ')[0] === currentBranch.split(' ')[0]
-      );
-
-      if (level5ForBranch.length > 0) {
-        html += '<div class="branch-container">';
-        level5ForBranch.forEach(branch => {
-          const isSelected = currentBranch === branch.branch_name && currentLevel === 5;
-          html += this.renderBranchNode(branch, isSelected, false);
-        });
-        html += '</div>';
-      }
+    // Always show Level 5 branches (show all 3 options for now)
+    if (level5Branches.length > 0) {
+      html += '<h3 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--text-secondary);">Level 5: Advanced Mastery</h3>';
+      html += '<div class="branch-container">';
+      level5Branches.forEach(branch => {
+        const isSelected = currentBranch === branch.branch_name && currentLevel === 5;
+        const isComplete = false; // Level 5 is the final level
+        html += this.renderBranchNode(branch, isSelected, isComplete);
+      });
+      html += '</div>';
     }
 
     html += '</div>';
