@@ -581,7 +581,6 @@ class CadenceApp {
           ${song.chords_url ? `<a href="${song.chords_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">Chords</a>` : ''}
           ${song.tutorial_url ? `<a href="${song.tutorial_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">Tutorial</a>` : ''}
           ${song.youtube_url ? `<a href="${song.youtube_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">YouTube</a>` : ''}
-          ${song.spotify_url ? `<a href="${song.spotify_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">Spotify</a>` : ''}
           <button class="btn btn-primary" onclick="event.stopPropagation(); app.addSongToLearning('${song.id}')">Start Learning</button>
         </div>
       </div>
@@ -903,7 +902,6 @@ class CadenceApp {
             ${song.chords_url ? `<a href="${song.chords_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">Chords</a>` : ''}
             ${song.tutorial_url ? `<a href="${song.tutorial_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">Tutorial</a>` : ''}
             ${song.youtube_url ? `<a href="${song.youtube_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">YouTube</a>` : ''}
-            ${song.spotify_url ? `<a href="${song.spotify_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">Spotify</a>` : ''}
           </div>
         </div>
         <div class="actions">
