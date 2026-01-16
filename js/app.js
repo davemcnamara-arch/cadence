@@ -94,6 +94,9 @@ class CadenceApp {
     // Song grading form
     this.setupSongGradingForm();
 
+    // Edit resource modal
+    this.setupEditResourceModal();
+
     // Export
     const exportBtn = document.getElementById('export-progress-btn');
     if (exportBtn) {
@@ -579,9 +582,24 @@ class CadenceApp {
           <span class="song-tag">${ratings.length} rating${ratings.length !== 1 ? 's' : ''}</span>
         </div>
         <div class="song-actions">
-          ${song.chords_url ? `<a href="${song.chords_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">Chords</a>` : ''}
-          ${song.tutorial_url ? `<a href="${song.tutorial_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">Tutorial</a>` : ''}
-          ${song.youtube_url ? `<a href="${song.youtube_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">YouTube</a>` : ''}
+          ${song.chords_url ? `
+            <a href="${song.chords_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">Chords</a>
+            <button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'chords_url', '${song.chords_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Edit chords link">✎</button>
+          ` : `
+            <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Add chords link">+ Chords</button>
+          `}
+          ${song.tutorial_url ? `
+            <a href="${song.tutorial_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">Tutorial</a>
+            <button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'tutorial_url', '${song.tutorial_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Edit tutorial link">✎</button>
+          ` : `
+            <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'tutorial_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Add tutorial link">+ Tutorial</button>
+          `}
+          ${song.youtube_url ? `
+            <a href="${song.youtube_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">YouTube</a>
+            <button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'youtube_url', '${song.youtube_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Edit YouTube link">✎</button>
+          ` : `
+            <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
+          `}
         </div>
       </div>
     `;
@@ -659,6 +677,84 @@ class CadenceApp {
         e.preventDefault();
         this.submitSongGrading();
       });
+    }
+  }
+
+  setupEditResourceModal() {
+    const form = document.getElementById('edit-resource-form');
+    const cancelBtn = document.getElementById('cancel-edit-resource');
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        document.getElementById('edit-resource-modal').classList.add('hidden');
+      });
+    }
+
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.saveResourceUrl();
+      });
+    }
+  }
+
+  editSongResource(songId, fieldName, currentValue, title, artist) {
+    // Store data for submission
+    this.editingResource = {
+      songId,
+      fieldName,
+      currentValue
+    };
+
+    // Update modal UI
+    const fieldLabels = {
+      'chords_url': 'Chords URL',
+      'tutorial_url': 'Tutorial URL',
+      'youtube_url': 'YouTube URL'
+    };
+
+    const modalTitle = currentValue ? 'Edit Resource Link' : 'Add Resource Link';
+    const fieldLabel = fieldLabels[fieldName] || 'URL';
+
+    document.getElementById('edit-resource-title').textContent = modalTitle;
+    document.getElementById('edit-resource-song-info').textContent = `${title} - ${artist}`;
+    document.getElementById('resource-url-label').textContent = fieldLabel;
+    document.getElementById('resource-url').value = currentValue;
+
+    // Show modal
+    document.getElementById('edit-resource-modal').classList.remove('hidden');
+    document.getElementById('resource-url').focus();
+  }
+
+  async saveResourceUrl() {
+    const url = document.getElementById('resource-url').value.trim();
+    const { songId, fieldName } = this.editingResource;
+
+    try {
+      // Update song in database
+      const { error } = await supabase
+        .from('songs')
+        .update({ [fieldName]: url || null })
+        .eq('id', songId);
+
+      if (error) throw error;
+
+      // Close modal
+      document.getElementById('edit-resource-modal').classList.add('hidden');
+
+      // Show success message
+      this.showToast('Resource link updated successfully', 'success');
+
+      // Refresh the current view
+      if (this.currentView === 'library') {
+        await this.loadSongs();
+        this.renderSongs();
+      } else if (this.currentView === 'pathway' || this.currentView === 'progress') {
+        await this.loadStudentSongs();
+      }
+    } catch (error) {
+      console.error('Error updating resource:', error);
+      this.showToast('Failed to update resource link', 'error');
     }
   }
 
@@ -902,10 +998,25 @@ class CadenceApp {
         <div class="info">
           <div class="title">${song.title}</div>
           <div class="artist">${song.artist}</div>
-          <div class="song-links" style="margin-top: 4px; display: flex; gap: 8px;">
-            ${song.chords_url ? `<a href="${song.chords_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">Chords</a>` : ''}
-            ${song.tutorial_url ? `<a href="${song.tutorial_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">Tutorial</a>` : ''}
-            ${song.youtube_url ? `<a href="${song.youtube_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">YouTube</a>` : ''}
+          <div class="song-links" style="margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            ${song.chords_url ? `
+              <a href="${song.chords_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">Chords</a>
+              <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'chords_url', '${song.chords_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Edit chords link">✎</button>
+            ` : `
+              <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Add chords link">+ Chords</button>
+            `}
+            ${song.tutorial_url ? `
+              <a href="${song.tutorial_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">Tutorial</a>
+              <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'tutorial_url', '${song.tutorial_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Edit tutorial link">✎</button>
+            ` : `
+              <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'tutorial_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Add tutorial link">+ Tutorial</button>
+            `}
+            ${song.youtube_url ? `
+              <a href="${song.youtube_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">YouTube</a>
+              <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'youtube_url', '${song.youtube_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Edit YouTube link">✎</button>
+            ` : `
+              <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
+            `}
           </div>
         </div>
         <div class="actions">

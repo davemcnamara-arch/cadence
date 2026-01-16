@@ -154,6 +154,66 @@ body {
   background-color: var(--border-color);
 }
 
+.btn-add {
+  opacity: 0.7;
+  font-size: 0.875rem;
+}
+
+.btn-add:hover {
+  opacity: 1;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 14px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  margin-left: -4px;
+}
+
+.btn-icon:hover {
+  opacity: 1;
+  color: var(--primary-color);
+}
+
+.btn-icon-small {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 12px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  margin-left: 2px;
+}
+
+.btn-icon-small:hover {
+  opacity: 1;
+  color: var(--primary-color);
+}
+
+.btn-link-add {
+  background: none;
+  border: none;
+  color: var(--secondary-color);
+  cursor: pointer;
+  padding: 0;
+  font-size: 12px;
+  text-decoration: none;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.btn-link-add:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
 .btn-google {
   width: 100%;
   padding: 0.75rem 1rem;
@@ -660,6 +720,10 @@ body {
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: var(--shadow-lg);
+}
+
+.modal-small {
+  max-width: 450px;
 }
 
 .modal-header {
