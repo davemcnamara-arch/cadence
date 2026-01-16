@@ -261,6 +261,29 @@
     </div>
   </div>
 
+  <!-- Modal for Editing Song Resources -->
+  <div id="edit-resource-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2 id="edit-resource-title">Edit Resource Link</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="edit-resource-song-info" style="margin-bottom: 16px; color: var(--text-secondary);"></p>
+        <form id="edit-resource-form">
+          <div class="form-group">
+            <label for="resource-url" id="resource-url-label">URL</label>
+            <input type="url" id="resource-url" placeholder="https://..." required>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" id="cancel-edit-resource">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notifications -->
   <div id="toast-container" class="toast-container"></div>
 
