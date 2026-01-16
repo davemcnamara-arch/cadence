@@ -960,12 +960,10 @@ class CadenceApp {
     // Get current progress for this instrument
     const progress = this.studentProgress.find(p => p.instrument_id === instrumentId);
     if (!progress) {
-      console.log('No progress found for instrument:', instrumentId);
       return;
     }
 
     const currentLevel = progress.current_level;
-    console.log('Checking advancement for level:', currentLevel);
 
     // Count mastered songs at current level for this instrument
     const { data: masteredSongs, error: queryError } = await supabase
@@ -984,9 +982,6 @@ class CadenceApp {
     const levelSongs = masteredSongs?.filter(ss => ss.songs?.suggested_level === currentLevel) || [];
     const masteredCount = levelSongs.length;
     const requiredSongs = 3; // Songs needed to advance
-
-    console.log(`Mastered ${masteredCount} songs at level ${currentLevel} (need ${requiredSongs})`);
-    console.log('Mastered songs:', levelSongs);
 
     if (masteredCount >= requiredSongs && currentLevel < 5) {
       // Advance to next level!
