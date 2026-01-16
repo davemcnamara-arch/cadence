@@ -1138,8 +1138,8 @@ class CadenceApp {
         .eq('instrument_id', instrumentId);
 
       if (!error) {
-        // Update local state
-        progress.current_level = newLevel;
+        // Reload student progress from database to ensure all instruments have correct levels
+        await this.loadStudentProgress();
 
         const instrumentName = this.instruments.find(i => i.id === instrumentId)?.name;
         this.showToast(`🎉 Congratulations! You've advanced to Level ${newLevel} on ${instrumentName}!`, 'success');
