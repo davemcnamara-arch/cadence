@@ -71,6 +71,12 @@ class CadenceApp {
       });
     }
 
+    // Remove instrument
+    const removeInstrumentBtn = document.getElementById('remove-instrument-btn');
+    if (removeInstrumentBtn) {
+      removeInstrumentBtn.addEventListener('click', () => this.removeCurrentInstrument());
+    }
+
     // Instrument selection
     const instrumentDropdown = document.getElementById('current-instrument');
     if (instrumentDropdown) {
@@ -278,6 +284,70 @@ class CadenceApp {
     }
 
     this.showToast('Instrument added successfully!', 'success');
+  }
+
+  async removeCurrentInstrument() {
+    if (!this.currentInstrument) {
+      this.showToast('No instrument selected', 'error');
+      return;
+    }
+
+    const instrumentName = this.instruments.find(i => i.id === this.currentInstrument)?.name;
+
+    if (!confirm(`Are you sure you want to remove ${instrumentName}? This will delete all your progress and songs for this instrument.`)) {
+      return;
+    }
+
+    const user = auth.getCurrentUser();
+
+    // Delete all student songs for this instrument
+    const { error: songsError } = await supabase
+      .from('student_songs')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('instrument_id', this.currentInstrument);
+
+    if (songsError) {
+      console.error('Error deleting student songs:', songsError);
+      this.showToast('Failed to remove instrument', 'error');
+      return;
+    }
+
+    // Delete the student progress record
+    const { error: progressError } = await supabase
+      .from('student_progress')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('instrument_id', this.currentInstrument);
+
+    if (progressError) {
+      console.error('Error deleting student progress:', progressError);
+      this.showToast('Failed to remove instrument', 'error');
+      return;
+    }
+
+    // Remove from local array
+    this.studentProgress = this.studentProgress.filter(p => p.instrument_id !== this.currentInstrument);
+
+    // If there are other instruments, switch to the first one
+    if (this.studentProgress.length > 0) {
+      const nextInstrument = this.studentProgress[0].instrument_id;
+      this.currentInstrument = nextInstrument;
+      await this.loadLevels(nextInstrument);
+      await this.loadSongs();
+      this.renderPathway();
+      this.updateInstrumentDropdown();
+    } else {
+      // No instruments left, show instrument selection
+      this.currentInstrument = null;
+      this.levels = [];
+      this.songs = [];
+      document.getElementById('pathway-container').innerHTML = '<p>Select an instrument to get started!</p>';
+      this.updateInstrumentDropdown();
+      this.showInstrumentSelection();
+    }
+
+    this.showToast(`${instrumentName} removed successfully`, 'success');
   }
 
   async selectInstrument(instrumentId) {
