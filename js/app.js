@@ -63,8 +63,12 @@ class CadenceApp {
 
     // Add instrument
     const addInstrumentBtn = document.getElementById('add-instrument-btn');
+    console.log('🎵 Add Instrument Button:', addInstrumentBtn);
     if (addInstrumentBtn) {
-      addInstrumentBtn.addEventListener('click', () => this.showInstrumentSelection());
+      addInstrumentBtn.addEventListener('click', () => {
+        console.log('🎵 Add Instrument button clicked!');
+        this.showInstrumentSelection();
+      });
     }
 
     // Instrument selection
@@ -205,12 +209,17 @@ class CadenceApp {
   }
 
   showInstrumentSelection() {
+    console.log('🎵 showInstrumentSelection called');
     const container = document.getElementById('instrument-selection');
     const grid = document.getElementById('instrument-grid');
+    console.log('🎵 Container:', container);
+    console.log('🎵 Grid:', grid);
 
     // Filter out already selected instruments
     const selectedIds = this.studentProgress.map(p => p.instrument_id);
     const availableInstruments = this.instruments.filter(i => !selectedIds.includes(i.id));
+    console.log('🎵 Selected IDs:', selectedIds);
+    console.log('🎵 Available instruments:', availableInstruments);
 
     if (availableInstruments.length === 0) {
       this.showToast('You are already tracking all instruments!', 'info');
