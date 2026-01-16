@@ -846,10 +846,23 @@ class CadenceApp {
 
     exportCsvBtn.onclick = () => this.exportCSV();
     exportReflectionBtn.onclick = async () => {
-      const text = await this.generateReflection();
-      reflectionText.value = text;
-      reflectionText.classList.remove('hidden');
-      copyReflectionBtn.classList.remove('hidden');
+      try {
+        exportReflectionBtn.disabled = true;
+        exportReflectionBtn.textContent = 'Generating...';
+
+        const text = await this.generateReflection();
+        reflectionText.value = text;
+        reflectionText.classList.remove('hidden');
+        copyReflectionBtn.classList.remove('hidden');
+
+        this.showToast('Reflection generated!', 'success');
+      } catch (error) {
+        console.error('Error generating reflection:', error);
+        this.showToast('Failed to generate reflection', 'error');
+      } finally {
+        exportReflectionBtn.disabled = false;
+        exportReflectionBtn.textContent = 'Generate Reflection';
+      }
     };
     copyReflectionBtn.onclick = () => {
       reflectionText.select();
@@ -916,7 +929,7 @@ class CadenceApp {
   async generateReflection() {
     const user = auth.getCurrentUser();
 
-    const { data: studentSongs } = await supabase
+    const { data: studentSongs, error: songsError } = await supabase
       .from('student_songs')
       .select(`
         *,
@@ -924,15 +937,25 @@ class CadenceApp {
       `)
       .eq('user_id', user.id);
 
+    if (songsError) {
+      console.error('Error fetching student songs for reflection:', songsError);
+      throw new Error('Failed to fetch songs');
+    }
+
     const learning = studentSongs?.filter(s => s.status === 'learning') || [];
     const mastered = studentSongs?.filter(s => s.status === 'mastered') || [];
 
     // Get instrument names
     const instrumentIds = [...new Set((studentSongs || []).map(ss => ss.instrument_id))];
-    const { data: instruments } = await supabase
+    const { data: instruments, error: instrumentsError } = await supabase
       .from('instruments')
       .select('id, name')
       .in('id', instrumentIds);
+
+    if (instrumentsError) {
+      console.error('Error fetching instruments for reflection:', instrumentsError);
+      throw new Error('Failed to fetch instruments');
+    }
 
     const instrumentMap = {};
     instruments?.forEach(i => instrumentMap[i.id] = i.name);
@@ -940,10 +963,14 @@ class CadenceApp {
     const instrumentNames = [...new Set(this.studentProgress.map(p => {
       const inst = this.instruments.find(i => i.id === p.instrument_id);
       return inst?.name;
-    }))];
+    }))].filter(Boolean);
 
     let reflection = `Music Skill Progression Reflection\n\n`;
-    reflection += `I am currently developing my skills on ${instrumentNames.join(', ')}. `;
+
+    if (instrumentNames.length > 0) {
+      reflection += `I am currently developing my skills on ${instrumentNames.join(', ')}. `;
+    }
+
     reflection += `Throughout this term, I have been working on ${learning.length + mastered.length} songs total.\n\n`;
 
     if (mastered.length > 0) {
@@ -964,14 +991,18 @@ class CadenceApp {
       reflection += '\n';
     }
 
-    this.studentProgress.forEach(progress => {
-      const inst = this.instruments.find(i => i.id === progress.instrument_id);
-      reflection += `On ${inst.name}, I am working at Level ${progress.current_level}`;
-      if (progress.current_branch) {
-        reflection += ` (${progress.current_branch})`;
-      }
-      reflection += '.\n';
-    });
+    if (this.studentProgress && this.studentProgress.length > 0) {
+      this.studentProgress.forEach(progress => {
+        const inst = this.instruments.find(i => i.id === progress.instrument_id);
+        if (inst) {
+          reflection += `On ${inst.name}, I am working at Level ${progress.current_level}`;
+          if (progress.current_branch) {
+            reflection += ` (${progress.current_branch})`;
+          }
+          reflection += '.\n';
+        }
+      });
+    }
 
     reflection += `\nI am committed to continuing my musical development and look forward to progressing to higher levels.`;
 
