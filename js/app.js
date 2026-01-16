@@ -572,6 +572,7 @@ class CadenceApp {
             <h3 class="song-title">${song.title}</h3>
             <p class="song-artist">${song.artist}</p>
           </div>
+          <button class="btn btn-primary" onclick="event.stopPropagation(); app.addSongToLearning('${song.id}')">Start Learning</button>
         </div>
         <div class="song-meta">
           <span class="song-tag level">${levelLabel}</span>
@@ -581,7 +582,6 @@ class CadenceApp {
           ${song.chords_url ? `<a href="${song.chords_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">Chords</a>` : ''}
           ${song.tutorial_url ? `<a href="${song.tutorial_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">Tutorial</a>` : ''}
           ${song.youtube_url ? `<a href="${song.youtube_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">YouTube</a>` : ''}
-          <button class="btn btn-primary" onclick="event.stopPropagation(); app.addSongToLearning('${song.id}')">Start Learning</button>
         </div>
       </div>
     `;
