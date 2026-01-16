@@ -518,15 +518,20 @@ class CadenceApp {
     }
 
     if (instrumentFilter) {
-      filteredSongs = filteredSongs.filter(song =>
-        song.song_ratings?.some(r => r.instrument_id === instrumentFilter)
-      );
+      filteredSongs = filteredSongs.filter(song => {
+        // Check if song has this instrument assigned OR has ratings for this instrument
+        return song.instrument_id === instrumentFilter ||
+               song.song_ratings?.some(r => r.instrument_id === instrumentFilter);
+      });
     }
 
     if (levelFilter) {
-      filteredSongs = filteredSongs.filter(song =>
-        song.song_ratings?.some(r => r.assessed_level === parseInt(levelFilter))
-      );
+      filteredSongs = filteredSongs.filter(song => {
+        // Check suggested level OR average rated level
+        const levelNum = parseInt(levelFilter);
+        if (song.suggested_level === levelNum) return true;
+        return song.song_ratings?.some(r => r.assessed_level === levelNum);
+      });
     }
 
     const grid = document.getElementById('songs-grid');
@@ -546,9 +551,19 @@ class CadenceApp {
 
   renderSongCard(song) {
     const ratings = song.song_ratings || [];
-    const avgLevel = ratings.length > 0
-      ? (ratings.reduce((sum, r) => sum + r.assessed_level, 0) / ratings.length).toFixed(1)
-      : 'Not rated';
+    let levelDisplay, levelLabel;
+
+    if (ratings.length > 0) {
+      const avgLevel = (ratings.reduce((sum, r) => sum + r.assessed_level, 0) / ratings.length).toFixed(1);
+      levelDisplay = avgLevel;
+      levelLabel = `Level ${avgLevel}`;
+    } else if (song.suggested_level) {
+      levelDisplay = song.suggested_level;
+      levelLabel = `Level ${song.suggested_level} (suggested)`;
+    } else {
+      levelDisplay = '?';
+      levelLabel = 'Not rated';
+    }
 
     return `
       <div class="song-card" data-song-id="${song.id}">
@@ -559,7 +574,7 @@ class CadenceApp {
           </div>
         </div>
         <div class="song-meta">
-          <span class="song-tag level">Level ${avgLevel}</span>
+          <span class="song-tag level">${levelLabel}</span>
           <span class="song-tag">${ratings.length} rating${ratings.length !== 1 ? 's' : ''}</span>
         </div>
         <div class="song-actions">
