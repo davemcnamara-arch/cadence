@@ -357,7 +357,7 @@ class CadenceApp {
   }
 
   renderLevelNode(level, isComplete, isCurrent) {
-    const skills = JSON.parse(level.skills_json || '[]');
+    const skills = typeof level.skills_json === 'string' ? JSON.parse(level.skills_json) : (level.skills_json || []);
     const statusClass = isComplete ? 'completed' : (isCurrent ? 'current' : '');
 
     return `
@@ -381,7 +381,7 @@ class CadenceApp {
   }
 
   renderBranchNode(branch, isSelected, isComplete) {
-    const skills = JSON.parse(branch.skills_json || '[]');
+    const skills = typeof branch.skills_json === 'string' ? JSON.parse(branch.skills_json) : (branch.skills_json || []);
     const statusClass = isSelected ? 'selected' : (isComplete ? 'completed' : '');
 
     return `
@@ -588,7 +588,7 @@ class CadenceApp {
 
     if (!level) return;
 
-    const checklist = JSON.parse(level.grading_checklist_json || '{}');
+    const checklist = typeof level.grading_checklist_json === 'string' ? JSON.parse(level.grading_checklist_json) : (level.grading_checklist_json || {});
     const container = document.getElementById('grading-checklist');
 
     container.innerHTML = Object.entries(checklist).map(([question, options], index) => `
