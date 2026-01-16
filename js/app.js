@@ -912,6 +912,17 @@ class CadenceApp {
   }
 
   async markSongMastered(studentSongId) {
+    const user = auth.getCurrentUser();
+
+    // Get the student song to check which instrument it's for
+    const { data: studentSong } = await supabase
+      .from('student_songs')
+      .select('*, songs(*)')
+      .eq('id', studentSongId)
+      .single();
+
+    if (!studentSong) return;
+
     const { error } = await supabase
       .from('student_songs')
       .update({
@@ -927,7 +938,58 @@ class CadenceApp {
     }
 
     this.showToast('Song marked as mastered!', 'success');
+
+    // Check for level advancement
+    await this.checkLevelAdvancement(studentSong.instrument_id);
+
     this.renderProgress();
+  }
+
+  async checkLevelAdvancement(instrumentId) {
+    const user = auth.getCurrentUser();
+
+    // Get current progress for this instrument
+    const progress = this.studentProgress.find(p => p.instrument_id === instrumentId);
+    if (!progress) return;
+
+    const currentLevel = progress.current_level;
+
+    // Count mastered songs at current level for this instrument
+    const { data: masteredSongs } = await supabase
+      .from('student_songs')
+      .select('*, songs!inner(*)')
+      .eq('user_id', user.id)
+      .eq('instrument_id', instrumentId)
+      .eq('status', 'mastered')
+      .eq('songs.suggested_level', currentLevel);
+
+    const masteredCount = masteredSongs?.length || 0;
+    const requiredSongs = 3; // Songs needed to advance
+
+    if (masteredCount >= requiredSongs && currentLevel < 5) {
+      // Advance to next level!
+      const newLevel = currentLevel + 1;
+
+      const { error } = await supabase
+        .from('student_progress')
+        .update({ current_level: newLevel })
+        .eq('user_id', user.id)
+        .eq('instrument_id', instrumentId);
+
+      if (!error) {
+        // Update local state
+        progress.current_level = newLevel;
+
+        const instrumentName = this.instruments.find(i => i.id === instrumentId)?.name;
+        this.showToast(`🎉 Congratulations! You've advanced to Level ${newLevel} on ${instrumentName}!`, 'success');
+
+        // Refresh the pathway if viewing this instrument
+        if (this.currentInstrument === instrumentId) {
+          await this.loadLevels(instrumentId);
+          this.renderPathway();
+        }
+      }
+    }
   }
 
   showExportModal() {
