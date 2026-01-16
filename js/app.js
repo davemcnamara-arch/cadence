@@ -724,6 +724,8 @@ class CadenceApp {
       this.gradingData.level = parseInt(level);
       this.gradingData.youtube_url = document.getElementById('song-youtube').value;
       this.gradingData.spotify_url = document.getElementById('song-spotify').value;
+      this.gradingData.chords_url = document.getElementById('song-chords').value;
+      this.gradingData.tutorial_url = document.getElementById('song-tutorial').value;
     }
 
     if (this.currentStep === 2) {
@@ -798,6 +800,8 @@ class CadenceApp {
             artist: this.gradingData.artist,
             youtube_url: this.gradingData.youtube_url,
             spotify_url: this.gradingData.spotify_url,
+            chords_url: this.gradingData.chords_url,
+            tutorial_url: this.gradingData.tutorial_url,
             added_by_user_id: user.id,
             approved: true // Auto-approve for MVP
           }])
