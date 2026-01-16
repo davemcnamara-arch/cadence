@@ -862,20 +862,41 @@ class CadenceApp {
     const user = auth.getCurrentUser();
 
     // Get all data
-    const { data: studentSongs } = await supabase
+    const { data: studentSongs, error } = await supabase
       .from('student_songs')
       .select(`
         *,
-        songs (*),
-        instruments (name)
+        songs (*)
       `)
       .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error fetching student songs:', error);
+      this.showToast('Failed to export data', 'error');
+      return;
+    }
+
+    if (!studentSongs || studentSongs.length === 0) {
+      this.showToast('No songs to export yet!', 'info');
+      return;
+    }
+
+    // Get instrument names
+    const instrumentIds = [...new Set(studentSongs.map(ss => ss.instrument_id))];
+    const { data: instruments } = await supabase
+      .from('instruments')
+      .select('id, name')
+      .in('id', instrumentIds);
+
+    const instrumentMap = {};
+    instruments.forEach(i => instrumentMap[i.id] = i.name);
 
     // Create CSV
     let csv = 'Song Title,Artist,Instrument,Status,Date Started,Date Completed\n';
 
     studentSongs.forEach(ss => {
-      csv += `"${ss.songs.title}","${ss.songs.artist}","${ss.instruments.name}","${ss.status}","${new Date(ss.date_started).toLocaleDateString()}","${ss.date_completed ? new Date(ss.date_completed).toLocaleDateString() : ''}"\n`;
+      const instrumentName = instrumentMap[ss.instrument_id] || 'Unknown';
+      csv += `"${ss.songs.title}","${ss.songs.artist}","${instrumentName}","${ss.status}","${new Date(ss.date_started).toLocaleDateString()}","${ss.date_completed ? new Date(ss.date_completed).toLocaleDateString() : ''}"\n`;
     });
 
     // Download
@@ -884,7 +905,10 @@ class CadenceApp {
     const a = document.createElement('a');
     a.href = url;
     a.download = `cadence-progress-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 
     this.showToast('CSV exported successfully!', 'success');
   }
@@ -896,13 +920,22 @@ class CadenceApp {
       .from('student_songs')
       .select(`
         *,
-        songs (*),
-        instruments (name)
+        songs (*)
       `)
       .eq('user_id', user.id);
 
-    const learning = studentSongs.filter(s => s.status === 'learning');
-    const mastered = studentSongs.filter(s => s.status === 'mastered');
+    const learning = studentSongs?.filter(s => s.status === 'learning') || [];
+    const mastered = studentSongs?.filter(s => s.status === 'mastered') || [];
+
+    // Get instrument names
+    const instrumentIds = [...new Set((studentSongs || []).map(ss => ss.instrument_id))];
+    const { data: instruments } = await supabase
+      .from('instruments')
+      .select('id, name')
+      .in('id', instrumentIds);
+
+    const instrumentMap = {};
+    instruments?.forEach(i => instrumentMap[i.id] = i.name);
 
     const instrumentNames = [...new Set(this.studentProgress.map(p => {
       const inst = this.instruments.find(i => i.id === p.instrument_id);
@@ -916,7 +949,8 @@ class CadenceApp {
     if (mastered.length > 0) {
       reflection += `I have successfully mastered ${mastered.length} song${mastered.length !== 1 ? 's' : ''}, including:\n`;
       mastered.forEach(ss => {
-        reflection += `- "${ss.songs.title}" by ${ss.songs.artist} on ${ss.instruments.name}\n`;
+        const instrumentName = instrumentMap[ss.instrument_id] || 'Unknown';
+        reflection += `- "${ss.songs.title}" by ${ss.songs.artist} on ${instrumentName}\n`;
       });
       reflection += '\n';
     }
@@ -924,7 +958,8 @@ class CadenceApp {
     if (learning.length > 0) {
       reflection += `I am currently learning ${learning.length} song${learning.length !== 1 ? 's' : ''}:\n`;
       learning.forEach(ss => {
-        reflection += `- "${ss.songs.title}" by ${ss.songs.artist} on ${ss.instruments.name}\n`;
+        const instrumentName = instrumentMap[ss.instrument_id] || 'Unknown';
+        reflection += `- "${ss.songs.title}" by ${ss.songs.artist} on ${instrumentName}\n`;
       });
       reflection += '\n';
     }
