@@ -47,9 +47,14 @@
       <div class="header-content">
         <div class="logo-small">🎵 Cadence</div>
         <nav class="nav-tabs">
-          <button class="nav-tab active" data-view="pathway">My Pathway</button>
-          <button class="nav-tab" data-view="songs">Song Library</button>
-          <button class="nav-tab" data-view="progress">My Progress</button>
+          <!-- Student tabs (shown to all users) -->
+          <button class="nav-tab active student-tab" data-view="pathway">My Pathway</button>
+          <button class="nav-tab student-tab" data-view="songs">Song Library</button>
+          <button class="nav-tab student-tab" data-view="progress">My Progress</button>
+          <!-- Teacher tabs (shown only to teachers) -->
+          <button class="nav-tab teacher-tab hidden" data-view="classes">My Classes</button>
+          <button class="nav-tab teacher-tab hidden" data-view="submissions">Submissions</button>
+          <button class="nav-tab teacher-tab hidden" data-view="flagged">Flagged Ratings</button>
         </nav>
         <div class="user-menu">
           <span id="user-name" class="user-name"></span>
@@ -145,6 +150,121 @@
               <!-- Populated by JS -->
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Teacher: Classes View -->
+      <div id="classes-view" class="view teacher-view hidden">
+        <div class="view-header">
+          <h2>My Classes</h2>
+          <button id="create-class-btn" class="btn btn-primary">+ Create New Class</button>
+        </div>
+
+        <div id="classes-list" class="classes-grid">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Class Detail View (shown when a class is selected) -->
+        <div id="class-detail-view" class="class-detail hidden">
+          <div class="class-detail-header">
+            <button id="back-to-classes-btn" class="btn-text">← Back to Classes</button>
+            <div class="class-detail-title">
+              <h2 id="class-detail-name">Class Name</h2>
+              <div class="class-detail-meta">
+                <span id="class-detail-code" class="class-code-display"></span>
+                <span id="class-detail-count"></span>
+              </div>
+            </div>
+            <button id="export-class-data-btn" class="btn btn-secondary">Export Class Data</button>
+          </div>
+
+          <div class="class-tabs">
+            <button class="class-tab active" data-tab="roster">Roster</button>
+            <button class="class-tab" data-tab="progress">Progress Heatmap</button>
+            <button class="class-tab" data-tab="timeline">Timeline</button>
+          </div>
+
+          <div class="class-tab-content">
+            <!-- Roster Tab -->
+            <div id="roster-tab" class="tab-pane active">
+              <div id="class-roster" class="class-roster">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+
+            <!-- Progress Heatmap Tab -->
+            <div id="progress-tab" class="tab-pane hidden">
+              <div class="progress-filters">
+                <label>Instrument:
+                  <select id="heatmap-instrument" class="filter-select">
+                    <option value="">All Instruments</option>
+                  </select>
+                </label>
+              </div>
+              <div id="progress-heatmap" class="progress-heatmap">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+
+            <!-- Timeline Tab -->
+            <div id="timeline-tab" class="tab-pane hidden">
+              <div id="class-timeline" class="class-timeline">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Teacher: Submissions View -->
+      <div id="submissions-view" class="view teacher-view hidden">
+        <div class="view-header">
+          <h2>Recent Student Submissions</h2>
+          <div class="submissions-filters">
+            <select id="submissions-class-filter" class="filter-select">
+              <option value="">All Classes</option>
+            </select>
+            <select id="submissions-instrument-filter" class="filter-select">
+              <option value="">All Instruments</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="submissions-feed" class="submissions-feed">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Teacher: Flagged Ratings View -->
+      <div id="flagged-view" class="view teacher-view hidden">
+        <div class="view-header">
+          <h2>Flagged Ratings</h2>
+          <p class="view-subtitle">Songs with 2+ level discrepancies between ratings</p>
+          <div class="flagged-filters">
+            <select id="flagged-class-filter" class="filter-select">
+              <option value="">All Classes</option>
+            </select>
+            <select id="flagged-instrument-filter" class="filter-select">
+              <option value="">All Instruments</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="flagged-ratings-list" class="flagged-ratings-list">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Student: Join Class Section (shown in progress view or as modal) -->
+      <div id="join-class-section" class="join-class-section hidden">
+        <h3>Join a Class</h3>
+        <p>Enter your class code to join</p>
+        <div class="join-class-form">
+          <input type="text" id="class-code-input" placeholder="Enter 6-character code" maxlength="6" style="text-transform: uppercase;">
+          <button id="join-class-btn" class="btn btn-primary">Join Class</button>
+        </div>
+        <div id="student-classes-list" class="student-classes-list">
+          <!-- Shows classes student has joined -->
         </div>
       </div>
     </main>
@@ -319,6 +439,80 @@
           <div class="form-actions">
             <button type="button" class="btn btn-secondary" id="skip-rating-btn">Skip</button>
             <button type="submit" class="btn btn-primary">Submit & Mark Mastered</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Creating Class -->
+  <div id="create-class-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>Create New Class</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="create-class-form">
+          <div class="form-group">
+            <label for="class-name">Class Name *</label>
+            <input type="text" id="class-name" required placeholder="e.g., Music 101, Grade 7 Band">
+          </div>
+          <div class="form-group">
+            <label for="class-year-level">Year Level (optional)</label>
+            <input type="text" id="class-year-level" placeholder="e.g., Year 7, Grade 9">
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+            <button type="submit" class="btn btn-primary">Create Class</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Student Detail -->
+  <div id="student-detail-modal" class="modal hidden">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h2 id="student-detail-name">Student Name</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="student-detail-content" class="student-detail-content">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Editing Song Level -->
+  <div id="edit-song-level-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>Edit Song Level</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="edit-song-info" style="margin-bottom: 16px;"></p>
+        <form id="edit-song-level-form">
+          <div class="form-group">
+            <label for="edit-song-level">Assessed Level *</label>
+            <select id="edit-song-level" required>
+              <option value="1">Level 1</option>
+              <option value="2">Level 2</option>
+              <option value="3">Level 3</option>
+              <option value="4">Level 4</option>
+              <option value="5">Level 5</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="edit-song-notes">Notes (optional)</label>
+            <textarea id="edit-song-notes" rows="3" placeholder="Add any notes about this assessment..."></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+            <button type="submit" class="btn btn-primary">Update Level</button>
           </div>
         </form>
       </div>
