@@ -897,13 +897,20 @@ class CadenceApp {
 
       console.log('🎵 Update successful!');
 
+      // Update the local song object immediately so UI reflects the change
+      const song = this.songs.find(s => s.id === songId);
+      if (song) {
+        song[fieldName] = url || null;
+        console.log('🎵 Updated local song object:', song.title);
+      }
+
       // Close modal
       document.getElementById('edit-resource-modal').classList.add('hidden');
 
       // Show success message
       this.showToast('Resource link updated successfully', 'success');
 
-      // Refresh the current view
+      // Refresh the current view to ensure UI is updated
       if (this.currentView === 'songs') {
         await this.loadSongs();
         this.filterSongs();
