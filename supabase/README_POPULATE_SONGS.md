@@ -94,6 +94,7 @@ Or test in the app:
 ## Notes
 
 - All songs include YouTube URLs for reference
+- All songs include Ultimate Guitar chord/tab links for easy learning
 - Songs are automatically marked as `approved = true`
 - The script uses `ON CONFLICT DO NOTHING` to avoid duplicates
 - Each song is matched to the appropriate level based on the skill requirements defined in `seed.sql`
