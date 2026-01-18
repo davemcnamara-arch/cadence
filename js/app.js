@@ -854,12 +854,22 @@ class CadenceApp {
 
       console.log('🎵 Saving resource:', { songId, fieldName, url });
 
-      // Get the current session token
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('🎵 Session retrieved:', !!session);
+      // Get the current session token from localStorage (Supabase stores it there)
+      console.log('🎵 Getting session from localStorage...');
+      const sessionKey = `sb-dgwtihpiqgkhokkkxuzo-auth-token`;
+      const sessionData = localStorage.getItem(sessionKey);
+      console.log('🎵 Session data exists:', !!sessionData);
 
-      if (!session) {
-        throw new Error('Not authenticated');
+      if (!sessionData) {
+        throw new Error('Not authenticated - no session found');
+      }
+
+      const session = JSON.parse(sessionData);
+      const accessToken = session.access_token;
+      console.log('🎵 Access token retrieved:', !!accessToken);
+
+      if (!accessToken) {
+        throw new Error('Not authenticated - no access token');
       }
 
       console.log('🎵 About to update database using REST API...');
@@ -870,7 +880,7 @@ class CadenceApp {
         headers: {
           'Content-Type': 'application/json',
           'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
           'Prefer': 'return=minimal'
         },
         body: JSON.stringify({ [fieldName]: url || null })
