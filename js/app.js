@@ -771,21 +771,27 @@ class CadenceApp {
   }
 
   setupEditResourceModal() {
+    console.log('🎵 Setting up edit resource modal');
+
     const form = document.getElementById('edit-resource-form');
     const cancelBtn = document.getElementById('cancel-edit-resource');
 
-    console.log('🎵 Setting up edit resource modal, form:', form);
+    console.log('🎵 Form element:', form);
 
+    // Cancel button
     if (cancelBtn) {
       cancelBtn.addEventListener('click', () => {
+        console.log('🎵 Cancel clicked');
         document.getElementById('edit-resource-modal').classList.add('hidden');
       });
     }
 
+    // Form submit handler
     if (form) {
       form.addEventListener('submit', async (e) => {
         console.log('🎵 Form submit event triggered');
         e.preventDefault();
+        e.stopPropagation();
         await this.saveResourceUrl();
       });
       console.log('🎵 Form submit listener added');
