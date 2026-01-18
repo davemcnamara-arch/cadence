@@ -55,7 +55,7 @@ export class AuthManager {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      this.handleSignOut();
+      // handleSignOut() will be called automatically by the auth state change listener
       return { success: true };
     } catch (error) {
       console.error('Error signing out:', error);
