@@ -97,6 +97,9 @@ class CadenceApp {
     // Edit resource modal
     this.setupEditResourceModal();
 
+    // Rate resources modal
+    this.setupRateResourcesModal();
+
     // Export
     const exportBtn = document.getElementById('export-progress-btn');
     if (exportBtn) {
@@ -788,6 +791,68 @@ class CadenceApp {
     }
   }
 
+  setupRateResourcesModal() {
+    const form = document.getElementById('rate-resources-form');
+    const skipBtn = document.getElementById('skip-rating-btn');
+
+    // Set up star rating interactions
+    const ratingStars = document.querySelectorAll('.rating-stars');
+    ratingStars.forEach(container => {
+      const stars = container.querySelectorAll('.star');
+      const field = container.dataset.field;
+      const hiddenInput = document.getElementById(`${field}-rating`);
+
+      stars.forEach(star => {
+        // Click to select rating
+        star.addEventListener('click', () => {
+          const value = star.dataset.value;
+          hiddenInput.value = value;
+
+          // Update visual state
+          stars.forEach(s => {
+            if (parseInt(s.dataset.value) <= parseInt(value)) {
+              s.classList.add('active');
+            } else {
+              s.classList.remove('active');
+            }
+          });
+        });
+
+        // Hover effects
+        star.addEventListener('mouseenter', () => {
+          const value = star.dataset.value;
+          stars.forEach(s => {
+            if (parseInt(s.dataset.value) <= parseInt(value)) {
+              s.classList.add('hovered');
+            } else {
+              s.classList.remove('hovered');
+            }
+          });
+        });
+
+        container.addEventListener('mouseleave', () => {
+          stars.forEach(s => s.classList.remove('hovered'));
+        });
+      });
+    });
+
+    // Skip button - marks mastered without rating
+    if (skipBtn) {
+      skipBtn.addEventListener('click', async () => {
+        document.getElementById('rate-resources-modal').classList.add('hidden');
+        await this.completeMasteredMarking();
+      });
+    }
+
+    // Submit with ratings
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.submitResourceRatings();
+      });
+    }
+  }
+
   editSongResource(songId, fieldName, currentValue, title, artist, instrumentName = '') {
     // Store data for submission
     this.editingResource = {
@@ -1163,6 +1228,91 @@ class CadenceApp {
 
     if (!studentSong) return;
 
+    // Store for later use
+    this.pendingMasteredSong = {
+      studentSongId,
+      instrumentId: studentSong.instrument_id
+    };
+
+    // Check if song has chords or tutorial links
+    const hasChords = studentSong.songs.chords_url;
+    const hasTutorial = studentSong.songs.tutorial_url;
+
+    if (!hasChords && !hasTutorial) {
+      // No resources to rate, mark as mastered directly
+      await this.completeMasteredMarking();
+      return;
+    }
+
+    // Show rating modal
+    this.showRateResourcesModal(studentSong.songs, hasChords, hasTutorial);
+  }
+
+  showRateResourcesModal(song, hasChords, hasTutorial) {
+    // Update modal content
+    document.getElementById('rate-resources-song-info').textContent =
+      `${song.title} - ${song.artist}`;
+
+    // Show/hide rating groups based on what resources exist
+    const chordsGroup = document.getElementById('chords-rating-group');
+    const tutorialGroup = document.getElementById('tutorial-rating-group');
+
+    if (hasChords) {
+      chordsGroup.classList.remove('hidden');
+      // Reset stars
+      chordsGroup.querySelectorAll('.star').forEach(s => s.classList.remove('active'));
+      document.getElementById('chords-rating').value = '';
+    } else {
+      chordsGroup.classList.add('hidden');
+    }
+
+    if (hasTutorial) {
+      tutorialGroup.classList.remove('hidden');
+      // Reset stars
+      tutorialGroup.querySelectorAll('.star').forEach(s => s.classList.remove('active'));
+      document.getElementById('tutorial-rating').value = '';
+    } else {
+      tutorialGroup.classList.add('hidden');
+    }
+
+    // Show modal
+    document.getElementById('rate-resources-modal').classList.remove('hidden');
+  }
+
+  async submitResourceRatings() {
+    const chordsRating = document.getElementById('chords-rating').value;
+    const tutorialRating = document.getElementById('tutorial-rating').value;
+    const user = auth.getCurrentUser();
+
+    // Save ratings if provided
+    if (chordsRating || tutorialRating) {
+      const { error } = await supabase
+        .from('resource_ratings')
+        .insert({
+          student_song_id: this.pendingMasteredSong.studentSongId,
+          user_id: user.id,
+          chords_rating: chordsRating ? parseInt(chordsRating) : null,
+          tutorial_rating: tutorialRating ? parseInt(tutorialRating) : null
+        });
+
+      if (error) {
+        console.error('Error saving ratings:', error);
+        // Continue anyway - don't block mastering due to rating error
+      }
+    }
+
+    // Close modal
+    document.getElementById('rate-resources-modal').classList.add('hidden');
+
+    // Complete the mastered marking
+    await this.completeMasteredMarking();
+  }
+
+  async completeMasteredMarking() {
+    if (!this.pendingMasteredSong) return;
+
+    const { studentSongId, instrumentId } = this.pendingMasteredSong;
+
     const { error } = await supabase
       .from('student_songs')
       .update({
@@ -1180,9 +1330,12 @@ class CadenceApp {
     this.showToast('Song marked as mastered!', 'success');
 
     // Check for level advancement
-    await this.checkLevelAdvancement(studentSong.instrument_id);
+    await this.checkLevelAdvancement(instrumentId);
 
     this.renderProgress();
+
+    // Clear pending data
+    this.pendingMasteredSong = null;
   }
 
   async checkLevelAdvancement(instrumentId) {
