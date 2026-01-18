@@ -927,19 +927,19 @@ class CadenceApp {
       console.log('🎵 About to update database...');
 
       // Update song in database with timeout
+      // Note: NOT using .select() to avoid needing SELECT permission
       const updatePromise = supabase
         .from('songs')
         .update({ [fieldName]: url || null })
-        .eq('id', songId)
-        .select();
+        .eq('id', songId);
 
       console.log('🎵 Waiting for update to complete...');
 
       const result = await Promise.race([updatePromise, timeoutPromise]);
       console.log('🎵 Update completed, result:', result);
 
-      const { data, error } = result;
-      console.log('🎵 Data:', data, 'Error:', error);
+      const { error } = result;
+      console.log('🎵 Error (if any):', error);
 
       if (error) throw error;
 
