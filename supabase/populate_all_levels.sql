@@ -1,13 +1,12 @@
 -- Populate song library with at least one song for all instruments and levels
 -- This ensures students have songs to learn across all level progressions
+--
+-- IMPORTANT: Run remove_duplicate_songs.sql first if you've previously run other song population scripts
 
 -- ===== GUITAR LEVEL 5 SONGS =====
 
 -- Guitar Level 5 songs (Advanced techniques)
-INSERT INTO songs (title, artist, instrument_id, suggested_level, youtube_url, approved)
-SELECT 'Superstition', 'Stevie Wonder', id, 5, 'https://www.youtube.com/watch?v=0CFuCYNx-1g', true
-FROM instruments WHERE name = 'Guitar'
-ON CONFLICT DO NOTHING;
+-- Note: Superstition removed - already exists in clean_insert_songs.sql at Level 4
 
 INSERT INTO songs (title, artist, instrument_id, suggested_level, youtube_url, approved)
 SELECT 'Use Somebody', 'Kings of Leon', id, 5, 'https://www.youtube.com/watch?v=gnhXHvRoUd0', true
