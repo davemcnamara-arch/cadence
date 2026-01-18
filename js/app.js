@@ -912,42 +912,34 @@ class CadenceApp {
 
   async saveResourceUrl() {
     console.log('🎵 saveResourceUrl called');
-    const url = document.getElementById('resource-url').value.trim();
-    const { songId, fieldName } = this.editingResource;
-
-    console.log('🎵 Saving resource:', { songId, fieldName, url });
-
-    // Check auth state
-    const { data: { session } } = await supabase.auth.getSession();
-    console.log('🎵 Current session:', session);
-    console.log('🎵 User ID:', session?.user?.id);
-    console.log('🎵 User role:', session?.user?.user_metadata?.role);
-
-    console.log('🎵 supabase object:', supabase);
-    console.log('🎵 Building query...');
 
     try {
-      // Update song in database
-      console.log('🎵 About to call supabase.from...');
+      const url = document.getElementById('resource-url').value.trim();
+      const { songId, fieldName } = this.editingResource;
 
-      // Set a timeout to detect if the query hangs
+      console.log('🎵 Saving resource:', { songId, fieldName, url });
+
+      // Set a timeout to detect if anything hangs
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Query timeout after 5 seconds')), 5000);
+        setTimeout(() => reject(new Error('Operation timeout after 10 seconds')), 10000);
       });
 
-      const query = supabase
+      console.log('🎵 About to update database...');
+
+      // Update song in database with timeout
+      const updatePromise = supabase
         .from('songs')
         .update({ [fieldName]: url || null })
         .eq('id', songId)
         .select();
 
-      console.log('🎵 Query built, about to await:', query);
+      console.log('🎵 Waiting for update to complete...');
 
-      const result = await Promise.race([query, timeoutPromise]);
-      console.log('🎵 Await completed, result:', result);
+      const result = await Promise.race([updatePromise, timeoutPromise]);
+      console.log('🎵 Update completed, result:', result);
 
       const { data, error } = result;
-      console.log('🎵 Update result:', { data, error });
+      console.log('🎵 Data:', data, 'Error:', error);
 
       if (error) throw error;
 
