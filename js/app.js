@@ -147,6 +147,7 @@ class CadenceApp {
       this.currentInstrument = this.studentProgress[0].instrument_id;
       await this.loadLevels(this.currentInstrument);
       await this.loadSongs();
+      this.updatePathwayInstrument();
       this.renderPathway();
       this.updateInstrumentDropdown();
     }
@@ -309,10 +310,12 @@ class CadenceApp {
       this.currentInstrument = instrumentId;
       await this.loadLevels(instrumentId);
       await this.loadSongs();
+      this.updatePathwayInstrument();
       this.renderPathway();
       this.updateInstrumentDropdown();
     } else {
       this.updateInstrumentDropdown();
+      this.renderInstrumentTabs();
     }
 
     this.showToast('Instrument added successfully!', 'success');
@@ -367,6 +370,7 @@ class CadenceApp {
       this.currentInstrument = nextInstrument;
       await this.loadLevels(nextInstrument);
       await this.loadSongs();
+      this.updatePathwayInstrument();
       this.renderPathway();
       this.updateInstrumentDropdown();
     } else {
@@ -385,7 +389,56 @@ class CadenceApp {
   async selectInstrument(instrumentId) {
     this.currentInstrument = instrumentId;
     await this.loadLevels(instrumentId);
+    this.updatePathwayInstrument();
     this.renderPathway();
+  }
+
+  updatePathwayInstrument() {
+    const pathwayView = document.getElementById('pathway-view');
+    const instrument = this.instruments.find(i => i.id === this.currentInstrument);
+
+    if (pathwayView && instrument) {
+      // Set data attribute for instrument-specific styling
+      const instrumentSlug = instrument.name.toLowerCase().split('/')[0].replace(/\s+/g, '');
+      pathwayView.setAttribute('data-instrument', instrumentSlug);
+    }
+
+    // Render instrument tabs
+    this.renderInstrumentTabs();
+  }
+
+  renderInstrumentTabs() {
+    const container = document.querySelector('.instrument-selector');
+    if (!container) return;
+
+    const tabsHtml = this.studentProgress.map(progress => {
+      const instrument = this.instruments.find(i => i.id === progress.instrument_id);
+      const isActive = progress.instrument_id === this.currentInstrument;
+      const instrumentSlug = instrument.name.toLowerCase().split('/')[0].replace(/\s+/g, '');
+
+      return `
+        <button
+          class="instrument-tab ${instrumentSlug} ${isActive ? 'active' : ''}"
+          data-instrument-id="${instrument.id}"
+          onclick="app.selectInstrument('${instrument.id}')">
+          ${instrument.icon} ${instrument.name}
+        </button>
+      `;
+    }).join('');
+
+    const addRemoveButtons = `
+      <div style="margin-left: auto; display: flex; gap: 0.5rem;">
+        <button id="add-instrument-btn" class="btn-text" onclick="app.showInstrumentSelection()">+ Add Another</button>
+        <button id="remove-instrument-btn" class="btn-text btn-danger" onclick="app.removeCurrentInstrument()">Remove Current</button>
+      </div>
+    `;
+
+    container.innerHTML = `
+      <div class="instrument-tabs">
+        ${tabsHtml}
+        ${addRemoveButtons}
+      </div>
+    `;
   }
 
   updateInstrumentDropdown() {
@@ -440,13 +493,25 @@ class CadenceApp {
 
     const currentLevel = progress.current_level;
     const currentBranch = progress.current_branch;
+    const instrument = this.instruments.find(i => i.id === this.currentInstrument);
 
     // Group levels
     const regularLevels = this.levels.filter(l => !l.is_branch && l.level_number <= 3);
     const level4Branches = this.levels.filter(l => l.is_branch && l.level_number === 4);
     const level5Branches = this.levels.filter(l => l.is_branch && l.level_number === 5);
 
-    let html = '<div class="pathway-map">';
+    // Build pathway header
+    let html = `
+      <div class="pathway-header">
+        <div class="pathway-header-icon">${instrument.icon}</div>
+        <div class="pathway-header-content">
+          <h2>${instrument.name} Pathway</h2>
+          <p>Currently at Level ${currentLevel}${currentBranch ? ` - ${currentBranch}` : ''}</p>
+        </div>
+      </div>
+    `;
+
+    html += '<div class="pathway-map">';
 
     // Render levels 1-3
     regularLevels.forEach(level => {
