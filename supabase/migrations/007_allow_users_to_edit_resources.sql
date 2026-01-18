@@ -1,8 +1,11 @@
 -- Allow users to add resource links (chords, tutorials, YouTube) to any song
 -- This is a community feature where users help each other by adding helpful resources
+-- This migration is idempotent - safe to run multiple times
 
--- Drop the old restrictive update policy
+-- Drop all existing UPDATE policies on songs table
 DROP POLICY IF EXISTS "Teachers can approve songs" ON songs;
+DROP POLICY IF EXISTS "Teachers can manage songs" ON songs;
+DROP POLICY IF EXISTS "Users can add resource links" ON songs;
 
 -- Create separate policies for different update scenarios
 
