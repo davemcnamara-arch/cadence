@@ -916,15 +916,23 @@ class CadenceApp {
     const { songId, fieldName } = this.editingResource;
 
     console.log('🎵 Saving resource:', { songId, fieldName, url });
+    console.log('🎵 supabase object:', supabase);
+    console.log('🎵 Building query...');
 
     try {
       // Update song in database
-      const { data, error } = await supabase
+      console.log('🎵 About to call supabase.from...');
+      const query = supabase
         .from('songs')
         .update({ [fieldName]: url || null })
         .eq('id', songId)
         .select();
 
+      console.log('🎵 Query built, about to await:', query);
+      const result = await query;
+      console.log('🎵 Await completed, result:', result);
+
+      const { data, error } = result;
       console.log('🎵 Update result:', { data, error });
 
       if (error) throw error;
