@@ -373,9 +373,12 @@ class CadenceApp {
 
     // Update filter dropdown with all instruments
     if (filterDropdown) {
-      const allInstrumentsHtml = '<option value="">All Instruments</option>' +
+      const allInstrumentsHtml = '<option value="my-instruments">My Instruments</option>' +
+        '<option value="">All Instruments</option>' +
         this.instruments.map(i => `<option value="${i.id}">${i.icon} ${i.name}</option>`).join('');
       filterDropdown.innerHTML = allInstrumentsHtml;
+      // Set default to "My Instruments"
+      filterDropdown.value = 'my-instruments';
     }
 
     // Update grading dropdown with student's instruments
@@ -520,9 +523,17 @@ class CadenceApp {
       );
     }
 
-    if (instrumentFilter) {
+    if (instrumentFilter === 'my-instruments') {
+      // Filter to show only songs for instruments the user is learning
+      const myInstrumentIds = this.studentProgress.map(p => p.instrument_id);
       filteredSongs = filteredSongs.filter(song => {
-        // Check if song has this instrument assigned OR has ratings for this instrument
+        // Check if song has an instrument the user is learning OR has ratings for one of those instruments
+        return myInstrumentIds.includes(song.instrument_id) ||
+               song.song_ratings?.some(r => myInstrumentIds.includes(r.instrument_id));
+      });
+    } else if (instrumentFilter) {
+      filteredSongs = filteredSongs.filter(song => {
+        // Check if song has this specific instrument assigned OR has ratings for this instrument
         return song.instrument_id === instrumentFilter ||
                song.song_ratings?.some(r => r.instrument_id === instrumentFilter);
       });
