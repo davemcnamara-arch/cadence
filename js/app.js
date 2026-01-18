@@ -774,6 +774,8 @@ class CadenceApp {
     const form = document.getElementById('edit-resource-form');
     const cancelBtn = document.getElementById('cancel-edit-resource');
 
+    console.log('🎵 Setting up edit resource modal, form:', form);
+
     if (cancelBtn) {
       cancelBtn.addEventListener('click', () => {
         document.getElementById('edit-resource-modal').classList.add('hidden');
@@ -782,9 +784,13 @@ class CadenceApp {
 
     if (form) {
       form.addEventListener('submit', async (e) => {
+        console.log('🎵 Form submit event triggered');
         e.preventDefault();
         await this.saveResourceUrl();
       });
+      console.log('🎵 Form submit listener added');
+    } else {
+      console.error('🎵 Edit resource form not found!');
     }
   }
 
@@ -834,15 +840,21 @@ class CadenceApp {
   }
 
   async saveResourceUrl() {
+    console.log('🎵 saveResourceUrl called');
     const url = document.getElementById('resource-url').value.trim();
     const { songId, fieldName } = this.editingResource;
 
+    console.log('🎵 Saving resource:', { songId, fieldName, url });
+
     try {
       // Update song in database
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('songs')
         .update({ [fieldName]: url || null })
-        .eq('id', songId);
+        .eq('id', songId)
+        .select();
+
+      console.log('🎵 Update result:', { data, error });
 
       if (error) throw error;
 
@@ -860,7 +872,7 @@ class CadenceApp {
         this.renderProgress();
       }
     } catch (error) {
-      console.error('Error updating resource:', error);
+      console.error('🎵 Error updating resource:', error);
       this.showToast('Failed to update resource link', 'error');
     }
   }
