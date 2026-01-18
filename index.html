@@ -284,6 +284,47 @@
     </div>
   </div>
 
+  <!-- Modal for Rating Resources -->
+  <div id="rate-resources-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>How helpful were these resources?</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="rate-resources-song-info" style="margin-bottom: 24px; color: var(--text-secondary);"></p>
+        <form id="rate-resources-form">
+          <div id="chords-rating-group" class="form-group rating-group hidden">
+            <label>Chords Helpfulness</label>
+            <div class="rating-stars" data-field="chords">
+              <span class="star" data-value="1">★</span>
+              <span class="star" data-value="2">★</span>
+              <span class="star" data-value="3">★</span>
+              <span class="star" data-value="4">★</span>
+              <span class="star" data-value="5">★</span>
+            </div>
+            <input type="hidden" id="chords-rating" name="chords_rating">
+          </div>
+          <div id="tutorial-rating-group" class="form-group rating-group hidden">
+            <label>Tutorial Helpfulness</label>
+            <div class="rating-stars" data-field="tutorial">
+              <span class="star" data-value="1">★</span>
+              <span class="star" data-value="2">★</span>
+              <span class="star" data-value="3">★</span>
+              <span class="star" data-value="4">★</span>
+              <span class="star" data-value="5">★</span>
+            </div>
+            <input type="hidden" id="tutorial-rating" name="tutorial_rating">
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" id="skip-rating-btn">Skip</button>
+            <button type="submit" class="btn btn-primary">Submit & Mark Mastered</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notifications -->
   <div id="toast-container" class="toast-container"></div>
 

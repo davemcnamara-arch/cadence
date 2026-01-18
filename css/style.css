@@ -1065,3 +1065,33 @@ body {
     border: 1px solid #000;
   }
 }
+
+/* Rating Stars */
+.rating-group {
+  padding: 1rem;
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius);
+}
+
+.rating-stars {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 2rem;
+  margin-top: 0.5rem;
+  user-select: none;
+}
+
+.rating-stars .star {
+  cursor: pointer;
+  color: #ddd;
+  transition: color 0.2s ease;
+}
+
+.rating-stars .star:hover,
+.rating-stars .star.active {
+  color: #ffd700;
+}
+
+.rating-stars .star.hovered {
+  color: #ffd700;
+}
