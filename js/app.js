@@ -436,6 +436,82 @@ class CadenceApp {
 
     html += '</div>';
     container.innerHTML = html;
+
+    // Add click handlers to level nodes and branch nodes
+    container.querySelectorAll('.level-node, .branch-node').forEach(node => {
+      node.addEventListener('click', (e) => {
+        const levelNumber = parseInt(node.dataset.level);
+        if (levelNumber) {
+          this.navigateToLevelSongs(levelNumber);
+        }
+      });
+    });
+  }
+
+  navigateToLevelSongs(levelNumber) {
+    // Switch to songs view
+    this.switchView('songs');
+
+    // Set filter dropdowns
+    const filterLevel = document.getElementById('filter-level');
+    const filterInstrument = document.getElementById('filter-instrument');
+
+    if (filterLevel) {
+      filterLevel.value = levelNumber.toString();
+    }
+
+    if (filterInstrument && this.currentInstrument) {
+      filterInstrument.value = this.currentInstrument;
+    }
+
+    // Apply filters
+    this.filterSongs();
+
+    // Show filter banner
+    this.showFilterBanner(levelNumber);
+  }
+
+  showFilterBanner(levelNumber) {
+    // Remove existing banner if present
+    const existingBanner = document.getElementById('filter-banner');
+    if (existingBanner) {
+      existingBanner.remove();
+    }
+
+    // Get instrument name
+    const instrumentName = this.instruments.find(i => i.id === this.currentInstrument)?.name || '';
+
+    // Create and insert banner
+    const banner = document.createElement('div');
+    banner.id = 'filter-banner';
+    banner.className = 'filter-banner';
+    banner.innerHTML = `
+      <span>Showing Level ${levelNumber} songs${instrumentName ? ` for ${instrumentName}` : ''}</span>
+      <button class="filter-banner-close" onclick="app.clearLevelFilter()">Clear filter</button>
+    `;
+
+    // Insert before songs grid
+    const songsGrid = document.getElementById('songs-grid');
+    if (songsGrid && songsGrid.parentNode) {
+      songsGrid.parentNode.insertBefore(banner, songsGrid);
+    }
+  }
+
+  clearLevelFilter() {
+    // Clear filter dropdowns
+    const filterLevel = document.getElementById('filter-level');
+    if (filterLevel) {
+      filterLevel.value = '';
+    }
+
+    // Re-apply filters
+    this.filterSongs();
+
+    // Remove banner
+    const banner = document.getElementById('filter-banner');
+    if (banner) {
+      banner.remove();
+    }
   }
 
   renderLevelNode(level, isComplete, isCurrent) {
@@ -443,7 +519,7 @@ class CadenceApp {
     const statusClass = isComplete ? 'completed' : (isCurrent ? 'current' : '');
 
     return `
-      <div class="level-node ${statusClass}">
+      <div class="level-node ${statusClass}" data-level="${level.level_number}">
         <div class="level-header">
           <span class="level-number">Level ${level.level_number}</span>
           ${isComplete ? '<span>✓</span>' : ''}
@@ -467,7 +543,7 @@ class CadenceApp {
     const statusClass = isSelected ? 'selected' : (isComplete ? 'completed' : '');
 
     return `
-      <div class="branch-node ${statusClass}" data-branch="${branch.branch_name}">
+      <div class="branch-node ${statusClass}" data-branch="${branch.branch_name}" data-level="${branch.level_number}">
         <h4>${branch.name}</h4>
         <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0.5rem 0;">
           ${branch.description}
