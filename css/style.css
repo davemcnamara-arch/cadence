@@ -18,6 +18,22 @@
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   --border-radius: 8px;
   --transition: all 0.2s ease;
+
+  /* Instrument-specific accent colors */
+  --guitar-color: #ea580c;
+  --guitar-light: #fed7aa;
+  --bass-color: #7c3aed;
+  --bass-light: #ddd6fe;
+  --piano-color: #0891b2;
+  --piano-light: #cffafe;
+  --drums-color: #dc2626;
+  --drums-light: #fecaca;
+  --vocals-color: #c026d3;
+  --vocals-light: #f5d0fe;
+
+  /* Default instrument color (dynamic) */
+  --instrument-color: var(--primary-color);
+  --instrument-light: var(--primary-light);
 }
 
 * {
@@ -531,6 +547,132 @@ body {
 .branch-node.selected {
   border-color: var(--secondary-color);
   background: #f0fdf4;
+}
+
+/* Instrument-specific pathway theming */
+#pathway-view[data-instrument="guitar"] {
+  --instrument-color: var(--guitar-color);
+  --instrument-light: var(--guitar-light);
+}
+
+#pathway-view[data-instrument="bass"] {
+  --instrument-color: var(--bass-color);
+  --instrument-light: var(--bass-light);
+}
+
+#pathway-view[data-instrument="piano"] {
+  --instrument-color: var(--piano-color);
+  --instrument-light: var(--piano-light);
+}
+
+#pathway-view[data-instrument="drums"] {
+  --instrument-color: var(--drums-color);
+  --instrument-light: var(--drums-light);
+}
+
+#pathway-view[data-instrument="vocals"] {
+  --instrument-color: var(--vocals-color);
+  --instrument-light: var(--vocals-light);
+}
+
+#pathway-view .level-number,
+#pathway-view .level-skills li::before,
+#pathway-view .branch-badge {
+  color: var(--instrument-color);
+}
+
+#pathway-view .level-node:hover,
+#pathway-view .branch-node:hover {
+  border-color: var(--instrument-color);
+}
+
+#pathway-view .level-node.completed {
+  border-color: var(--instrument-color);
+  background: var(--instrument-light);
+}
+
+/* Instrument selector tabs */
+.instrument-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+.instrument-tab {
+  padding: 0.625rem 1rem;
+  border: 2px solid transparent;
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+
+.instrument-tab:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.instrument-tab.active {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border-bottom-color: var(--instrument-color);
+  font-weight: 600;
+}
+
+.instrument-tab.guitar.active {
+  border-bottom-color: var(--guitar-color);
+}
+
+.instrument-tab.bass.active {
+  border-bottom-color: var(--bass-color);
+}
+
+.instrument-tab.piano.active {
+  border-bottom-color: var(--piano-color);
+}
+
+.instrument-tab.drums.active {
+  border-bottom-color: var(--drums-color);
+}
+
+.instrument-tab.vocals.active {
+  border-bottom-color: var(--vocals-color);
+}
+
+/* Pathway header with instrument info */
+.pathway-header {
+  background: linear-gradient(135deg, var(--instrument-color), var(--primary-dark));
+  color: white;
+  padding: 2rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.pathway-header-icon {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.pathway-header-content h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.pathway-header-content p {
+  font-size: 1rem;
+  opacity: 0.9;
 }
 
 /* Song Filters */
