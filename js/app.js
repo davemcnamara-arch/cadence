@@ -901,7 +901,7 @@ class CadenceApp {
       const song = this.songs.find(s => s.id === songId);
       if (song) {
         song[fieldName] = url || null;
-        console.log('🎵 Updated local song object:', song.title);
+        console.log('🎵 Updated local song object:', song.title, fieldName, '=', url || null);
       }
 
       // Close modal
@@ -910,9 +910,8 @@ class CadenceApp {
       // Show success message
       this.showToast('Resource link updated successfully', 'success');
 
-      // Refresh the current view to ensure UI is updated
+      // Re-render the current view with updated local data (don't reload from DB)
       if (this.currentView === 'songs') {
-        await this.loadSongs();
         this.filterSongs();
       } else if (this.currentView === 'progress') {
         this.renderProgress();
