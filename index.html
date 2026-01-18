@@ -55,6 +55,8 @@
           <button class="nav-tab teacher-tab hidden" data-view="classes">My Classes</button>
           <button class="nav-tab teacher-tab hidden" data-view="submissions">Submissions</button>
           <button class="nav-tab teacher-tab hidden" data-view="flagged">Flagged Ratings</button>
+          <!-- Admin tabs (shown only to admins) -->
+          <button class="nav-tab admin-tab hidden" data-view="admin">Admin</button>
         </nav>
         <div class="user-menu">
           <span id="user-name" class="user-name"></span>
@@ -265,6 +267,93 @@
         </div>
         <div id="student-classes-list" class="student-classes-list">
           <!-- Shows classes student has joined -->
+        </div>
+      </div>
+
+      <!-- Admin: Admin Dashboard -->
+      <div id="admin-view" class="view admin-view hidden">
+        <div class="view-header">
+          <h2>Admin Dashboard</h2>
+        </div>
+
+        <!-- Admin Stats Overview -->
+        <div id="admin-stats" class="admin-stats-grid">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Admin Tabs -->
+        <div class="admin-section-tabs">
+          <button class="admin-section-tab active" data-section="levels">Levels & Checklists</button>
+          <button class="admin-section-tab" data-section="instruments">Instruments</button>
+          <button class="admin-section-tab" data-section="content">Content Moderation</button>
+          <button class="admin-section-tab" data-section="users">User Management</button>
+        </div>
+
+        <!-- Levels & Checklists Section -->
+        <div id="levels-section" class="admin-section active">
+          <div class="admin-section-header">
+            <h3>Levels & Grading Checklists</h3>
+            <div class="admin-filters">
+              <label>Instrument:
+                <select id="admin-level-instrument" class="filter-select">
+                  <!-- Populated by JS -->
+                </select>
+              </label>
+            </div>
+          </div>
+          <div id="levels-list" class="levels-list">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Instruments Section -->
+        <div id="instruments-section" class="admin-section hidden">
+          <div class="admin-section-header">
+            <h3>Instrument Management</h3>
+            <button id="add-instrument-admin-btn" class="btn btn-primary">+ Add New Instrument</button>
+          </div>
+          <div id="instruments-admin-list" class="instruments-admin-list">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Content Moderation Section -->
+        <div id="content-section" class="admin-section hidden">
+          <div class="admin-section-header">
+            <h3>Content Moderation</h3>
+            <div class="admin-filters">
+              <select id="content-filter-status" class="filter-select">
+                <option value="all">All Songs</option>
+                <option value="approved">Approved</option>
+                <option value="pending">Pending Approval</option>
+              </select>
+              <select id="content-filter-instrument" class="filter-select">
+                <option value="">All Instruments</option>
+              </select>
+            </div>
+          </div>
+          <div id="content-moderation-list" class="content-moderation-list">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- User Management Section -->
+        <div id="users-section" class="admin-section hidden">
+          <div class="admin-section-header">
+            <h3>User Management</h3>
+            <div class="admin-filters">
+              <select id="user-filter-role" class="filter-select">
+                <option value="">All Roles</option>
+                <option value="student">Students</option>
+                <option value="teacher">Teachers</option>
+                <option value="admin">Admins</option>
+              </select>
+              <input type="text" id="user-search" class="search-input" placeholder="Search by name or email...">
+            </div>
+          </div>
+          <div id="users-list" class="users-list">
+            <!-- Populated by JS -->
+          </div>
         </div>
       </div>
     </main>
@@ -515,6 +604,146 @@
             <button type="submit" class="btn btn-primary">Update Level</button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Editing Level -->
+  <div id="edit-level-modal" class="modal hidden">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h2>Edit Level</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="edit-level-form">
+          <div class="form-group">
+            <label for="edit-level-name">Level Name *</label>
+            <input type="text" id="edit-level-name" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-level-description">Description *</label>
+            <textarea id="edit-level-description" rows="3" required></textarea>
+          </div>
+          <div class="form-group">
+            <label for="edit-level-skills">Skills (one per line)</label>
+            <textarea id="edit-level-skills" rows="6" placeholder="Enter skills, one per line"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="edit-level-examples">Example Songs (comma-separated)</label>
+            <input type="text" id="edit-level-examples" placeholder="Song 1, Song 2, Song 3">
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Editing Checklist -->
+  <div id="edit-checklist-modal" class="modal hidden">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h2>Edit Grading Checklist</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+          Edit the grading criteria for this level. Each criterion should have options separated by commas.
+        </p>
+        <form id="edit-checklist-form">
+          <div id="checklist-criteria-container">
+            <!-- Dynamically populated -->
+          </div>
+          <button type="button" id="add-criterion-btn" class="btn btn-secondary btn-sm" style="margin-bottom: 1rem;">+ Add Criterion</button>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Checklist</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Adding/Editing Instrument -->
+  <div id="instrument-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2 id="instrument-modal-title">Add Instrument</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="instrument-form">
+          <div class="form-group">
+            <label for="instrument-name">Instrument Name *</label>
+            <input type="text" id="instrument-name" required placeholder="e.g., Violin">
+          </div>
+          <div class="form-group">
+            <label for="instrument-icon">Icon (emoji) *</label>
+            <input type="text" id="instrument-icon" required placeholder="e.g., 🎻" maxlength="2">
+          </div>
+          <div class="form-group">
+            <label for="instrument-description">Description *</label>
+            <textarea id="instrument-description" rows="2" required placeholder="Brief description of the instrument"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="instrument-order">Display Order</label>
+            <input type="number" id="instrument-order" min="1" value="1">
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Instrument</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Editing User Role -->
+  <div id="edit-user-role-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>Edit User Role</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="edit-user-info" style="margin-bottom: 1rem;"></p>
+        <form id="edit-user-role-form">
+          <div class="form-group">
+            <label for="user-role-select">Role *</label>
+            <select id="user-role-select" required>
+              <option value="student">Student</option>
+              <option value="teacher">Teacher</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+            <button type="submit" class="btn btn-primary">Update Role</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Approving/Editing Song -->
+  <div id="admin-song-modal" class="modal hidden">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h2>Moderate Song</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="admin-song-details">
+          <!-- Populated by JS -->
+        </div>
+        <div class="form-actions" style="margin-top: 1.5rem;">
+          <button type="button" id="approve-song-btn" class="btn btn-primary">Approve Song</button>
+          <button type="button" id="unapprove-song-btn" class="btn btn-secondary">Unapprove</button>
+          <button type="button" id="delete-song-btn" class="btn btn-danger">Delete Song</button>
+        </div>
       </div>
     </div>
   </div>

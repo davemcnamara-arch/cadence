@@ -169,6 +169,69 @@ class CadenceApp {
     // Setup teacher forms
     this.setupCreateClassForm();
     this.setupEditSongLevelForm();
+
+    // Admin: Section tabs
+    document.querySelectorAll('.admin-section-tab').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        this.switchAdminSection(e.target.dataset.section);
+      });
+    });
+
+    // Admin: Level instrument filter
+    const adminLevelInstrument = document.getElementById('admin-level-instrument');
+    if (adminLevelInstrument) {
+      adminLevelInstrument.addEventListener('change', (e) => {
+        this.currentAdminLevelInstrument = e.target.value;
+        this.renderAdminLevels();
+      });
+    }
+
+    // Admin: Add instrument button
+    const addInstrumentAdminBtn = document.getElementById('add-instrument-admin-btn');
+    if (addInstrumentAdminBtn) {
+      addInstrumentAdminBtn.addEventListener('click', () => this.showAddInstrumentModal());
+    }
+
+    // Admin: Content filters
+    const contentFilterStatus = document.getElementById('content-filter-status');
+    if (contentFilterStatus) {
+      contentFilterStatus.addEventListener('change', () => this.loadContentModeration());
+    }
+
+    const contentFilterInstrument = document.getElementById('content-filter-instrument');
+    if (contentFilterInstrument) {
+      contentFilterInstrument.addEventListener('change', () => this.loadContentModeration());
+    }
+
+    // Admin: User filters
+    const userFilterRole = document.getElementById('user-filter-role');
+    if (userFilterRole) {
+      userFilterRole.addEventListener('change', () => this.loadUsersManagement());
+    }
+
+    const userSearch = document.getElementById('user-search');
+    if (userSearch) {
+      userSearch.addEventListener('input', () => this.renderUsersManagement());
+    }
+
+    // Admin: Song moderation buttons
+    const approveSongBtn = document.getElementById('approve-song-btn');
+    if (approveSongBtn) {
+      approveSongBtn.addEventListener('click', () => this.approveSong(true));
+    }
+
+    const unapproveSongBtn = document.getElementById('unapprove-song-btn');
+    if (unapproveSongBtn) {
+      unapproveSongBtn.addEventListener('click', () => this.approveSong(false));
+    }
+
+    const deleteSongBtn = document.getElementById('delete-song-btn');
+    if (deleteSongBtn) {
+      deleteSongBtn.addEventListener('click', () => this.deleteSong());
+    }
+
+    // Setup admin forms
+    this.setupAdminForms();
   }
 
   async onUserSignedIn(user) {
@@ -184,6 +247,12 @@ class CadenceApp {
     if (user.role === 'teacher' || user.role === 'admin') {
       document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.remove('hidden'));
       await this.loadTeacherData();
+    }
+
+    // Show/hide admin tabs based on role
+    if (user.role === 'admin') {
+      document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('hidden'));
+      await this.loadAdminData();
     }
 
     // Check if user has selected instruments
@@ -752,6 +821,10 @@ class CadenceApp {
         if (this.classes.length > 0 && this.classStudents.length > 0) {
           this.loadFlaggedRatings();
         }
+      } else if (viewName === 'admin') {
+        // Load admin data
+        this.renderAdminStats(this.adminStats || {users: 0, songs: 0, ratings: 0, classes: 0});
+        this.renderAdminLevels();
       }
     }
   }
@@ -2602,6 +2675,666 @@ class CadenceApp {
   }
 
   /* ========== END TEACHER DASHBOARD METHODS ========== */
+
+  /* ========== ADMIN DASHBOARD METHODS ========== */
+
+  async loadAdminData() {
+    await this.loadAdminStats();
+    await this.loadAdminLevels();
+  }
+
+  async loadAdminStats() {
+    // Get system-wide statistics
+    const [usersCount, songsCount, ratingsCount, classesCount] = await Promise.all([
+      supabase.from('users').select('*', { count: 'exact', head: true }),
+      supabase.from('songs').select('*', { count: 'exact', head: true }),
+      supabase.from('song_ratings').select('*', { count: 'exact', head: true }),
+      supabase.from('classes').select('*', { count: 'exact', head: true })
+    ]);
+
+    const stats = {
+      users: usersCount.count || 0,
+      songs: songsCount.count || 0,
+      ratings: ratingsCount.count || 0,
+      classes: classesCount.count || 0
+    };
+
+    this.renderAdminStats(stats);
+  }
+
+  renderAdminStats(stats) {
+    const container = document.getElementById('admin-stats');
+    if (!container) return;
+
+    const html = `
+      <div class="admin-stat-card">
+        <div class="admin-stat-value">${stats.users}</div>
+        <div class="admin-stat-label">Total Users</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-value">${stats.songs}</div>
+        <div class="admin-stat-label">Songs in Library</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-value">${stats.ratings}</div>
+        <div class="admin-stat-label">Total Ratings</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-value">${stats.classes}</div>
+        <div class="admin-stat-label">Active Classes</div>
+      </div>
+    `;
+
+    container.innerHTML = html;
+  }
+
+  switchAdminSection(sectionName) {
+    // Update section tabs
+    document.querySelectorAll('.admin-section-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.section === sectionName);
+    });
+
+    // Update sections
+    document.querySelectorAll('.admin-section').forEach(section => {
+      section.classList.remove('active');
+    });
+
+    const targetSection = document.getElementById(`${sectionName}-section`);
+    if (targetSection) {
+      targetSection.classList.add('active');
+
+      // Load data for the section
+      if (sectionName === 'levels') {
+        this.renderAdminLevels();
+      } else if (sectionName === 'instruments') {
+        this.renderAdminInstruments();
+      } else if (sectionName === 'content') {
+        this.loadContentModeration();
+      } else if (sectionName === 'users') {
+        this.loadUsersManagement();
+      }
+    }
+  }
+
+  async loadAdminLevels() {
+    const { data, error } = await supabase
+      .from('levels')
+      .select('*, instruments(name, icon)')
+      .order('instrument_id')
+      .order('level_number');
+
+    if (error) {
+      console.error('Error loading levels:', error);
+      return;
+    }
+
+    this.adminLevels = data;
+    this.currentAdminLevelInstrument = this.instruments[0]?.id;
+
+    // Populate instrument filter
+    const select = document.getElementById('admin-level-instrument');
+    if (select) {
+      select.innerHTML = this.instruments.map(i =>
+        `<option value="${i.id}">${i.icon} ${i.name}</option>`
+      ).join('');
+      select.value = this.currentAdminLevelInstrument;
+    }
+  }
+
+  renderAdminLevels() {
+    const container = document.getElementById('levels-list');
+    if (!container || !this.adminLevels) return;
+
+    const filteredLevels = this.adminLevels.filter(l =>
+      l.instrument_id === this.currentAdminLevelInstrument
+    );
+
+    if (filteredLevels.length === 0) {
+      container.innerHTML = '<p style="color: var(--text-secondary);">No levels found for this instrument</p>';
+      return;
+    }
+
+    const html = filteredLevels.map(level => {
+      const skills = level.skills_json || [];
+      const examples = level.example_songs || [];
+
+      return `
+        <div class="level-admin-card">
+          <div class="level-admin-header">
+            <div>
+              <div class="level-admin-title">
+                Level ${level.level_number}${level.is_branch ? ` - ${level.branch_name}` : ''}: ${level.name}
+              </div>
+              <div class="level-admin-meta">
+                ${level.instruments.icon} ${level.instruments.name}
+              </div>
+            </div>
+            <div class="level-admin-actions">
+              <button class="btn btn-secondary btn-sm" onclick="app.editLevel('${level.id}')">Edit Details</button>
+              <button class="btn btn-secondary btn-sm" onclick="app.editChecklist('${level.id}')">Edit Checklist</button>
+            </div>
+          </div>
+          <div class="level-admin-description">${level.description}</div>
+          ${skills.length > 0 ? `
+            <div class="level-admin-skills">
+              <h4>Skills</h4>
+              <ul>
+                ${skills.map(skill => `<li>${skill}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+          ${examples.length > 0 ? `
+            <div class="level-admin-meta">
+              <strong>Example Songs:</strong> ${examples.join(', ')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+  }
+
+  async editLevel(levelId) {
+    const level = this.adminLevels.find(l => l.id === levelId);
+    if (!level) return;
+
+    // Populate form
+    document.getElementById('edit-level-name').value = level.name;
+    document.getElementById('edit-level-description').value = level.description;
+    document.getElementById('edit-level-skills').value = (level.skills_json || []).join('\n');
+    document.getElementById('edit-level-examples').value = (level.example_songs || []).join(', ');
+
+    // Store level ID for form submission
+    document.getElementById('edit-level-form').dataset.levelId = levelId;
+
+    document.getElementById('edit-level-modal').classList.remove('hidden');
+  }
+
+  async editChecklist(levelId) {
+    const level = this.adminLevels.find(l => l.id === levelId);
+    if (!level) return;
+
+    this.currentEditingChecklistId = levelId;
+    this.currentChecklistData = level.grading_checklist_json || {};
+
+    this.renderChecklistEditor();
+    document.getElementById('edit-checklist-modal').classList.remove('hidden');
+  }
+
+  renderChecklistEditor() {
+    const container = document.getElementById('checklist-criteria-container');
+    if (!container) return;
+
+    const criteria = Object.entries(this.currentChecklistData);
+
+    let html = '';
+    criteria.forEach(([criterionName, options], index) => {
+      html += this.renderCriterionEditor(criterionName, options, index);
+    });
+
+    container.innerHTML = html;
+  }
+
+  renderCriterionEditor(criterionName, options, index) {
+    const optionsArray = Array.isArray(options) ? options : [];
+
+    return `
+      <div class="criterion-editor" data-index="${index}">
+        <div class="criterion-editor-header">
+          <input type="text" class="criterion-name" value="${criterionName}" placeholder="Criterion name" />
+          <button type="button" class="btn btn-danger btn-sm" onclick="app.removeCriterion(${index})">Remove</button>
+        </div>
+        <div class="criterion-options" data-criterion="${index}">
+          ${optionsArray.map((opt, optIndex) => `
+            <div class="criterion-option-tag">
+              ${opt}
+              <button type="button" onclick="app.removeOption(${index}, ${optIndex})">×</button>
+            </div>
+          `).join('')}
+          <input type="text" class="add-option-input" placeholder="Add option..." onkeypress="if(event.key==='Enter'){event.preventDefault();app.addOption(${index}, this.value); this.value='';}" />
+        </div>
+      </div>
+    `;
+  }
+
+  removeCriterion(index) {
+    const criteria = Object.entries(this.currentChecklistData);
+    criteria.splice(index, 1);
+    this.currentChecklistData = Object.fromEntries(criteria);
+    this.renderChecklistEditor();
+  }
+
+  addOption(criterionIndex, optionValue) {
+    if (!optionValue.trim()) return;
+
+    const criteria = Object.entries(this.currentChecklistData);
+    const [criterionName, options] = criteria[criterionIndex];
+    options.push(optionValue.trim());
+
+    this.renderChecklistEditor();
+  }
+
+  removeOption(criterionIndex, optionIndex) {
+    const criteria = Object.entries(this.currentChecklistData);
+    const [criterionName, options] = criteria[criterionIndex];
+    options.splice(optionIndex, 1);
+
+    this.renderChecklistEditor();
+  }
+
+  renderAdminInstruments() {
+    const container = document.getElementById('instruments-admin-list');
+    if (!container) return;
+
+    const html = this.instruments.map(inst => {
+      // Count levels for this instrument
+      const levelCount = this.adminLevels?.filter(l => l.instrument_id === inst.id).length || 0;
+
+      return `
+        <div class="instrument-admin-card">
+          <div class="instrument-admin-header">
+            <div class="instrument-admin-info">
+              <div class="instrument-admin-icon">${inst.icon}</div>
+              <div>
+                <div class="instrument-admin-name">${inst.name}</div>
+                <div class="instrument-admin-order">Display Order: ${inst.display_order}</div>
+              </div>
+            </div>
+            <div class="instrument-admin-actions">
+              <button class="btn btn-secondary btn-sm" onclick="app.editInstrument('${inst.id}')">Edit</button>
+            </div>
+          </div>
+          <div class="instrument-admin-description">${inst.description}</div>
+          <div class="instrument-admin-stats">
+            <span>${levelCount} levels configured</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+  }
+
+  showAddInstrumentModal() {
+    document.getElementById('instrument-modal-title').textContent = 'Add Instrument';
+    document.getElementById('instrument-form').reset();
+    document.getElementById('instrument-form').dataset.instrumentId = '';
+    document.getElementById('instrument-modal').classList.remove('hidden');
+  }
+
+  async editInstrument(instrumentId) {
+    const inst = this.instruments.find(i => i.id === instrumentId);
+    if (!inst) return;
+
+    document.getElementById('instrument-modal-title').textContent = 'Edit Instrument';
+    document.getElementById('instrument-name').value = inst.name;
+    document.getElementById('instrument-icon').value = inst.icon;
+    document.getElementById('instrument-description').value = inst.description;
+    document.getElementById('instrument-order').value = inst.display_order;
+    document.getElementById('instrument-form').dataset.instrumentId = instrumentId;
+
+    document.getElementById('instrument-modal').classList.remove('hidden');
+  }
+
+  async loadContentModeration() {
+    const statusFilter = document.getElementById('content-filter-status')?.value || 'all';
+
+    let query = supabase
+      .from('songs')
+      .select('*, users(name), instruments(icon, name)')
+      .order('created_at', { ascending: false });
+
+    if (statusFilter === 'approved') {
+      query = query.eq('approved', true);
+    } else if (statusFilter === 'pending') {
+      query = query.eq('approved', false);
+    }
+
+    const { data, error } = await query.limit(100);
+
+    if (error) {
+      console.error('Error loading content moderation:', error);
+      return;
+    }
+
+    this.adminContentList = data;
+    this.renderContentModeration();
+  }
+
+  renderContentModeration() {
+    const container = document.getElementById('content-moderation-list');
+    if (!container) return;
+
+    if (!this.adminContentList || this.adminContentList.length === 0) {
+      container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No songs found</p>';
+      return;
+    }
+
+    const html = this.adminContentList.map(song => {
+      const statusClass = song.approved ? 'approved' : 'pending';
+      const statusText = song.approved ? 'Approved' : 'Pending';
+
+      return `
+        <div class="content-mod-card ${statusClass}">
+          <div class="content-mod-header">
+            <div>
+              <div class="content-mod-title">${song.title}</div>
+              <div class="content-mod-meta">${song.artist} • Added by ${song.users?.name || 'Unknown'}</div>
+            </div>
+            <span class="content-mod-status ${statusClass}">${statusText}</span>
+          </div>
+          <div class="content-mod-details">
+            <div class="content-mod-detail-item">
+              <div class="content-mod-detail-label">Instrument</div>
+              <div class="content-mod-detail-value">${song.instruments?.icon || ''} ${song.instruments?.name || 'N/A'}</div>
+            </div>
+            <div class="content-mod-detail-item">
+              <div class="content-mod-detail-label">Resources</div>
+              <div class="content-mod-detail-value">
+                ${song.chords_url ? '✓ Chords ' : ''}
+                ${song.tutorial_url ? '✓ Tutorial ' : ''}
+                ${song.youtube_url ? '✓ YouTube' : ''}
+              </div>
+            </div>
+            <div class="content-mod-detail-item">
+              <div class="content-mod-detail-label">Added</div>
+              <div class="content-mod-detail-value">${new Date(song.created_at).toLocaleDateString()}</div>
+            </div>
+          </div>
+          <div class="content-mod-actions">
+            <button class="btn btn-secondary btn-sm" onclick="app.moderateSong('${song.id}')">Moderate</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+  }
+
+  async moderateSong(songId) {
+    const song = this.adminContentList.find(s => s.id === songId);
+    if (!song) return;
+
+    this.currentModeratingSongId = songId;
+
+    const details = `
+      <div style="margin-bottom: 1rem;">
+        <h3 style="margin-bottom: 0.5rem;">${song.title}</h3>
+        <p style="color: var(--text-secondary);">${song.artist}</p>
+      </div>
+      <div style="display: grid; gap: 0.75rem; margin-bottom: 1rem;">
+        <div><strong>Instrument:</strong> ${song.instruments?.icon || ''} ${song.instruments?.name || 'N/A'}</div>
+        <div><strong>Added by:</strong> ${song.users?.name || 'Unknown'}</div>
+        <div><strong>Status:</strong> ${song.approved ? 'Approved' : 'Pending'}</div>
+        ${song.chords_url ? `<div><strong>Chords:</strong> <a href="${song.chords_url}" target="_blank">Link</a></div>` : ''}
+        ${song.tutorial_url ? `<div><strong>Tutorial:</strong> <a href="${song.tutorial_url}" target="_blank">Link</a></div>` : ''}
+        ${song.youtube_url ? `<div><strong>YouTube:</strong> <a href="${song.youtube_url}" target="_blank">Link</a></div>` : ''}
+      </div>
+    `;
+
+    document.getElementById('admin-song-details').innerHTML = details;
+    document.getElementById('admin-song-modal').classList.remove('hidden');
+  }
+
+  async loadUsersManagement() {
+    const roleFilter = document.getElementById('user-filter-role')?.value || '';
+
+    let query = supabase
+      .from('users')
+      .select('*, student_progress(count)')
+      .order('created_at', { ascending: false });
+
+    if (roleFilter) {
+      query = query.eq('role', roleFilter);
+    }
+
+    const { data, error } = await query.limit(200);
+
+    if (error) {
+      console.error('Error loading users:', error);
+      return;
+    }
+
+    this.adminUsersList = data;
+    this.renderUsersManagement();
+  }
+
+  renderUsersManagement() {
+    const container = document.getElementById('users-list');
+    if (!container) return;
+
+    let users = this.adminUsersList || [];
+
+    // Apply search filter
+    const searchTerm = document.getElementById('user-search')?.value.toLowerCase();
+    if (searchTerm) {
+      users = users.filter(u =>
+        u.name.toLowerCase().includes(searchTerm) ||
+        u.email.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    if (users.length === 0) {
+      container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No users found</p>';
+      return;
+    }
+
+    const html = users.map(user => {
+      const instrumentCount = user.student_progress?.[0]?.count || 0;
+
+      return `
+        <div class="user-admin-card">
+          <div class="user-admin-info">
+            <div class="user-admin-name">${user.name}</div>
+            <div class="user-admin-email">${user.email}</div>
+          </div>
+          <div class="user-admin-meta">
+            <span class="user-role-badge ${user.role}">${user.role.charAt(0).toUpperCase() + user.role.slice(1)}</span>
+            <span class="user-admin-stats">${instrumentCount} instrument${instrumentCount !== 1 ? 's' : ''}</span>
+            <button class="btn btn-secondary btn-sm" onclick="app.editUserRole('${user.id}', '${user.name}', '${user.role}')">Change Role</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+  }
+
+  editUserRole(userId, userName, currentRole) {
+    this.currentEditingUserId = userId;
+    document.getElementById('edit-user-info').textContent = `Editing role for: ${userName}`;
+    document.getElementById('user-role-select').value = currentRole;
+    document.getElementById('edit-user-role-modal').classList.remove('hidden');
+  }
+
+  setupAdminForms() {
+    // Edit Level Form
+    const editLevelForm = document.getElementById('edit-level-form');
+    if (editLevelForm) {
+      editLevelForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const levelId = editLevelForm.dataset.levelId;
+        const name = document.getElementById('edit-level-name').value;
+        const description = document.getElementById('edit-level-description').value;
+        const skillsText = document.getElementById('edit-level-skills').value;
+        const examplesText = document.getElementById('edit-level-examples').value;
+
+        const skills = skillsText.split('\n').filter(s => s.trim());
+        const examples = examplesText.split(',').map(s => s.trim()).filter(s => s);
+
+        const { error } = await supabase
+          .from('levels')
+          .update({
+            name,
+            description,
+            skills_json: skills,
+            example_songs: examples
+          })
+          .eq('id', levelId);
+
+        if (error) {
+          console.error('Error updating level:', error);
+          this.showToast('Failed to update level', 'error');
+          return;
+        }
+
+        document.getElementById('edit-level-modal').classList.add('hidden');
+        this.showToast('Level updated successfully', 'success');
+        await this.loadAdminLevels();
+        this.renderAdminLevels();
+      });
+    }
+
+    // Edit Checklist Form
+    const editChecklistForm = document.getElementById('edit-checklist-form');
+    if (editChecklistForm) {
+      editChecklistForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // Collect all criteria
+        const criteria = {};
+        document.querySelectorAll('.criterion-editor').forEach(editor => {
+          const nameInput = editor.querySelector('.criterion-name');
+          const criterionName = nameInput.value.trim();
+          if (!criterionName) return;
+
+          const index = editor.dataset.index;
+          const criteriaEntries = Object.entries(this.currentChecklistData);
+          const [, options] = criteriaEntries[index];
+
+          criteria[criterionName] = options;
+        });
+
+        const { error } = await supabase
+          .from('levels')
+          .update({ grading_checklist_json: criteria })
+          .eq('id', this.currentEditingChecklistId);
+
+        if (error) {
+          console.error('Error updating checklist:', error);
+          this.showToast('Failed to update checklist', 'error');
+          return;
+        }
+
+        document.getElementById('edit-checklist-modal').classList.add('hidden');
+        this.showToast('Checklist updated successfully', 'success');
+        await this.loadAdminLevels();
+      });
+    }
+
+    // Instrument Form
+    const instrumentForm = document.getElementById('instrument-form');
+    if (instrumentForm) {
+      instrumentForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const instrumentId = instrumentForm.dataset.instrumentId;
+        const name = document.getElementById('instrument-name').value;
+        const icon = document.getElementById('instrument-icon').value;
+        const description = document.getElementById('instrument-description').value;
+        const displayOrder = parseInt(document.getElementById('instrument-order').value);
+
+        if (instrumentId) {
+          // Update existing instrument
+          const { error } = await supabase
+            .from('instruments')
+            .update({ name, icon, description, display_order: displayOrder })
+            .eq('id', instrumentId);
+
+          if (error) {
+            console.error('Error updating instrument:', error);
+            this.showToast('Failed to update instrument', 'error');
+            return;
+          }
+
+          this.showToast('Instrument updated successfully', 'success');
+        } else {
+          // Add new instrument
+          const { error } = await supabase
+            .from('instruments')
+            .insert([{ name, icon, description, display_order: displayOrder }]);
+
+          if (error) {
+            console.error('Error adding instrument:', error);
+            this.showToast('Failed to add instrument', 'error');
+            return;
+          }
+
+          this.showToast('Instrument added successfully', 'success');
+        }
+
+        document.getElementById('instrument-modal').classList.add('hidden');
+        await this.loadInstruments();
+        this.renderAdminInstruments();
+      });
+    }
+
+    // Edit User Role Form
+    const editUserRoleForm = document.getElementById('edit-user-role-form');
+    if (editUserRoleForm) {
+      editUserRoleForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const newRole = document.getElementById('user-role-select').value;
+
+        const { error } = await supabase
+          .from('users')
+          .update({ role: newRole })
+          .eq('id', this.currentEditingUserId);
+
+        if (error) {
+          console.error('Error updating user role:', error);
+          this.showToast('Failed to update user role', 'error');
+          return;
+        }
+
+        document.getElementById('edit-user-role-modal').classList.add('hidden');
+        this.showToast('User role updated successfully', 'success');
+        await this.loadUsersManagement();
+      });
+    }
+  }
+
+  async approveSong(approved) {
+    const { error } = await supabase
+      .from('songs')
+      .update({ approved })
+      .eq('id', this.currentModeratingSongId);
+
+    if (error) {
+      console.error('Error updating song approval:', error);
+      this.showToast('Failed to update song', 'error');
+      return;
+    }
+
+    document.getElementById('admin-song-modal').classList.add('hidden');
+    this.showToast(`Song ${approved ? 'approved' : 'unapproved'} successfully`, 'success');
+    await this.loadContentModeration();
+  }
+
+  async deleteSong() {
+    if (!confirm('Are you sure you want to delete this song? This action cannot be undone.')) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from('songs')
+      .delete()
+      .eq('id', this.currentModeratingSongId);
+
+    if (error) {
+      console.error('Error deleting song:', error);
+      this.showToast('Failed to delete song', 'error');
+      return;
+    }
+
+    document.getElementById('admin-song-modal').classList.add('hidden');
+    this.showToast('Song deleted successfully', 'success');
+    await this.loadContentModeration();
+  }
+
+  /* ========== END ADMIN DASHBOARD METHODS ========== */
 
   showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
