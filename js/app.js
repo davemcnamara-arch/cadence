@@ -919,29 +919,38 @@ class CadenceApp {
 
       console.log('🎵 Saving resource:', { songId, fieldName, url });
 
-      // Set a timeout to detect if anything hangs
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Operation timeout after 10 seconds')), 10000);
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('🎵 Session retrieved:', !!session);
+
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      console.log('🎵 About to update database using REST API...');
+
+      // Use REST API directly instead of Supabase client
+      const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/songs?id=eq.${songId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+          'Authorization': `Bearer ${session.access_token}`,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ [fieldName]: url || null })
       });
 
-      console.log('🎵 About to update database...');
+      console.log('🎵 Response status:', response.status);
+      console.log('🎵 Response ok:', response.ok);
 
-      // Update song in database with timeout
-      // Note: NOT using .select() to avoid needing SELECT permission
-      const updatePromise = supabase
-        .from('songs')
-        .update({ [fieldName]: url || null })
-        .eq('id', songId);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('🎵 Response error:', errorText);
+        throw new Error(`Update failed: ${response.status} ${errorText}`);
+      }
 
-      console.log('🎵 Waiting for update to complete...');
-
-      const result = await Promise.race([updatePromise, timeoutPromise]);
-      console.log('🎵 Update completed, result:', result);
-
-      const { error } = result;
-      console.log('🎵 Error (if any):', error);
-
-      if (error) throw error;
+      console.log('🎵 Update successful!');
 
       // Close modal
       document.getElementById('edit-resource-modal').classList.add('hidden');
