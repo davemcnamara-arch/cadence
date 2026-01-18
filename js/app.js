@@ -916,12 +916,25 @@ class CadenceApp {
     const { songId, fieldName } = this.editingResource;
 
     console.log('🎵 Saving resource:', { songId, fieldName, url });
+
+    // Check auth state
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('🎵 Current session:', session);
+    console.log('🎵 User ID:', session?.user?.id);
+    console.log('🎵 User role:', session?.user?.user_metadata?.role);
+
     console.log('🎵 supabase object:', supabase);
     console.log('🎵 Building query...');
 
     try {
       // Update song in database
       console.log('🎵 About to call supabase.from...');
+
+      // Set a timeout to detect if the query hangs
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Query timeout after 5 seconds')), 5000);
+      });
+
       const query = supabase
         .from('songs')
         .update({ [fieldName]: url || null })
@@ -929,7 +942,8 @@ class CadenceApp {
         .select();
 
       console.log('🎵 Query built, about to await:', query);
-      const result = await query;
+
+      const result = await Promise.race([query, timeoutPromise]);
       console.log('🎵 Await completed, result:', result);
 
       const { data, error } = result;
@@ -952,7 +966,7 @@ class CadenceApp {
       }
     } catch (error) {
       console.error('🎵 Error updating resource:', error);
-      this.showToast('Failed to update resource link', 'error');
+      this.showToast('Failed to update resource link: ' + error.message, 'error');
     }
   }
 
