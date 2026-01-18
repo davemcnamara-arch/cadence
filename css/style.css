@@ -625,6 +625,20 @@ body {
   display: flex;
   gap: 0.5rem;
   margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.resource-link-group {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.resource-rating {
+  font-size: 0.875rem;
+  color: #ffd700;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 /* Progress View */

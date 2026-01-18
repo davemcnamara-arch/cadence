@@ -217,7 +217,33 @@ class CadenceApp {
       return;
     }
 
-    this.songs = data || [];
+    // Load resource ratings separately and attach to songs
+    const { data: resourceRatings } = await supabase
+      .from('resource_ratings')
+      .select('*, student_songs!inner(song_id)');
+
+    // Create a map of song_id to ratings
+    const ratingsMap = {};
+    if (resourceRatings) {
+      resourceRatings.forEach(rating => {
+        const songId = rating.student_songs.song_id;
+        if (!ratingsMap[songId]) {
+          ratingsMap[songId] = { chords: [], tutorial: [] };
+        }
+        if (rating.chords_rating) {
+          ratingsMap[songId].chords.push(rating.chords_rating);
+        }
+        if (rating.tutorial_rating) {
+          ratingsMap[songId].tutorial.push(rating.tutorial_rating);
+        }
+      });
+    }
+
+    // Attach resource ratings to songs
+    this.songs = (data || []).map(song => ({
+      ...song,
+      resource_ratings: ratingsMap[song.id] || { chords: [], tutorial: [] }
+    }));
   }
 
   showInstrumentSelection() {
@@ -642,6 +668,12 @@ class CadenceApp {
     });
   }
 
+  formatResourceRating(ratings) {
+    if (!ratings || ratings.length === 0) return '';
+    const avg = (ratings.reduce((sum, r) => sum + r, 0) / ratings.length).toFixed(1);
+    return `<span class="resource-rating" title="${ratings.length} rating${ratings.length !== 1 ? 's' : ''}">★${avg}</span>`;
+  }
+
   renderSongCard(song) {
     const ratings = song.song_ratings || [];
     let levelDisplay, levelLabel;
@@ -661,6 +693,10 @@ class CadenceApp {
     // Get current instrument name for search queries
     const instrumentName = this.instruments.find(i => i.id === this.currentInstrument)?.name || '';
 
+    // Get resource ratings
+    const chordsRating = this.formatResourceRating(song.resource_ratings?.chords);
+    const tutorialRating = this.formatResourceRating(song.resource_ratings?.tutorial);
+
     return `
       <div class="song-card" data-song-id="${song.id}">
         <div class="song-header">
@@ -676,14 +712,20 @@ class CadenceApp {
         </div>
         <div class="song-actions">
           ${song.chords_url ? `
-            <a href="${song.chords_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">Chords</a>
-            <button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'chords_url', '${song.chords_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit chords link">✎</button>
+            <div class="resource-link-group">
+              <a href="${song.chords_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">Chords</a>
+              ${chordsRating}
+              <button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'chords_url', '${song.chords_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit chords link">✎</button>
+            </div>
           ` : `
             <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add chords link">+ Chords</button>
           `}
           ${song.tutorial_url ? `
-            <a href="${song.tutorial_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">Tutorial</a>
-            <button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'tutorial_url', '${song.tutorial_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit tutorial link">✎</button>
+            <div class="resource-link-group">
+              <a href="${song.tutorial_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">Tutorial</a>
+              ${tutorialRating}
+              <button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'tutorial_url', '${song.tutorial_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit tutorial link">✎</button>
+            </div>
           ` : `
             <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'tutorial_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add tutorial link">+ Tutorial</button>
           `}
@@ -1189,9 +1231,38 @@ class CadenceApp {
       .eq('user_id', user.id)
       .order('date_started', { ascending: false });
 
+    // Load resource ratings for these student songs
+    const studentSongIds = studentSongs?.map(s => s.id) || [];
+    const { data: resourceRatings } = await supabase
+      .from('resource_ratings')
+      .select('*')
+      .in('student_song_id', studentSongIds);
+
+    // Create a map of student_song_id to ratings
+    const ratingsMap = {};
+    if (resourceRatings) {
+      resourceRatings.forEach(rating => {
+        if (!ratingsMap[rating.student_song_id]) {
+          ratingsMap[rating.student_song_id] = { chords: [], tutorial: [] };
+        }
+        if (rating.chords_rating) {
+          ratingsMap[rating.student_song_id].chords.push(rating.chords_rating);
+        }
+        if (rating.tutorial_rating) {
+          ratingsMap[rating.student_song_id].tutorial.push(rating.tutorial_rating);
+        }
+      });
+    }
+
+    // Attach ratings to student songs
+    const studentSongsWithRatings = studentSongs?.map(s => ({
+      ...s,
+      resource_ratings: ratingsMap[s.id] || { chords: [], tutorial: [] }
+    }));
+
     // Calculate stats
-    const learning = studentSongs?.filter(s => s.status === 'learning') || [];
-    const mastered = studentSongs?.filter(s => s.status === 'mastered') || [];
+    const learning = studentSongsWithRatings?.filter(s => s.status === 'learning') || [];
+    const mastered = studentSongsWithRatings?.filter(s => s.status === 'mastered') || [];
 
     // Render stats
     const statsContainer = document.getElementById('progress-stats');
@@ -1225,6 +1296,10 @@ class CadenceApp {
     // Get instrument name for search queries
     const instrumentName = this.instruments.find(i => i.id === studentSong.instrument_id)?.name || '';
 
+    // Get resource ratings
+    const chordsRating = this.formatResourceRating(studentSong.resource_ratings?.chords);
+    const tutorialRating = this.formatResourceRating(studentSong.resource_ratings?.tutorial);
+
     return `
       <div class="song-list-item">
         <div class="info">
@@ -1233,12 +1308,14 @@ class CadenceApp {
           <div class="song-links" style="margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
             ${song.chords_url ? `
               <a href="${song.chords_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">Chords</a>
+              ${chordsRating}
               <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'chords_url', '${song.chords_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit chords link">✎</button>
             ` : `
               <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add chords link">+ Chords</button>
             `}
             ${song.tutorial_url ? `
               <a href="${song.tutorial_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">Tutorial</a>
+              ${tutorialRating}
               <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'tutorial_url', '${song.tutorial_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit tutorial link">✎</button>
             ` : `
               <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'tutorial_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add tutorial link">+ Tutorial</button>
