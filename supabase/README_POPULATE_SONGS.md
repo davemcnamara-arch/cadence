@@ -53,15 +53,28 @@ After running this script, you will have:
 
 ## How to Run This Script
 
+### First Time Setup
+
+If this is your first time populating songs, run these scripts in order:
+
+1. **Add Unique Constraint** (prevents duplicates)
+   - Run `add_unique_constraint_songs.sql`
+
+2. **Remove Any Existing Duplicates** (if you've run other song scripts before)
+   - Run `remove_duplicate_songs.sql`
+
+3. **Populate Songs**
+   - Run `populate_all_levels.sql`
+
 ### Method 1: Supabase SQL Editor (Recommended)
 
 1. Go to your Supabase project dashboard
 2. Click on **SQL Editor** in the left sidebar
 3. Click **New Query**
-4. Copy the entire contents of `supabase/populate_all_levels.sql`
+4. Copy the entire contents of the SQL file
 5. Paste into the SQL editor
 6. Click **Run** (bottom right)
-7. Wait for confirmation: "Success. No rows returned"
+7. Wait for confirmation: "Success. No rows returned" or see the results
 
 ### Method 2: Supabase CLI (If you have it installed)
 
