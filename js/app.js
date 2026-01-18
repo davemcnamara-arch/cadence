@@ -918,11 +918,11 @@ class CadenceApp {
       this.showToast('Resource link updated successfully', 'success');
 
       // Refresh the current view
-      if (this.currentView === 'library') {
+      if (this.currentView === 'songs') {
         await this.loadSongs();
-        this.renderSongs();
-      } else if (this.currentView === 'pathway' || this.currentView === 'progress') {
-        await this.loadStudentSongs();
+        this.filterSongs();
+      } else if (this.currentView === 'progress') {
+        this.renderProgress();
       }
     } catch (error) {
       console.error('Error updating resource:', error);
