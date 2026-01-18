@@ -94,10 +94,11 @@ Or test in the app:
 ## Notes
 
 - All songs include YouTube URLs for reference
-- All songs include Ultimate Guitar chord/tab links for easy learning
+- Chord/tab links (chords_url field) are left empty and can be added manually through the app
 - Songs are automatically marked as `approved = true`
 - The script uses `ON CONFLICT DO NOTHING` to avoid duplicates
 - Each song is matched to the appropriate level based on the skill requirements defined in `seed.sql`
+- Users can easily add chord links by clicking the "+ Chords" button on each song card in the app
 
 ## Song Selection Criteria
 
