@@ -418,9 +418,25 @@ class CadenceApp {
 
   renderPathway() {
     const container = document.getElementById('pathway-container');
+
+    // Handle case where no instrument is selected yet
+    if (!this.currentInstrument || this.studentProgress.length === 0) {
+      container.innerHTML = '<p style="color: var(--text-secondary);">Loading pathway...</p>';
+      return;
+    }
+
     const progress = this.studentProgress.find(p => p.instrument_id === this.currentInstrument);
 
-    if (!progress) return;
+    if (!progress) {
+      container.innerHTML = '<p style="color: var(--text-secondary);">Loading pathway...</p>';
+      return;
+    }
+
+    // Handle case where levels haven't been loaded yet
+    if (!this.levels || this.levels.length === 0) {
+      container.innerHTML = '<p style="color: var(--text-secondary);">Loading pathway...</p>';
+      return;
+    }
 
     const currentLevel = progress.current_level;
     const currentBranch = progress.current_branch;
@@ -601,7 +617,9 @@ class CadenceApp {
       this.currentView = viewName;
 
       // Load data for the view if needed
-      if (viewName === 'songs') {
+      if (viewName === 'pathway') {
+        this.renderPathway();
+      } else if (viewName === 'songs') {
         this.renderSongs();
       } else if (viewName === 'progress') {
         this.renderProgress();
@@ -747,6 +765,12 @@ class CadenceApp {
 
   async addSongToLearning(songId) {
     const user = auth.getCurrentUser();
+
+    // Validate that an instrument is selected
+    if (!this.currentInstrument) {
+      this.showToast('Please select an instrument first', 'warning');
+      return;
+    }
 
     // Check if already tracking
     const { data: existing } = await supabase
