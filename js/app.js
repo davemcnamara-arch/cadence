@@ -309,32 +309,50 @@ class CadenceApp {
     document.getElementById('user-name').textContent = user.name;
     this.showApp();
 
-    // Load student's classes for header (for all users including teachers)
-    await this.loadStudentClassesHeader();
+    // Show/hide tabs and features based on role
+    if (user.role === 'student') {
+      // Show student tabs and features
+      document.querySelectorAll('.student-tab').forEach(tab => tab.classList.remove('hidden'));
+      // Student tabs will be active by default
+      await this.loadStudentClassesHeader();
+    } else if (user.role === 'teacher' || user.role === 'admin') {
+      // Hide student features for teachers and admins
+      document.querySelectorAll('.student-tab').forEach(tab => tab.classList.add('hidden'));
+      document.getElementById('grade-new-song-btn')?.classList.add('hidden');
+      document.getElementById('join-class-toggle-btn')?.classList.add('hidden');
+      document.getElementById('export-progress-btn')?.classList.add('hidden');
+      document.getElementById('add-instrument-btn')?.classList.add('hidden');
+      document.getElementById('remove-instrument-btn')?.classList.add('hidden');
 
-    // Show/hide teacher tabs based on role
-    if (user.role === 'teacher' || user.role === 'admin') {
+      // Show teacher tabs
       document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.remove('hidden'));
       await this.loadTeacherData();
+
+      // Switch to teacher's default view
+      this.switchView('classes');
     }
 
     // Show/hide admin tabs based on role
     if (user.role === 'admin') {
       document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('hidden'));
       await this.loadAdminData();
+      // Switch to admin view as default for admins
+      this.switchView('admin');
     }
 
-    // Check if user has selected instruments
-    if (this.studentProgress.length === 0) {
-      this.showInstrumentSelection();
-    } else {
-      // Select first instrument
-      this.currentInstrument = this.studentProgress[0].instrument_id;
-      await this.loadLevels(this.currentInstrument);
-      await this.loadSongs();
-      this.updatePathwayInstrument();
-      this.renderPathway();
-      this.updateInstrumentDropdown();
+    // Check if user has selected instruments (students only)
+    if (user.role === 'student') {
+      if (this.studentProgress.length === 0) {
+        this.showInstrumentSelection();
+      } else {
+        // Select first instrument
+        this.currentInstrument = this.studentProgress[0].instrument_id;
+        await this.loadLevels(this.currentInstrument);
+        await this.loadSongs();
+        this.updatePathwayInstrument();
+        this.renderPathway();
+        this.updateInstrumentDropdown();
+      }
     }
   }
 
@@ -2687,8 +2705,9 @@ class CadenceApp {
       document.getElementById('preview-student-name').textContent = studentName;
     }
 
-    // Hide teacher tabs
+    // Hide teacher tabs and show student tabs
     document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.add('hidden'));
+    document.querySelectorAll('.student-tab').forEach(tab => tab.classList.remove('hidden'));
 
     // Hide action buttons in student views
     const actionButtons = [
@@ -2789,17 +2808,20 @@ class CadenceApp {
     // Return to original view
     this.switchView(originalView || 'classes');
 
-    // Show teacher tabs and buttons AFTER switchView
+    // Show teacher tabs and hide student tabs AFTER switchView
     const currentUser = auth.getCurrentUser();
     console.log('Showing teacher tabs, user role:', currentUser?.role);
     const teacherTabs = document.querySelectorAll('.teacher-tab');
     console.log('Found teacher tabs:', teacherTabs.length);
 
     if (currentUser && (currentUser.role === 'teacher' || currentUser.role === 'admin')) {
+      // Show teacher tabs
       teacherTabs.forEach(tab => {
         console.log('Removing hidden from tab:', tab.getAttribute('data-view'), tab);
         tab.classList.remove('hidden');
       });
+      // Hide student tabs
+      document.querySelectorAll('.student-tab').forEach(tab => tab.classList.add('hidden'));
     }
 
     // Show action buttons again
