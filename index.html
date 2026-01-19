@@ -197,13 +197,19 @@
           <div class="class-detail-header">
             <button id="back-to-classes-btn" class="btn-text">← Back to Classes</button>
             <div class="class-detail-title">
-              <h2 id="class-detail-name">Class Name</h2>
+              <div>
+                <h2 id="class-detail-name">Class Name</h2>
+                <p id="class-detail-year-level" style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.25rem;"></p>
+              </div>
               <div class="class-detail-meta">
                 <span id="class-detail-code" class="class-code-display"></span>
                 <span id="class-detail-count"></span>
               </div>
             </div>
-            <button id="export-class-data-btn" class="btn btn-secondary">Export Class Data</button>
+            <div style="display: flex; gap: 0.5rem;">
+              <button id="edit-class-btn" class="btn btn-secondary">Edit Class</button>
+              <button id="export-class-data-btn" class="btn btn-secondary">Export Class Data</button>
+            </div>
           </div>
 
           <div class="class-tabs">
@@ -580,6 +586,32 @@
           <div class="form-actions">
             <button type="button" class="btn btn-secondary modal-close">Cancel</button>
             <button type="submit" class="btn btn-primary">Create Class</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Edit Class -->
+  <div id="edit-class-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>Edit Class</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="edit-class-form">
+          <div class="form-group">
+            <label for="edit-class-name">Class Name *</label>
+            <input type="text" id="edit-class-name" required placeholder="e.g., Music 101, Grade 7 Band">
+          </div>
+          <div class="form-group">
+            <label for="edit-class-year-level">Year Level (optional)</label>
+            <input type="text" id="edit-class-year-level" placeholder="e.g., Year 7, Grade 9">
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
           </div>
         </form>
       </div>
