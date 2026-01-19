@@ -2557,6 +2557,14 @@ class CadenceApp {
   async viewStudentDetail(studentId) {
     console.log('viewStudentDetail called with studentId:', studentId);
 
+    // Try loading without instruments join first
+    const { data: progressTest, error: progressTestError } = await supabase
+      .from('student_progress')
+      .select('*')
+      .eq('user_id', studentId);
+
+    console.log('Student progress TEST (no join):', progressTest, 'Error:', progressTestError);
+
     // Load student's full progress
     const { data: progressData, error: progressError } = await supabase
       .from('student_progress')
@@ -2571,7 +2579,7 @@ class CadenceApp {
       return;
     }
 
-    console.log('Student progress data:', progressData);
+    console.log('Student progress data (with join):', progressData);
 
     // Load student's songs
     const { data: songsData, error: songsError } = await supabase
