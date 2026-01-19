@@ -1513,46 +1513,55 @@ class CadenceApp {
 
   async renderProgress() {
     const user = auth.getCurrentUser();
-    const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
+    let studentSongsWithRatings;
 
-    // Load student songs
-    const { data: studentSongs } = await supabase
-      .from('student_songs')
-      .select(`
-        *,
-        songs (*)
-      `)
-      .eq('user_id', userId)
-      .order('date_started', { ascending: false });
+    // If in preview mode, use already-loaded data
+    if (this.previewMode.active) {
+      // Data already has resource_ratings from RPC function
+      studentSongsWithRatings = this.studentSongs || [];
+    } else {
+      // Load fresh data for current user
+      const userId = user.id;
 
-    // Load resource ratings for these student songs
-    const studentSongIds = studentSongs?.map(s => s.id) || [];
-    const { data: resourceRatings } = await supabase
-      .from('resource_ratings')
-      .select('*')
-      .in('student_song_id', studentSongIds);
+      // Load student songs
+      const { data: studentSongs } = await supabase
+        .from('student_songs')
+        .select(`
+          *,
+          songs (*)
+        `)
+        .eq('user_id', userId)
+        .order('date_started', { ascending: false });
 
-    // Create a map of student_song_id to ratings
-    const ratingsMap = {};
-    if (resourceRatings) {
-      resourceRatings.forEach(rating => {
-        if (!ratingsMap[rating.student_song_id]) {
-          ratingsMap[rating.student_song_id] = { chords: [], tutorial: [] };
-        }
-        if (rating.chords_rating) {
-          ratingsMap[rating.student_song_id].chords.push(rating.chords_rating);
-        }
-        if (rating.tutorial_rating) {
-          ratingsMap[rating.student_song_id].tutorial.push(rating.tutorial_rating);
-        }
-      });
+      // Load resource ratings for these student songs
+      const studentSongIds = studentSongs?.map(s => s.id) || [];
+      const { data: resourceRatings } = await supabase
+        .from('resource_ratings')
+        .select('*')
+        .in('student_song_id', studentSongIds);
+
+      // Create a map of student_song_id to ratings
+      const ratingsMap = {};
+      if (resourceRatings) {
+        resourceRatings.forEach(rating => {
+          if (!ratingsMap[rating.student_song_id]) {
+            ratingsMap[rating.student_song_id] = { chords: [], tutorial: [] };
+          }
+          if (rating.chords_rating) {
+            ratingsMap[rating.student_song_id].chords.push(rating.chords_rating);
+          }
+          if (rating.tutorial_rating) {
+            ratingsMap[rating.student_song_id].tutorial.push(rating.tutorial_rating);
+          }
+        });
+      }
+
+      // Attach ratings to student songs
+      studentSongsWithRatings = studentSongs?.map(s => ({
+        ...s,
+        resource_ratings: ratingsMap[s.id] || { chords: [], tutorial: [] }
+      }));
     }
-
-    // Attach ratings to student songs
-    const studentSongsWithRatings = studentSongs?.map(s => ({
-      ...s,
-      resource_ratings: ratingsMap[s.id] || { chords: [], tutorial: [] }
-    }));
 
     // Calculate stats
     const learning = studentSongsWithRatings?.filter(s => s.status === 'learning') || [];
@@ -3012,13 +3021,13 @@ class CadenceApp {
 
     if (!container) return;
 
-    // Don't show for teachers unless in preview mode
-    if (!this.previewMode.active && (user.role === 'teacher' || user.role === 'admin')) {
+    // Don't show for teachers or in preview mode
+    if (this.previewMode.active || (user.role === 'teacher' || user.role === 'admin')) {
       container.classList.add('hidden');
       return;
     }
 
-    const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
+    const userId = user.id;
 
     // Load classes the student has joined
     const { data: memberships, error } = await supabase
