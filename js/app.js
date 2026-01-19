@@ -3026,17 +3026,28 @@ class CadenceApp {
     joinBtn.textContent = 'Joining...';
 
     try {
-      // Find class by code (case-insensitive search)
+      // Find class by code (case-insensitive search, only non-archived classes)
       const { data: classData, error: classError } = await supabase
         .from('classes')
         .select('*')
         .ilike('class_code', classCode)
-        .single();
+        .eq('archived', false)
+        .limit(1)
+        .maybeSingle();
 
-      console.log('Database search result:', classData, classError);
+      console.log('Database search result:', { classData, classError });
+
+      if (classError) {
+        console.error('Database error details:', {
+          message: classError.message,
+          details: classError.details,
+          hint: classError.hint,
+          code: classError.code
+        });
+      }
 
       if (classError || !classData) {
-        console.error('Class lookup failed:', classError);
+        console.error('Class lookup failed');
         this.showToast('Class not found. Please check the code.', 'error');
         return;
       }
