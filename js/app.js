@@ -177,6 +177,12 @@ class CadenceApp {
       exportClassBtn.addEventListener('click', () => this.exportClassData());
     }
 
+    // Teacher: Edit class
+    const editClassBtn = document.getElementById('edit-class-btn');
+    if (editClassBtn) {
+      editClassBtn.addEventListener('click', () => this.showEditClassModal());
+    }
+
     // Student: Join class
     const joinClassBtn = document.getElementById('join-class-btn');
     if (joinClassBtn) {
@@ -185,6 +191,7 @@ class CadenceApp {
 
     // Setup teacher forms
     this.setupCreateClassForm();
+    this.setupEditClassForm();
     this.setupEditSongLevelForm();
 
     // Admin: Section tabs
@@ -2137,6 +2144,94 @@ class CadenceApp {
     }
   }
 
+  showEditClassModal() {
+    if (!this.currentClass) {
+      this.showToast('No class selected', 'error');
+      return;
+    }
+
+    // Populate form with current values
+    document.getElementById('edit-class-name').value = this.currentClass.name;
+    document.getElementById('edit-class-year-level').value = this.currentClass.year_level || '';
+
+    // Show modal
+    document.getElementById('edit-class-modal').classList.remove('hidden');
+  }
+
+  setupEditClassForm() {
+    const form = document.getElementById('edit-class-form');
+    if (!form) {
+      console.warn('Edit class form not found');
+      return;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      console.log('Edit class form submitted');
+
+      const className = document.getElementById('edit-class-name').value;
+      const yearLevel = document.getElementById('edit-class-year-level').value;
+
+      if (!className || className.trim() === '') {
+        this.showToast('Please enter a class name', 'error');
+        return;
+      }
+
+      await this.updateClass(className, yearLevel);
+    });
+  }
+
+  async updateClass(className, yearLevel) {
+    try {
+      if (!this.currentClass) {
+        this.showToast('No class selected', 'error');
+        return;
+      }
+
+      console.log('Updating class:', className, yearLevel);
+
+      // Update the class
+      const { data, error } = await supabase
+        .from('classes')
+        .update({
+          name: className,
+          year_level: yearLevel || null
+        })
+        .eq('id', this.currentClass.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating class:', error);
+        this.showToast('Failed to update class', 'error');
+        return;
+      }
+
+      // Update local data
+      const classIndex = this.classes.findIndex(c => c.id === this.currentClass.id);
+      if (classIndex !== -1) {
+        this.classes[classIndex] = data;
+      }
+      this.currentClass = data;
+
+      // Update UI
+      document.getElementById('class-detail-name').textContent = data.name;
+      const yearLevelEl = document.getElementById('class-detail-year-level');
+      if (yearLevelEl) {
+        yearLevelEl.textContent = data.year_level || '';
+      }
+
+      // Close modal and show success
+      document.getElementById('edit-class-modal').classList.add('hidden');
+      document.getElementById('edit-class-form').reset();
+      this.renderClassesList();
+      this.showToast('Class updated successfully', 'success');
+    } catch (error) {
+      console.error('Unexpected error updating class:', error);
+      this.showToast('An unexpected error occurred. Please try again.', 'error');
+    }
+  }
+
   renderClassesList() {
     const container = document.getElementById('classes-list');
     if (!container) return;
@@ -2183,6 +2278,10 @@ class CadenceApp {
 
     // Update header
     document.getElementById('class-detail-name').textContent = this.currentClass.name;
+    const yearLevelEl = document.getElementById('class-detail-year-level');
+    if (yearLevelEl) {
+      yearLevelEl.textContent = this.currentClass.year_level || '';
+    }
     document.getElementById('class-detail-code').textContent = this.currentClass.class_code;
 
     // Load class data
