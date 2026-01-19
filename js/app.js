@@ -37,6 +37,12 @@ class CadenceApp {
       }
     };
 
+    // Handle role selection for new users
+    auth.onNeedRoleSelection = (authUser) => {
+      console.log('🎵 Cadence: New user needs to select role');
+      this.showRoleSelection();
+    };
+
     console.log('🎵 Cadence: Initializing auth...');
     await auth.init();
 
@@ -51,6 +57,17 @@ class CadenceApp {
     const loginBtn = document.getElementById('google-login-btn');
     if (loginBtn) {
       loginBtn.addEventListener('click', () => auth.signInWithGoogle());
+    }
+
+    // Role Selection
+    const studentRoleBtn = document.getElementById('select-student-role');
+    if (studentRoleBtn) {
+      studentRoleBtn.addEventListener('click', () => this.selectRole('student'));
+    }
+
+    const teacherRoleBtn = document.getElementById('select-teacher-role');
+    if (teacherRoleBtn) {
+      teacherRoleBtn.addEventListener('click', () => this.selectRole('teacher'));
     }
 
     // Logout
@@ -1975,12 +1992,37 @@ class CadenceApp {
   showLoginScreen() {
     console.log('🎵 Cadence: Showing login screen');
     document.getElementById('login-screen').classList.remove('hidden');
+    document.getElementById('role-selection-screen').classList.add('hidden');
     document.getElementById('app').classList.add('hidden');
+  }
+
+  showRoleSelection() {
+    console.log('🎵 Cadence: Showing role selection screen');
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('role-selection-screen').classList.remove('hidden');
+    document.getElementById('app').classList.add('hidden');
+  }
+
+  async selectRole(role) {
+    console.log('🎵 Cadence: User selected role:', role);
+
+    // Complete signup with selected role
+    const result = await auth.completeSignupWithRole(role);
+
+    if (result.success) {
+      console.log('🎵 Cadence: Signup completed successfully');
+      // The onAuthStateChange callback will be triggered automatically
+      // which will call onUserSignedIn
+    } else {
+      console.error('🎵 Cadence: Failed to complete signup:', result.error);
+      this.showToast('Failed to complete signup. Please try again.', 'error');
+    }
   }
 
   showApp() {
     console.log('🎵 Cadence: Showing main app');
     document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('role-selection-screen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
   }
 
