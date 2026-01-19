@@ -2790,11 +2790,12 @@ class CadenceApp {
     this.switchView(originalView || 'classes');
 
     // Show teacher tabs and buttons AFTER switchView
-    console.log('Showing teacher tabs, user role:', auth.user?.role);
+    const currentUser = auth.getCurrentUser();
+    console.log('Showing teacher tabs, user role:', currentUser?.role);
     const teacherTabs = document.querySelectorAll('.teacher-tab');
     console.log('Found teacher tabs:', teacherTabs.length);
 
-    if (auth.user && (auth.user.role === 'teacher' || auth.user.role === 'admin')) {
+    if (currentUser && (currentUser.role === 'teacher' || currentUser.role === 'admin')) {
       teacherTabs.forEach(tab => {
         console.log('Removing hidden from tab:', tab.getAttribute('data-view'), tab);
         tab.classList.remove('hidden');
