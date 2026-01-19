@@ -2164,7 +2164,7 @@ class CadenceApp {
           </div>
           <div class="class-card-meta">
             <span>${memberCount} student${memberCount !== 1 ? 's' : ''}</span>
-            <span>Created ${new Date(cls.created_at).toLocaleDateString()}</span>
+            <span>Created ${new Date(cls.created_at).toLocaleDateString('en-GB')}</span>
           </div>
         </div>
       `;
