@@ -2582,7 +2582,7 @@ class CadenceApp {
         instruments (icon, name)
       `)
       .eq('user_id', studentId)
-      .order('created_at', { ascending: false });
+      .order('date_started', { ascending: false });
 
     if (songsError) {
       console.error('Error loading student songs:', songsError);
