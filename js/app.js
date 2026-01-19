@@ -2092,19 +2092,19 @@ class CadenceApp {
 
   async loadClasses() {
     const user = auth.getCurrentUser();
-    const { data, error } = await supabase
-      .from('classes')
-      .select('*, class_members(count)')
-      .eq('teacher_id', user.id)
-      .eq('archived', false)
-      .order('created_at', { ascending: false });
+
+    // Use RPC function to bypass RLS and get accurate student counts
+    const { data, error } = await supabase.rpc('get_teacher_classes', {
+      p_teacher_id: user.id
+    });
 
     if (error) {
       console.error('Error loading classes:', error);
+      this.classes = [];
       return;
     }
 
-    this.classes = data;
+    this.classes = data || [];
     if (this.currentView === 'classes') {
       this.renderClassesList();
     }
