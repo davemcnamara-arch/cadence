@@ -2762,7 +2762,7 @@ class CadenceApp {
     this.studentSongs = this.previewMode.originalStudentSongs || [];
     this.levels = this.previewMode.originalLevels || [];
 
-    // Reset preview mode
+    // Reset preview mode FIRST (before switchView)
     this.previewMode.active = false;
     this.previewMode.studentId = null;
     this.previewMode.studentName = null;
@@ -2780,7 +2780,16 @@ class CadenceApp {
       banner.classList.add('hidden');
     }
 
-    // Show teacher tabs again
+    // Reload teacher's classes to ensure fresh data
+    const user = auth.getCurrentUser();
+    if (user.role === 'teacher' || user.role === 'admin') {
+      await this.loadTeacherData();
+    }
+
+    // Return to original view
+    this.switchView(originalView || 'classes');
+
+    // Show teacher tabs and buttons AFTER switchView
     if (auth.user && (auth.user.role === 'teacher' || auth.user.role === 'admin')) {
       document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.remove('hidden'));
     }
@@ -2796,15 +2805,6 @@ class CadenceApp {
       const btn = document.getElementById(btnId);
       if (btn) btn.classList.remove('hidden');
     });
-
-    // Reload teacher's classes to ensure fresh data
-    const user = auth.getCurrentUser();
-    if (user.role === 'teacher' || user.role === 'admin') {
-      await this.loadTeacherData();
-    }
-
-    // Return to original view
-    this.switchView(originalView || 'classes');
   }
 
   async loadSubmissions() {
