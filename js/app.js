@@ -316,13 +316,13 @@ class CadenceApp {
       // Student tabs will be active by default
       await this.loadStudentClassesHeader();
     } else if (user.role === 'teacher' || user.role === 'admin') {
-      // Hide student features for teachers and admins
+      // Hide student-only features for teachers and admins
       document.querySelectorAll('.student-tab').forEach(tab => tab.classList.add('hidden'));
-      document.getElementById('grade-new-song-btn')?.classList.add('hidden');
       document.getElementById('join-class-toggle-btn')?.classList.add('hidden');
       document.getElementById('export-progress-btn')?.classList.add('hidden');
-      document.getElementById('add-instrument-btn')?.classList.add('hidden');
-      document.getElementById('remove-instrument-btn')?.classList.add('hidden');
+
+      // Keep song and instrument controls visible for Song Library access
+      // Teachers/admins can now add/manage songs via Song Library tab
 
       // Show teacher tabs
       document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.remove('hidden'));
@@ -2709,12 +2709,10 @@ class CadenceApp {
     document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.add('hidden'));
     document.querySelectorAll('.student-tab').forEach(tab => tab.classList.remove('hidden'));
 
-    // Hide action buttons in student views
+    // Hide only export and join class buttons in preview mode
+    // Keep instrument and song controls visible so teacher can make changes
     const actionButtons = [
-      'grade-new-song-btn',
       'export-progress-btn',
-      'add-instrument-btn',
-      'remove-instrument-btn',
       'join-class-toggle-btn'
     ];
     actionButtons.forEach(btnId => {
@@ -2824,12 +2822,9 @@ class CadenceApp {
       document.querySelectorAll('.student-tab').forEach(tab => tab.classList.add('hidden'));
     }
 
-    // Show action buttons again
+    // Show action buttons again (only those we hid)
     const actionButtons = [
-      'grade-new-song-btn',
-      'export-progress-btn',
-      'add-instrument-btn',
-      'remove-instrument-btn'
+      'export-progress-btn'
     ];
     actionButtons.forEach(btnId => {
       const btn = document.getElementById(btnId);
