@@ -335,10 +335,12 @@ body {
 }
 
 .btn-text.btn-danger {
+  background: none;
   color: #dc2626;
 }
 
 .btn-text.btn-danger:hover {
+  background: none;
   color: #991b1b;
 }
 
