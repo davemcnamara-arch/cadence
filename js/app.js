@@ -2063,56 +2063,78 @@ class CadenceApp {
 
   setupCreateClassForm() {
     const form = document.getElementById('create-class-form');
-    if (!form) return;
+    if (!form) {
+      console.warn('Create class form not found');
+      return;
+    }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      console.log('Create class form submitted');
 
       const className = document.getElementById('class-name').value;
       const yearLevel = document.getElementById('class-year-level').value;
+
+      if (!className || className.trim() === '') {
+        this.showToast('Please enter a class name', 'error');
+        return;
+      }
 
       await this.createClass(className, yearLevel);
     });
   }
 
   async createClass(className, yearLevel) {
-    const user = auth.getCurrentUser();
+    try {
+      const user = auth.getCurrentUser();
 
-    // Generate unique class code using database function
-    const { data: codeData, error: codeError } = await supabase
-      .rpc('generate_class_code');
+      if (!user) {
+        console.error('No user logged in');
+        this.showToast('You must be logged in to create a class', 'error');
+        return;
+      }
 
-    if (codeError) {
-      console.error('Error generating class code:', codeError);
-      this.showToast('Failed to generate class code', 'error');
-      return;
+      console.log('Creating class:', className, yearLevel);
+
+      // Generate unique class code using database function
+      const { data: codeData, error: codeError } = await supabase
+        .rpc('generate_class_code');
+
+      if (codeError) {
+        console.error('Error generating class code:', codeError);
+        this.showToast('Failed to generate class code', 'error');
+        return;
+      }
+
+      const classCode = codeData;
+
+      // Create the class
+      const { data, error } = await supabase
+        .from('classes')
+        .insert([{
+          class_code: classCode,
+          name: className,
+          teacher_id: user.id,
+          year_level: yearLevel || null
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating class:', error);
+        this.showToast('Failed to create class', 'error');
+        return;
+      }
+
+      this.classes.push(data);
+      document.getElementById('create-class-modal').classList.add('hidden');
+      document.getElementById('create-class-form').reset();
+      this.renderClassesList();
+      this.showToast(`Class created! Code: ${classCode}`, 'success');
+    } catch (error) {
+      console.error('Unexpected error creating class:', error);
+      this.showToast('An unexpected error occurred. Please try again.', 'error');
     }
-
-    const classCode = codeData;
-
-    // Create the class
-    const { data, error } = await supabase
-      .from('classes')
-      .insert([{
-        class_code: classCode,
-        name: className,
-        teacher_id: user.id,
-        year_level: yearLevel || null
-      }])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating class:', error);
-      this.showToast('Failed to create class', 'error');
-      return;
-    }
-
-    this.classes.push(data);
-    document.getElementById('create-class-modal').classList.add('hidden');
-    document.getElementById('create-class-form').reset();
-    this.renderClassesList();
-    this.showToast(`Class created! Code: ${classCode}`, 'success');
   }
 
   renderClassesList() {
