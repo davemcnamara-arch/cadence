@@ -2104,6 +2104,8 @@ class CadenceApp {
       return;
     }
 
+    console.log('Loaded classes from RPC:', data);
+
     this.classes = data || [];
     if (this.currentView === 'classes') {
       this.renderClassesList();
