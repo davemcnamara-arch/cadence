@@ -2911,15 +2911,9 @@ class CadenceApp {
   }
 
   toggleJoinClassSection() {
-    const section = document.getElementById('join-class-section');
-    const isHidden = section.classList.contains('hidden');
-
-    if (isHidden) {
-      section.classList.remove('hidden');
-      this.loadStudentClasses();
-    } else {
-      section.classList.add('hidden');
-    }
+    const modal = document.getElementById('join-class-modal');
+    modal.classList.remove('hidden');
+    this.loadStudentClasses();
   }
 
   async loadStudentClasses() {
