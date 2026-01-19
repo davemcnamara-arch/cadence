@@ -25,7 +25,12 @@ class CadenceApp {
       studentId: null,
       studentName: null,
       originalUser: null,
-      originalView: null
+      originalView: null,
+      originalStudentProgress: null,
+      originalInstruments: null,
+      originalCurrentInstrument: null,
+      originalStudentSongs: null,
+      originalLevels: null
     };
   }
 
