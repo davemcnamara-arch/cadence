@@ -3012,7 +3012,7 @@ class CadenceApp {
     console.log('joinClass called');
     const codeInput = document.getElementById('class-code-input');
     const joinBtn = document.getElementById('join-class-btn');
-    const classCode = codeInput.value.trim();
+    const classCode = codeInput.value.trim().toUpperCase();
 
     console.log('Class code entered:', classCode);
 
@@ -3026,54 +3026,43 @@ class CadenceApp {
     joinBtn.textContent = 'Joining...';
 
     try {
-      // Find class by code (case-insensitive search, only non-archived classes)
-      const { data: classData, error: classError } = await supabase
-        .from('classes')
-        .select('*')
-        .ilike('class_code', classCode)
-        .eq('archived', false)
-        .limit(1)
-        .maybeSingle();
-
-      console.log('Database search result:', { classData, classError });
-
-      if (classError) {
-        console.error('Database error details:', {
-          message: classError.message,
-          details: classError.details,
-          hint: classError.hint,
-          code: classError.code
-        });
-      }
-
-      if (classError || !classData) {
-        console.error('Class lookup failed');
-        this.showToast('Class not found. Please check the code.', 'error');
-        return;
-      }
-
       const user = auth.getCurrentUser();
 
-      // Join the class
-      const { error: joinError } = await supabase
-        .from('class_members')
-        .insert([{
-          class_id: classData.id,
-          user_id: user.id
-        }]);
+      // Use RPC function to join class (bypasses RLS for searching)
+      const { data, error } = await supabase
+        .rpc('join_class_by_code', {
+          p_user_id: user.id,
+          p_class_code: classCode
+        });
 
-      if (joinError) {
-        if (joinError.code === '23505') {
+      console.log('Join class RPC result:', { data, error });
+
+      if (error) {
+        console.error('Database error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+
+        // Handle specific error cases
+        if (error.message?.includes('not found')) {
+          this.showToast('Class not found. Please check the code.', 'error');
+        } else if (error.message?.includes('already') || error.code === '23505') {
           this.showToast('You are already in this class', 'info');
         } else {
-          console.error('Error joining class:', joinError);
-          this.showToast('Failed to join class', 'error');
+          this.showToast('Failed to join class. Please try again.', 'error');
         }
         return;
       }
 
+      if (!data || !data.success) {
+        this.showToast(data?.message || 'Class not found. Please check the code.', 'error');
+        return;
+      }
+
       codeInput.value = '';
-      this.showToast(`Joined ${classData.name}!`, 'success');
+      this.showToast(`Joined ${data.class_name}!`, 'success');
 
       // Reload the student's classes list
       await this.loadStudentClasses();
