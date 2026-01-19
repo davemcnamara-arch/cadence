@@ -2371,12 +2371,12 @@ class CadenceApp {
         users!inner (
           id,
           name,
-          email
-        ),
-        student_progress:student_progress (
-          instrument_id,
-          current_level,
-          current_branch
+          email,
+          student_progress (
+            instrument_id,
+            current_level,
+            current_branch
+          )
         )
       `)
       .eq('class_id', this.currentClass.id)
@@ -2387,7 +2387,11 @@ class CadenceApp {
       return;
     }
 
-    this.classStudents = data;
+    // Flatten the nested structure
+    this.classStudents = data.map(member => ({
+      ...member,
+      student_progress: member.users.student_progress || []
+    }));
 
     // Update student count
     document.getElementById('class-detail-count').textContent =
