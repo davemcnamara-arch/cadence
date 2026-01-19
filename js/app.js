@@ -2642,7 +2642,8 @@ class CadenceApp {
       'grade-new-song-btn',
       'export-progress-btn',
       'add-instrument-btn',
-      'remove-instrument-btn'
+      'remove-instrument-btn',
+      'join-class-toggle-btn'
     ];
     actionButtons.forEach(btnId => {
       const btn = document.getElementById(btnId);
