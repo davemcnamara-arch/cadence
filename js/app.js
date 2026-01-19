@@ -3045,11 +3045,22 @@ class CadenceApp {
     try {
       const user = auth.getCurrentUser();
 
-      // Use RPC function to join class (bypasses RLS for searching)
-      const { data, error } = await supabase
-        .rpc('join_class_by_code', {
-          p_user_id: user.id,
-          p_class_code: classCode
+      console.log('Calling RPC with:', { userId: user.id, classCode });
+
+      // Add timeout to RPC call
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout after 10 seconds')), 10000)
+      );
+
+      const rpcPromise = supabase.rpc('join_class_by_code', {
+        p_user_id: user.id,
+        p_class_code: classCode
+      });
+
+      const { data, error } = await Promise.race([rpcPromise, timeoutPromise])
+        .catch(err => {
+          console.error('RPC call failed or timed out:', err);
+          return { data: null, error: err };
         });
 
       console.log('Join class RPC result:', { data, error });
@@ -3061,6 +3072,12 @@ class CadenceApp {
           hint: error.hint,
           code: error.code
         });
+
+        // Handle timeout
+        if (error.message?.includes('timeout')) {
+          this.showToast('Request timed out. Please check your connection and try again.', 'error');
+          return;
+        }
 
         // Handle specific error cases
         if (error.message?.includes('not found')) {
