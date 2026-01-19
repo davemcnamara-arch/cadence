@@ -2671,10 +2671,10 @@ class CadenceApp {
     this.previewMode.originalView = this.currentView;
 
     // Save teacher's current data to restore later
-    this.previewMode.originalStudentProgress = [...this.studentProgress];
-    this.previewMode.originalInstruments = [...this.instruments];
+    this.previewMode.originalStudentProgress = this.studentProgress ? [...this.studentProgress] : [];
+    this.previewMode.originalInstruments = this.instruments ? [...this.instruments] : [];
     this.previewMode.originalCurrentInstrument = this.currentInstrument;
-    this.previewMode.originalStudentSongs = [...this.studentSongs];
+    this.previewMode.originalStudentSongs = this.studentSongs ? [...this.studentSongs] : [];
     this.previewMode.originalLevels = this.levels ? [...this.levels] : [];
 
     // Close the student detail modal
