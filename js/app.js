@@ -294,6 +294,9 @@ class CadenceApp {
     document.getElementById('user-name').textContent = user.name;
     this.showApp();
 
+    // Load student's classes for header (for all users including teachers)
+    await this.loadStudentClassesHeader();
+
     // Show/hide teacher tabs based on role
     if (user.role === 'teacher' || user.role === 'admin') {
       document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.remove('hidden'));
@@ -3008,6 +3011,54 @@ class CadenceApp {
     container.innerHTML = html;
   }
 
+  async loadStudentClassesHeader() {
+    const user = auth.getCurrentUser();
+    const container = document.getElementById('student-classes-header');
+
+    if (!container) return;
+
+    // Don't show for teachers unless in preview mode
+    if (!this.previewMode.active && (user.role === 'teacher' || user.role === 'admin')) {
+      container.classList.add('hidden');
+      return;
+    }
+
+    const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
+
+    // Load classes the student has joined
+    const { data: memberships, error } = await supabase
+      .from('class_members')
+      .select(`
+        *,
+        classes (
+          id,
+          name,
+          class_code,
+          year_level
+        )
+      `)
+      .eq('user_id', userId)
+      .order('joined_at', { ascending: false });
+
+    if (error) {
+      console.error('Error loading student classes for header:', error);
+      container.classList.add('hidden');
+      return;
+    }
+
+    if (!memberships || memberships.length === 0) {
+      container.classList.add('hidden');
+      return;
+    }
+
+    // Show class badges
+    container.classList.remove('hidden');
+    container.innerHTML = memberships.map(m => {
+      const cls = m.classes;
+      return `<span class="class-badge" title="${cls.name}${cls.year_level ? ' - ' + cls.year_level : ''}">${cls.name}</span>`;
+    }).join('');
+  }
+
   async joinClass() {
     console.log('joinClass called');
     const codeInput = document.getElementById('class-code-input');
@@ -3064,8 +3115,9 @@ class CadenceApp {
       codeInput.value = '';
       this.showToast(`Joined ${data.class_name}!`, 'success');
 
-      // Reload the student's classes list
+      // Reload the student's classes list and header
       await this.loadStudentClasses();
+      await this.loadStudentClassesHeader();
     } finally {
       // Re-enable button
       joinBtn.disabled = false;
