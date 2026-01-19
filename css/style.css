@@ -351,6 +351,44 @@ body {
   min-height: 100vh;
 }
 
+/* Preview Mode Banner */
+.preview-banner {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 101;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+}
+
+.preview-banner-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.preview-banner-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.preview-banner-text strong {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.preview-banner .btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+}
+
 .app-header {
   background-color: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);

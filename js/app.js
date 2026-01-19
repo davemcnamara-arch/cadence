@@ -18,6 +18,15 @@ class CadenceApp {
     this.currentClass = null;
     this.classStudents = [];
     this.submissions = [];
+
+    // Preview mode state
+    this.previewMode = {
+      active: false,
+      studentId: null,
+      studentName: null,
+      originalUser: null,
+      originalView: null
+    };
   }
 
   async init() {
@@ -74,6 +83,12 @@ class CadenceApp {
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', () => auth.signOut());
+    }
+
+    // Exit preview mode
+    const exitPreviewBtn = document.getElementById('exit-preview-btn');
+    if (exitPreviewBtn) {
+      exitPreviewBtn.addEventListener('click', () => this.exitStudentPreview());
     }
 
     // Navigation
@@ -1473,6 +1488,7 @@ class CadenceApp {
 
   async renderProgress() {
     const user = auth.getCurrentUser();
+    const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
     // Load student songs
     const { data: studentSongs } = await supabase
@@ -1481,7 +1497,7 @@ class CadenceApp {
         *,
         songs (*)
       `)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('date_started', { ascending: false });
 
     // Load resource ratings for these student songs
@@ -1553,6 +1569,9 @@ class CadenceApp {
     const chordsRating = this.formatResourceRating(studentSong.resource_ratings?.chords);
     const tutorialRating = this.formatResourceRating(studentSong.resource_ratings?.tutorial);
 
+    // Check if in preview mode
+    const isPreview = this.previewMode.active;
+
     return `
       <div class="song-list-item">
         <div class="info">
@@ -1563,32 +1582,32 @@ class CadenceApp {
               <span style="display: inline-flex; align-items: center; gap: 2px;">
                 <a href="${song.chords_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">Chords</a>
                 ${chordsRating}
-                <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'chords_url', '${song.chords_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit chords link">✎</button>
+                ${!isPreview ? `<button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'chords_url', '${song.chords_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit chords link">✎</button>` : ''}
               </span>
-            ` : `
+            ` : !isPreview ? `
               <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add chords link">+ Chords</button>
-            `}
+            ` : ''}
             ${song.tutorial_url ? `
               <span style="display: inline-flex; align-items: center; gap: 2px;">
                 <a href="${song.tutorial_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">Tutorial</a>
                 ${tutorialRating}
-                <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'tutorial_url', '${song.tutorial_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit tutorial link">✎</button>
+                ${!isPreview ? `<button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'tutorial_url', '${song.tutorial_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit tutorial link">✎</button>` : ''}
               </span>
-            ` : `
+            ` : !isPreview ? `
               <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'tutorial_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add tutorial link">+ Tutorial</button>
-            `}
+            ` : ''}
             ${song.youtube_url ? `
               <span style="display: inline-flex; align-items: center; gap: 2px;">
                 <a href="${song.youtube_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">YouTube</a>
-                <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'youtube_url', '${song.youtube_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit YouTube link">✎</button>
+                ${!isPreview ? `<button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'youtube_url', '${song.youtube_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit YouTube link">✎</button>` : ''}
               </span>
-            ` : `
+            ` : !isPreview ? `
               <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
-            `}
+            ` : ''}
           </div>
         </div>
         <div class="actions">
-          ${studentSong.status === 'learning' ? `
+          ${!isPreview ? (studentSong.status === 'learning' ? `
             <button class="btn btn-primary" onclick="app.markSongMastered('${studentSong.id}')">
               Mark Mastered
             </button>
@@ -1603,7 +1622,9 @@ class CadenceApp {
             <button class="btn-text btn-danger" onclick="app.removeSong('${studentSong.id}')">
               Remove
             </button>
-          `}
+          `) : (studentSong.status === 'mastered' ? `
+            <span style="color: var(--secondary-color); font-weight: 600;">✓ Mastered</span>
+          ` : '')}
         </div>
       </div>
     `;
@@ -2558,7 +2579,155 @@ class CadenceApp {
 
     document.getElementById('student-detail-name').textContent = student.name;
     document.getElementById('student-detail-content').innerHTML = html;
+
+    // Add preview button if it doesn't exist
+    let previewBtn = document.getElementById('preview-student-btn');
+    if (!previewBtn) {
+      previewBtn = document.createElement('button');
+      previewBtn.id = 'preview-student-btn';
+      previewBtn.className = 'btn btn-primary';
+      previewBtn.textContent = 'Preview Student View';
+      previewBtn.style.marginTop = '1rem';
+
+      const modalBody = document.querySelector('#student-detail-modal .modal-body');
+      if (modalBody) {
+        modalBody.appendChild(previewBtn);
+      }
+
+      // Add event listener
+      previewBtn.addEventListener('click', () => {
+        this.enterStudentPreview(studentId, student.name);
+      });
+    } else {
+      // Update the click handler with current student info
+      const newPreviewBtn = previewBtn.cloneNode(true);
+      previewBtn.parentNode.replaceChild(newPreviewBtn, previewBtn);
+      newPreviewBtn.addEventListener('click', () => {
+        this.enterStudentPreview(studentId, student.name);
+      });
+    }
+
     document.getElementById('student-detail-modal').classList.remove('hidden');
+  }
+
+  async enterStudentPreview(studentId, studentName) {
+    // Store current state
+    this.previewMode.active = true;
+    this.previewMode.studentId = studentId;
+    this.previewMode.studentName = studentName;
+    this.previewMode.originalUser = auth.user;
+    this.previewMode.originalView = this.currentView;
+
+    // Close the student detail modal
+    document.getElementById('student-detail-modal').classList.add('hidden');
+
+    // Show preview banner
+    const banner = document.getElementById('preview-banner');
+    if (banner) {
+      banner.classList.remove('hidden');
+      document.getElementById('preview-student-name').textContent = studentName;
+    }
+
+    // Hide teacher tabs
+    document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.add('hidden'));
+
+    // Hide action buttons in student views
+    const actionButtons = [
+      'grade-new-song-btn',
+      'export-progress-btn',
+      'add-instrument-btn',
+      'remove-instrument-btn'
+    ];
+    actionButtons.forEach(btnId => {
+      const btn = document.getElementById(btnId);
+      if (btn) btn.classList.add('hidden');
+    });
+
+    // Load student's data
+    await this.loadStudentPreviewData(studentId);
+
+    // Switch to pathway view to show student's perspective
+    this.switchView('pathway');
+  }
+
+  async loadStudentPreviewData(studentId) {
+    // Load student's instruments/progress
+    const { data: progressData, error: progressError } = await supabase
+      .from('student_progress')
+      .select(`
+        *,
+        instruments (*)
+      `)
+      .eq('user_id', studentId);
+
+    if (progressError) {
+      console.error('Error loading student progress:', progressError);
+      return;
+    }
+
+    this.studentProgress = progressData;
+
+    // Load instruments and set first as current
+    if (progressData.length > 0) {
+      this.instruments = progressData.map(p => p.instruments);
+      this.currentInstrument = this.instruments[0];
+    } else {
+      this.instruments = [];
+      this.currentInstrument = null;
+    }
+
+    // Load student's songs
+    const { data: songsData, error: songsError } = await supabase
+      .from('student_songs')
+      .select(`
+        *,
+        songs (*),
+        instruments (*)
+      `)
+      .eq('user_id', studentId);
+
+    if (!songsError) {
+      this.studentSongs = songsData || [];
+    }
+  }
+
+  async exitStudentPreview() {
+    // Reset preview mode
+    this.previewMode.active = false;
+    const originalView = this.previewMode.originalView;
+    this.previewMode.studentId = null;
+    this.previewMode.studentName = null;
+    this.previewMode.originalUser = null;
+    this.previewMode.originalView = null;
+
+    // Hide preview banner
+    const banner = document.getElementById('preview-banner');
+    if (banner) {
+      banner.classList.add('hidden');
+    }
+
+    // Show teacher tabs again
+    if (auth.user && (auth.user.role === 'teacher' || auth.user.role === 'admin')) {
+      document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.remove('hidden'));
+    }
+
+    // Show action buttons again
+    const actionButtons = [
+      'grade-new-song-btn',
+      'export-progress-btn',
+      'add-instrument-btn',
+      'remove-instrument-btn'
+    ];
+    actionButtons.forEach(btnId => {
+      const btn = document.getElementById(btnId);
+      if (btn) btn.classList.remove('hidden');
+    });
+
+    // Reload teacher's own data
+    await this.loadUserData();
+
+    // Return to original view
+    this.switchView(originalView || 'classes');
   }
 
   async loadSubmissions() {
