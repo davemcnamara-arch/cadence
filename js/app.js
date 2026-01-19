@@ -817,6 +817,7 @@ class CadenceApp {
     const targetView = document.getElementById(`${viewName}-view`);
     if (targetView) {
       targetView.classList.add('active');
+      targetView.classList.remove('hidden');
       this.currentView = viewName;
 
       // Load data for the view if needed
