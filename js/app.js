@@ -2658,12 +2658,19 @@ class CadenceApp {
   }
 
   async enterStudentPreview(studentId, studentName) {
-    // Store current state
+    // Store current state AND teacher's data
     this.previewMode.active = true;
     this.previewMode.studentId = studentId;
     this.previewMode.studentName = studentName;
     this.previewMode.originalUser = auth.user;
     this.previewMode.originalView = this.currentView;
+
+    // Save teacher's current data to restore later
+    this.previewMode.originalStudentProgress = [...this.studentProgress];
+    this.previewMode.originalInstruments = [...this.instruments];
+    this.previewMode.originalCurrentInstrument = this.currentInstrument;
+    this.previewMode.originalStudentSongs = [...this.studentSongs];
+    this.previewMode.originalLevels = this.levels ? [...this.levels] : [];
 
     // Close the student detail modal
     document.getElementById('student-detail-modal').classList.add('hidden');
@@ -2721,7 +2728,11 @@ class CadenceApp {
     // Load instruments and set first as current
     if (progressData.length > 0) {
       this.instruments = progressData.map(p => p.instruments);
-      this.currentInstrument = this.instruments[0];
+      this.currentInstrument = progressData[0].instrument_id; // Use ID, not object!
+
+      // Load levels for the student's instrument
+      await this.loadLevels(this.currentInstrument);
+      await this.loadSongs();
     } else {
       this.instruments = [];
       this.currentInstrument = null;
@@ -2732,16 +2743,31 @@ class CadenceApp {
     console.log('Preview mode - studentProgress:', this.studentProgress);
     console.log('Preview mode - studentSongs:', this.studentSongs);
     console.log('Preview mode - instruments:', this.instruments);
+    console.log('Preview mode - currentInstrument:', this.currentInstrument);
   }
 
   async exitStudentPreview() {
+    // Save the original view before resetting
+    const originalView = this.previewMode.originalView;
+
+    // Restore teacher's original data
+    this.studentProgress = this.previewMode.originalStudentProgress || [];
+    this.instruments = this.previewMode.originalInstruments || [];
+    this.currentInstrument = this.previewMode.originalCurrentInstrument;
+    this.studentSongs = this.previewMode.originalStudentSongs || [];
+    this.levels = this.previewMode.originalLevels || [];
+
     // Reset preview mode
     this.previewMode.active = false;
-    const originalView = this.previewMode.originalView;
     this.previewMode.studentId = null;
     this.previewMode.studentName = null;
     this.previewMode.originalUser = null;
     this.previewMode.originalView = null;
+    this.previewMode.originalStudentProgress = null;
+    this.previewMode.originalInstruments = null;
+    this.previewMode.originalCurrentInstrument = null;
+    this.previewMode.originalStudentSongs = null;
+    this.previewMode.originalLevels = null;
 
     // Hide preview banner
     const banner = document.getElementById('preview-banner');
@@ -2766,10 +2792,8 @@ class CadenceApp {
       if (btn) btn.classList.remove('hidden');
     });
 
-    // Reload teacher's own data
+    // Reload teacher's classes to ensure fresh data
     const user = auth.getCurrentUser();
-    await this.loadInstruments();
-    await this.loadStudentProgress();
     if (user.role === 'teacher' || user.role === 'admin') {
       await this.loadTeacherData();
     }
