@@ -3090,8 +3090,15 @@ class CadenceApp {
         return;
       }
 
+      // Handle response
       if (!data || !data.success) {
-        this.showToast(data?.message || 'Class not found. Please check the code.', 'error');
+        // Show appropriate message
+        const messageType = data?.message?.includes('already') ? 'info' : 'error';
+        this.showToast(data?.message || 'Class not found. Please check the code.', messageType);
+
+        // Still load classes to show what they're in
+        await this.loadStudentClasses();
+        await this.loadStudentClassesHeader();
         return;
       }
 
