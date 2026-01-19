@@ -2758,7 +2758,12 @@ class CadenceApp {
     });
 
     // Reload teacher's own data
-    await this.loadUserData();
+    const user = auth.getCurrentUser();
+    await this.loadInstruments();
+    await this.loadStudentProgress();
+    if (user.role === 'teacher' || user.role === 'admin') {
+      await this.loadTeacherData();
+    }
 
     // Return to original view
     this.switchView(originalView || 'classes');
