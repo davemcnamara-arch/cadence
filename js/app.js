@@ -2978,9 +2978,9 @@ class CadenceApp {
     console.log('joinClass called');
     const codeInput = document.getElementById('class-code-input');
     const joinBtn = document.getElementById('join-class-btn');
-    const classCode = codeInput.value.trim().toUpperCase();
+    const classCode = codeInput.value.trim();
 
-    console.log('Class code:', classCode);
+    console.log('Class code entered:', classCode);
 
     if (!classCode || classCode.length !== 6) {
       this.showToast('Please enter a valid 6-character class code', 'error');
@@ -2992,14 +2992,17 @@ class CadenceApp {
     joinBtn.textContent = 'Joining...';
 
     try {
-      // Find class by code
+      // Find class by code (case-insensitive search)
       const { data: classData, error: classError } = await supabase
         .from('classes')
         .select('*')
-        .eq('class_code', classCode)
+        .ilike('class_code', classCode)
         .single();
 
+      console.log('Database search result:', classData, classError);
+
       if (classError || !classData) {
+        console.error('Class lookup failed:', classError);
         this.showToast('Class not found. Please check the code.', 'error');
         return;
       }
