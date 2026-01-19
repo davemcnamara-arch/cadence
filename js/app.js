@@ -2790,8 +2790,15 @@ class CadenceApp {
     this.switchView(originalView || 'classes');
 
     // Show teacher tabs and buttons AFTER switchView
+    console.log('Showing teacher tabs, user role:', auth.user?.role);
+    const teacherTabs = document.querySelectorAll('.teacher-tab');
+    console.log('Found teacher tabs:', teacherTabs.length);
+
     if (auth.user && (auth.user.role === 'teacher' || auth.user.role === 'admin')) {
-      document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.remove('hidden'));
+      teacherTabs.forEach(tab => {
+        console.log('Removing hidden from tab:', tab.getAttribute('data-view'), tab);
+        tab.classList.remove('hidden');
+      });
     }
 
     // Show action buttons again
@@ -2805,6 +2812,8 @@ class CadenceApp {
       const btn = document.getElementById(btnId);
       if (btn) btn.classList.remove('hidden');
     });
+
+    console.log('Exit preview complete');
   }
 
   async loadSubmissions() {
