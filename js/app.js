@@ -2364,6 +2364,8 @@ class CadenceApp {
   async loadClassStudents() {
     if (!this.currentClass) return;
 
+    console.log('Loading students for class:', this.currentClass.id);
+
     const { data, error } = await supabase
       .from('class_members')
       .select(`
@@ -2387,11 +2389,15 @@ class CadenceApp {
       return;
     }
 
+    console.log('Raw class members data:', data);
+
     // Flatten the nested structure
     this.classStudents = data.map(member => ({
       ...member,
       student_progress: member.users.student_progress || []
     }));
+
+    console.log('Processed class students:', this.classStudents);
 
     // Update student count
     document.getElementById('class-detail-count').textContent =
