@@ -2323,7 +2323,7 @@ class CadenceApp {
     }
 
     const html = classes.map(cls => {
-      const memberCount = cls.class_members?.[0]?.count || 0;
+      const memberCount = cls.student_count || 0;
       return `
         <div class="class-card" onclick="app.viewClass('${cls.id}')">
           <div class="class-card-header">
