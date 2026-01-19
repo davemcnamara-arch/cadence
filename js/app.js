@@ -2975,51 +2975,65 @@ class CadenceApp {
   }
 
   async joinClass() {
+    console.log('joinClass called');
     const codeInput = document.getElementById('class-code-input');
+    const joinBtn = document.getElementById('join-class-btn');
     const classCode = codeInput.value.trim().toUpperCase();
+
+    console.log('Class code:', classCode);
 
     if (!classCode || classCode.length !== 6) {
       this.showToast('Please enter a valid 6-character class code', 'error');
       return;
     }
 
-    // Find class by code
-    const { data: classData, error: classError } = await supabase
-      .from('classes')
-      .select('*')
-      .eq('class_code', classCode)
-      .single();
+    // Disable button during processing
+    joinBtn.disabled = true;
+    joinBtn.textContent = 'Joining...';
 
-    if (classError || !classData) {
-      this.showToast('Class not found. Please check the code.', 'error');
-      return;
-    }
+    try {
+      // Find class by code
+      const { data: classData, error: classError } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('class_code', classCode)
+        .single();
 
-    const user = auth.getCurrentUser();
-
-    // Join the class
-    const { error: joinError } = await supabase
-      .from('class_members')
-      .insert([{
-        class_id: classData.id,
-        user_id: user.id
-      }]);
-
-    if (joinError) {
-      if (joinError.code === '23505') {
-        this.showToast('You are already in this class', 'info');
-      } else {
-        console.error('Error joining class:', joinError);
-        this.showToast('Failed to join class', 'error');
+      if (classError || !classData) {
+        this.showToast('Class not found. Please check the code.', 'error');
+        return;
       }
-      return;
+
+      const user = auth.getCurrentUser();
+
+      // Join the class
+      const { error: joinError } = await supabase
+        .from('class_members')
+        .insert([{
+          class_id: classData.id,
+          user_id: user.id
+        }]);
+
+      if (joinError) {
+        if (joinError.code === '23505') {
+          this.showToast('You are already in this class', 'info');
+        } else {
+          console.error('Error joining class:', joinError);
+          this.showToast('Failed to join class', 'error');
+        }
+        return;
+      }
+
+      codeInput.value = '';
+      this.showToast(`Joined ${classData.name}!`, 'success');
+
+      // Reload the student's classes list
+      await this.loadStudentClasses();
+    } finally {
+      // Re-enable button
+      joinBtn.disabled = false;
+      joinBtn.textContent = 'Join Class';
     }
-
-    codeInput.value = '';
-    this.showToast(`Joined ${classData.name}!`, 'success');
-
-    // Reload the student's classes list
-    await this.loadStudentClasses();
   }
 
   async exportClassData() {
