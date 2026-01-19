@@ -165,7 +165,10 @@
       <div id="progress-view" class="view">
         <div class="view-header">
           <h2>My Progress</h2>
-          <button id="export-progress-btn" class="btn btn-secondary">Export Data</button>
+          <div style="display: flex; gap: 0.5rem;">
+            <button id="join-class-toggle-btn" class="btn btn-secondary">Join Class</button>
+            <button id="export-progress-btn" class="btn btn-secondary">Export Data</button>
+          </div>
         </div>
 
         <div class="progress-summary">
@@ -187,6 +190,19 @@
             <div id="mastered-songs" class="song-list">
               <!-- Populated by JS -->
             </div>
+          </div>
+        </div>
+
+        <!-- Student: Join Class Section -->
+        <div id="join-class-section" class="join-class-section hidden">
+          <h3>Join a Class</h3>
+          <p>Enter the class code provided by your teacher</p>
+          <div class="join-class-form">
+            <input type="text" id="class-code-input" placeholder="Enter 6-character code" maxlength="6" style="text-transform: uppercase;">
+            <button id="join-class-btn" class="btn btn-primary">Join Class</button>
+          </div>
+          <div id="student-classes-list" class="student-classes-list">
+            <!-- Shows classes student has joined -->
           </div>
         </div>
       </div>
@@ -296,19 +312,6 @@
 
         <div id="flagged-ratings-list" class="flagged-ratings-list">
           <!-- Populated by JS -->
-        </div>
-      </div>
-
-      <!-- Student: Join Class Section (shown in progress view or as modal) -->
-      <div id="join-class-section" class="join-class-section hidden">
-        <h3>Join a Class</h3>
-        <p>Enter your class code to join</p>
-        <div class="join-class-form">
-          <input type="text" id="class-code-input" placeholder="Enter 6-character code" maxlength="6" style="text-transform: uppercase;">
-          <button id="join-class-btn" class="btn btn-primary">Join Class</button>
-        </div>
-        <div id="student-classes-list" class="student-classes-list">
-          <!-- Shows classes student has joined -->
         </div>
       </div>
 

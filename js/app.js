@@ -144,6 +144,12 @@ class CadenceApp {
       exportBtn.addEventListener('click', () => this.showExportModal());
     }
 
+    // Join Class toggle
+    const joinClassToggleBtn = document.getElementById('join-class-toggle-btn');
+    if (joinClassToggleBtn) {
+      joinClassToggleBtn.addEventListener('click', () => this.toggleJoinClassSection());
+    }
+
     // Modal close buttons
     document.querySelectorAll('.modal-close').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -2903,6 +2909,76 @@ class CadenceApp {
     document.getElementById('edit-song-level-modal').classList.remove('hidden');
   }
 
+  toggleJoinClassSection() {
+    const section = document.getElementById('join-class-section');
+    const isHidden = section.classList.contains('hidden');
+
+    if (isHidden) {
+      section.classList.remove('hidden');
+      this.loadStudentClasses();
+    } else {
+      section.classList.add('hidden');
+    }
+  }
+
+  async loadStudentClasses() {
+    const user = auth.getCurrentUser();
+    const container = document.getElementById('student-classes-list');
+
+    // Load classes the student has joined
+    const { data: memberships, error } = await supabase
+      .from('class_members')
+      .select(`
+        *,
+        classes (
+          id,
+          name,
+          class_code,
+          year_level,
+          created_at
+        )
+      `)
+      .eq('user_id', user.id)
+      .order('joined_at', { ascending: false });
+
+    if (error) {
+      console.error('Error loading student classes:', error);
+      container.innerHTML = '<p style="color: var(--text-secondary); margin-top: 1rem;">Unable to load your classes</p>';
+      return;
+    }
+
+    if (!memberships || memberships.length === 0) {
+      container.innerHTML = '<p style="color: var(--text-secondary); margin-top: 1rem;">You haven\'t joined any classes yet</p>';
+      return;
+    }
+
+    const html = `
+      <div style="margin-top: 1.5rem;">
+        <h4 style="margin-bottom: 0.75rem; font-size: 0.875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary);">Your Classes</h4>
+        <div class="student-classes-grid">
+          ${memberships.map(m => {
+            const cls = m.classes;
+            const joinDate = new Date(m.joined_at).toLocaleDateString('en-GB');
+            return `
+              <div class="student-class-card">
+                <div class="class-card-header">
+                  <strong>${cls.name}</strong>
+                  ${cls.year_level ? `<span class="class-year-badge">${cls.year_level}</span>` : ''}
+                </div>
+                <div class="class-card-meta">
+                  <span>Code: <strong>${cls.class_code}</strong></span>
+                  <span>Joined: ${joinDate}</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+
+    container.innerHTML = html;
+  }
+
   async joinClass() {
     const codeInput = document.getElementById('class-code-input');
     const classCode = codeInput.value.trim().toUpperCase();
@@ -2946,7 +3022,9 @@ class CadenceApp {
 
     codeInput.value = '';
     this.showToast(`Joined ${classData.name}!`, 'success');
-    // Optionally load and display student's classes
+
+    // Reload the student's classes list
+    await this.loadStudentClasses();
   }
 
   async exportClassData() {
