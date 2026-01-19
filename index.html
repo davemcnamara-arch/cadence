@@ -192,19 +192,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Student: Join Class Section -->
-        <div id="join-class-section" class="join-class-section hidden">
-          <h3>Join a Class</h3>
-          <p>Enter the class code provided by your teacher</p>
-          <div class="join-class-form">
-            <input type="text" id="class-code-input" placeholder="Enter 6-character code" maxlength="6" style="text-transform: uppercase;">
-            <button id="join-class-btn" class="btn btn-primary">Join Class</button>
-          </div>
-          <div id="student-classes-list" class="student-classes-list">
-            <!-- Shows classes student has joined -->
-          </div>
-        </div>
       </div>
 
       <!-- Teacher: Classes View -->
@@ -645,6 +632,26 @@
       <div class="modal-body">
         <div id="student-detail-content" class="student-detail-content">
           <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Join Class -->
+  <div id="join-class-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>Join a Class</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; text-align: center;">Enter the class code provided by your teacher</p>
+        <div class="join-class-form">
+          <input type="text" id="class-code-input" placeholder="Enter 6-character code" maxlength="6" style="text-transform: uppercase;">
+          <button id="join-class-btn" class="btn btn-primary">Join Class</button>
+        </div>
+        <div id="student-classes-list" class="student-classes-list">
+          <!-- Shows classes student has joined -->
         </div>
       </div>
     </div>
