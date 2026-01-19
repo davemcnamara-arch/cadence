@@ -152,6 +152,12 @@ class CadenceApp {
       filterLevel.addEventListener('change', () => this.filterSongs());
     }
 
+    // Class search
+    const classSearchInput = document.getElementById('class-search');
+    if (classSearchInput) {
+      classSearchInput.addEventListener('input', () => this.filterClasses());
+    }
+
     // Teacher: Create class
     const createClassBtn = document.getElementById('create-class-btn');
     if (createClassBtn) {
@@ -2232,9 +2238,27 @@ class CadenceApp {
     }
   }
 
-  renderClassesList() {
+  filterClasses() {
+    const searchTerm = document.getElementById('class-search')?.value.toLowerCase() || '';
+
+    let filteredClasses = this.classes;
+
+    if (searchTerm) {
+      filteredClasses = filteredClasses.filter(cls =>
+        cls.name.toLowerCase().includes(searchTerm) ||
+        cls.class_code.toLowerCase().includes(searchTerm) ||
+        (cls.year_level && cls.year_level.toLowerCase().includes(searchTerm))
+      );
+    }
+
+    this.renderClassesList(filteredClasses);
+  }
+
+  renderClassesList(classesToRender = null) {
     const container = document.getElementById('classes-list');
     if (!container) return;
+
+    const classes = classesToRender || this.classes;
 
     if (this.classes.length === 0) {
       container.innerHTML = `
@@ -2246,7 +2270,17 @@ class CadenceApp {
       return;
     }
 
-    const html = this.classes.map(cls => {
+    if (classes.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 4rem; color: var(--text-secondary);">
+          <p style="font-size: 1.125rem; margin-bottom: 1rem;">No classes found</p>
+          <p>Try a different search term</p>
+        </div>
+      `;
+      return;
+    }
+
+    const html = classes.map(cls => {
       const memberCount = cls.class_members?.[0]?.count || 0;
       return `
         <div class="class-card" onclick="app.viewClass('${cls.id}')">
