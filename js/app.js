@@ -2366,36 +2366,22 @@ class CadenceApp {
 
     console.log('Loading students for class:', this.currentClass.id);
 
-    const { data, error } = await supabase
-      .from('class_members')
-      .select(`
-        *,
-        users!inner (
-          id,
-          name,
-          email,
-          student_progress (
-            instrument_id,
-            current_level,
-            current_branch
-          )
-        )
-      `)
-      .eq('class_id', this.currentClass.id)
-      .order('joined_at', { ascending: true });
+    // Use RPC function to bypass RLS recursion issues
+    const { data, error } = await supabase.rpc('get_class_students', {
+      p_class_id: this.currentClass.id
+    });
 
     if (error) {
       console.error('Error loading class students:', error);
+      this.classStudents = [];
+      document.getElementById('class-detail-count').textContent = '0 students';
       return;
     }
 
     console.log('Raw class members data:', data);
 
-    // Flatten the nested structure
-    this.classStudents = data.map(member => ({
-      ...member,
-      student_progress: member.users.student_progress || []
-    }));
+    // Data is already in the right format from the function
+    this.classStudents = data || [];
 
     console.log('Processed class students:', this.classStudents);
 
