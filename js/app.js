@@ -2555,6 +2555,8 @@ class CadenceApp {
   }
 
   async viewStudentDetail(studentId) {
+    console.log('viewStudentDetail called with studentId:', studentId);
+
     // Load student's full progress
     const { data: progressData, error: progressError } = await supabase
       .from('student_progress')
@@ -2568,6 +2570,8 @@ class CadenceApp {
       console.error('Error loading student progress:', progressError);
       return;
     }
+
+    console.log('Student progress data:', progressData);
 
     // Load student's songs
     const { data: songsData, error: songsError } = await supabase
