@@ -82,7 +82,17 @@ class CadenceApp {
     // Logout
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
-      logoutBtn.addEventListener('click', () => auth.signOut());
+      logoutBtn.addEventListener('click', async (e) => {
+        console.log('Logout button clicked');
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          const result = await auth.signOut();
+          console.log('Sign out result:', result);
+        } catch (error) {
+          console.error('Error during sign out:', error);
+        }
+      });
     }
 
     // Exit preview mode
