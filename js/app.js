@@ -2557,45 +2557,20 @@ class CadenceApp {
   async viewStudentDetail(studentId) {
     console.log('viewStudentDetail called with studentId:', studentId);
 
-    // Try loading without instruments join first
-    const { data: progressTest, error: progressTestError } = await supabase
-      .from('student_progress')
-      .select('*')
-      .eq('user_id', studentId);
+    // Use RPC function to bypass RLS
+    const { data, error } = await supabase.rpc('get_student_detail', {
+      p_student_id: studentId
+    });
 
-    console.log('Student progress TEST (no join):', progressTest, 'Error:', progressTestError);
-
-    // Load student's full progress
-    const { data: progressData, error: progressError } = await supabase
-      .from('student_progress')
-      .select(`
-        *,
-        instruments (icon, name)
-      `)
-      .eq('user_id', studentId);
-
-    if (progressError) {
-      console.error('Error loading student progress:', progressError);
+    if (error) {
+      console.error('Error loading student detail:', error);
       return;
     }
 
-    console.log('Student progress data (with join):', progressData);
+    console.log('Student detail data from RPC:', data);
 
-    // Load student's songs
-    const { data: songsData, error: songsError } = await supabase
-      .from('student_songs')
-      .select(`
-        *,
-        songs (title, artist),
-        instruments (icon, name)
-      `)
-      .eq('user_id', studentId)
-      .order('date_started', { ascending: false });
-
-    if (songsError) {
-      console.error('Error loading student songs:', songsError);
-      return;
-    }
+    const progressData = data.progress || [];
+    const songsData = data.songs || [];
 
     const student = this.classStudents.find(m => m.user_id === studentId)?.users;
     if (!student) return;
