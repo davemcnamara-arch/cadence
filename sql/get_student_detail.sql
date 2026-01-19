@@ -46,12 +46,27 @@ BEGIN
           'songs', json_build_object(
             'id', s.id,
             'title', s.title,
-            'artist', s.artist
+            'artist', s.artist,
+            'chords_url', s.chords_url,
+            'tutorial_url', s.tutorial_url,
+            'youtube_url', s.youtube_url
           ),
           'instruments', json_build_object(
             'id', i.id,
             'name', i.name,
             'icon', i.icon
+          ),
+          'resource_ratings', json_build_object(
+            'chords', COALESCE((
+              SELECT json_agg(rr.chords_rating)
+              FROM resource_ratings rr
+              WHERE rr.student_song_id = ss.id AND rr.chords_rating IS NOT NULL
+            ), '[]'::json),
+            'tutorial', COALESCE((
+              SELECT json_agg(rr.tutorial_rating)
+              FROM resource_ratings rr
+              WHERE rr.student_song_id = ss.id AND rr.tutorial_rating IS NOT NULL
+            ), '[]'::json)
           )
         )
         ORDER BY ss.date_started DESC
