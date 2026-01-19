@@ -2690,19 +2690,22 @@ class CadenceApp {
   }
 
   async loadStudentPreviewData(studentId) {
-    // Load student's instruments/progress
-    const { data: progressData, error: progressError } = await supabase
-      .from('student_progress')
-      .select(`
-        *,
-        instruments (*)
-      `)
-      .eq('user_id', studentId);
+    console.log('Loading preview data for student:', studentId);
 
-    if (progressError) {
-      console.error('Error loading student progress:', progressError);
+    // Use RPC function to bypass RLS
+    const { data, error } = await supabase.rpc('get_student_detail', {
+      p_student_id: studentId
+    });
+
+    if (error) {
+      console.error('Error loading student preview data:', error);
       return;
     }
+
+    console.log('Student preview data from RPC:', data);
+
+    const progressData = data.progress || [];
+    const songsData = data.songs || [];
 
     this.studentProgress = progressData;
 
@@ -2715,19 +2718,11 @@ class CadenceApp {
       this.currentInstrument = null;
     }
 
-    // Load student's songs
-    const { data: songsData, error: songsError } = await supabase
-      .from('student_songs')
-      .select(`
-        *,
-        songs (*),
-        instruments (*)
-      `)
-      .eq('user_id', studentId);
+    this.studentSongs = songsData || [];
 
-    if (!songsError) {
-      this.studentSongs = songsData || [];
-    }
+    console.log('Preview mode - studentProgress:', this.studentProgress);
+    console.log('Preview mode - studentSongs:', this.studentSongs);
+    console.log('Preview mode - instruments:', this.instruments);
   }
 
   async exitStudentPreview() {
