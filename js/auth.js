@@ -5,6 +5,8 @@ export class AuthManager {
   constructor() {
     this.currentUser = null;
     this.onAuthStateChange = null;
+    this.onNeedRoleSelection = null; // Callback for when new user needs to select role
+    this.pendingAuthUser = null; // Stores auth user data while waiting for role selection
   }
 
   // Initialize auth and check session
@@ -77,29 +79,17 @@ export class AuthManager {
       return;
     }
 
-    // Create user if doesn't exist
+    // If user doesn't exist, trigger role selection flow
     if (!existingUser) {
-      const { data: newUser, error: insertError } = await supabase
-        .from('users')
-        .insert([{
-          id: authUser.id,
-          email: authUser.email,
-          name: authUser.user_metadata?.full_name || authUser.email.split('@')[0],
-          google_id: authUser.user_metadata?.sub,
-          role: 'student'
-        }])
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error('Error creating user:', insertError);
-        return;
+      this.pendingAuthUser = authUser;
+      if (this.onNeedRoleSelection) {
+        this.onNeedRoleSelection(authUser);
       }
-
-      this.currentUser = newUser;
-    } else {
-      this.currentUser = existingUser;
+      return;
     }
+
+    // Existing user - proceed normally
+    this.currentUser = existingUser;
 
     // Notify listeners
     if (this.onAuthStateChange) {
@@ -107,9 +97,53 @@ export class AuthManager {
     }
   }
 
+  // Complete signup with selected role
+  async completeSignupWithRole(role) {
+    if (!this.pendingAuthUser) {
+      console.error('No pending auth user');
+      return { success: false, error: 'No pending authentication' };
+    }
+
+    const authUser = this.pendingAuthUser;
+
+    try {
+      // Create user with selected role
+      const { data: newUser, error: insertError } = await supabase
+        .from('users')
+        .insert([{
+          id: authUser.id,
+          email: authUser.email,
+          name: authUser.user_metadata?.full_name || authUser.email.split('@')[0],
+          google_id: authUser.user_metadata?.sub,
+          role: role
+        }])
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Error creating user:', insertError);
+        return { success: false, error: insertError.message };
+      }
+
+      this.currentUser = newUser;
+      this.pendingAuthUser = null;
+
+      // Notify listeners
+      if (this.onAuthStateChange) {
+        this.onAuthStateChange(this.currentUser);
+      }
+
+      return { success: true, user: newUser };
+    } catch (error) {
+      console.error('Error completing signup:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   // Handle sign out
   handleSignOut() {
     this.currentUser = null;
+    this.pendingAuthUser = null;
     if (this.onAuthStateChange) {
       this.onAuthStateChange(null);
     }
