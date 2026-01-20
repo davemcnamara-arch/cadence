@@ -102,3 +102,37 @@ USING (
     WHERE c.teacher_id = auth.uid()
   )
 );
+
+-- Allow teachers to insert/update/delete resource_ratings for their students
+CREATE POLICY "Teachers can insert student resource ratings" ON resource_ratings
+FOR INSERT
+WITH CHECK (
+  user_id IN (
+    SELECT cm.user_id
+    FROM classes c
+    JOIN class_members cm ON c.id = cm.class_id
+    WHERE c.teacher_id = auth.uid()
+  )
+);
+
+CREATE POLICY "Teachers can update student resource ratings" ON resource_ratings
+FOR UPDATE
+USING (
+  user_id IN (
+    SELECT cm.user_id
+    FROM classes c
+    JOIN class_members cm ON c.id = cm.class_id
+    WHERE c.teacher_id = auth.uid()
+  )
+);
+
+CREATE POLICY "Teachers can delete student resource ratings" ON resource_ratings
+FOR DELETE
+USING (
+  user_id IN (
+    SELECT cm.user_id
+    FROM classes c
+    JOIN class_members cm ON c.id = cm.class_id
+    WHERE c.teacher_id = auth.uid()
+  )
+);
