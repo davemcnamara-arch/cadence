@@ -94,8 +94,13 @@ class CadenceApp {
         try {
           const result = await auth.signOut();
           console.log('Sign out result:', result);
+          // Force reload to clear all state and show login screen
+          // This ensures logout works even if auth state change listener doesn't fire
+          window.location.reload();
         } catch (error) {
           console.error('Error during sign out:', error);
+          // Still reload on error to ensure user sees login screen
+          window.location.reload();
         }
       });
     }
