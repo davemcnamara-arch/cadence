@@ -2,6 +2,10 @@
 -- The spotify_url column was removed in migration 006_remove_spotify.sql
 -- This migration updates the function to match the current schema
 
+-- Drop the old function with spotify_url parameter
+DROP FUNCTION IF EXISTS grade_song(UUID, TEXT, TEXT, UUID, INTEGER, JSONB, TEXT, TEXT, TEXT, TEXT, BOOLEAN);
+
+-- Create the new function without spotify_url parameter
 CREATE OR REPLACE FUNCTION grade_song(
   p_student_id UUID,
   p_title TEXT,
