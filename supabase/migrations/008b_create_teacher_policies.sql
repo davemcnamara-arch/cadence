@@ -1,7 +1,18 @@
 -- Create teacher modification policies
 -- Run this AFTER running 008a_cleanup_teacher_policies.sql if you had conflicts
 
--- Allow teachers to insert/update/delete student_progress for their students
+-- Allow teachers to view/insert/update/delete student_progress for their students
+CREATE POLICY "Teachers can view student progress" ON student_progress
+FOR SELECT
+USING (
+  user_id IN (
+    SELECT cm.user_id
+    FROM classes c
+    JOIN class_members cm ON c.id = cm.class_id
+    WHERE c.teacher_id = auth.uid()
+  )
+);
+
 CREATE POLICY "Teachers can insert student progress" ON student_progress
 FOR INSERT
 WITH CHECK (
@@ -35,7 +46,18 @@ USING (
   )
 );
 
--- Allow teachers to insert/update/delete student_songs for their students
+-- Allow teachers to view/insert/update/delete student_songs for their students
+CREATE POLICY "Teachers can view student songs" ON student_songs
+FOR SELECT
+USING (
+  user_id IN (
+    SELECT cm.user_id
+    FROM classes c
+    JOIN class_members cm ON c.id = cm.class_id
+    WHERE c.teacher_id = auth.uid()
+  )
+);
+
 CREATE POLICY "Teachers can insert student songs" ON student_songs
 FOR INSERT
 WITH CHECK (
@@ -69,7 +91,18 @@ USING (
   )
 );
 
--- Allow teachers to insert/update/delete song_ratings for their students
+-- Allow teachers to view/insert/update/delete song_ratings for their students
+CREATE POLICY "Teachers can view student ratings" ON song_ratings
+FOR SELECT
+USING (
+  user_id IN (
+    SELECT cm.user_id
+    FROM classes c
+    JOIN class_members cm ON c.id = cm.class_id
+    WHERE c.teacher_id = auth.uid()
+  )
+);
+
 CREATE POLICY "Teachers can insert student ratings" ON song_ratings
 FOR INSERT
 WITH CHECK (
@@ -103,7 +136,18 @@ USING (
   )
 );
 
--- Allow teachers to insert/update/delete resource_ratings for their students
+-- Allow teachers to view/insert/update/delete resource_ratings for their students
+CREATE POLICY "Teachers can view student resource ratings" ON resource_ratings
+FOR SELECT
+USING (
+  user_id IN (
+    SELECT cm.user_id
+    FROM classes c
+    JOIN class_members cm ON c.id = cm.class_id
+    WHERE c.teacher_id = auth.uid()
+  )
+);
+
 CREATE POLICY "Teachers can insert student resource ratings" ON resource_ratings
 FOR INSERT
 WITH CHECK (
