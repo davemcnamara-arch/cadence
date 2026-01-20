@@ -2658,6 +2658,9 @@ class CadenceApp {
   }
 
   renderClassRoster() {
+    // Close any open modals to prevent showing students from other classes
+    document.getElementById('student-detail-modal').classList.add('hidden');
+
     const container = document.getElementById('class-roster');
     if (!container) return;
 
@@ -2697,6 +2700,9 @@ class CadenceApp {
   }
 
   async renderProgressHeatmap() {
+    // Close any open modals to prevent showing students from other classes
+    document.getElementById('student-detail-modal').classList.add('hidden');
+
     const container = document.getElementById('progress-heatmap');
     if (!container || this.classStudents.length === 0) {
       container.innerHTML = '<p style="color: var(--text-secondary);">No student data available</p>';
@@ -2735,6 +2741,9 @@ class CadenceApp {
   }
 
   async renderClassTimeline() {
+    // Close any open modals to prevent showing students from other classes
+    document.getElementById('student-detail-modal').classList.add('hidden');
+
     const container = document.getElementById('class-timeline');
     if (!container) return;
 
