@@ -239,7 +239,11 @@ class CadenceApp {
     // Teacher: Confirm archive
     const confirmArchiveBtn = document.getElementById('confirm-archive-btn');
     if (confirmArchiveBtn) {
-      confirmArchiveBtn.addEventListener('click', () => this.archiveClass());
+      confirmArchiveBtn.addEventListener('click', () => {
+        // Close modal immediately for better UX
+        document.getElementById('archive-class-modal').classList.add('hidden');
+        this.archiveClass();
+      });
     }
 
     // Teacher: Show archived classes toggle
@@ -2396,7 +2400,8 @@ class CadenceApp {
         return;
       }
 
-      console.log('Archiving class:', this.currentClass.name);
+      const className = this.currentClass.name;
+      console.log('Archiving class:', className);
 
       // Update the class to set archived = true
       const { data, error } = await supabase
@@ -2414,16 +2419,13 @@ class CadenceApp {
         return;
       }
 
-      // Close modal
-      document.getElementById('archive-class-modal').classList.add('hidden');
-
       // Go back to classes list
       this.showClassesList();
 
       // Reload classes to update the view
       await this.loadClasses();
 
-      this.showToast(`Class "${this.currentClass.name}" archived successfully`, 'success');
+      this.showToast(`Class "${className}" archived successfully`, 'success');
     } catch (error) {
       console.error('Unexpected error archiving class:', error);
       this.showToast('An unexpected error occurred. Please try again.', 'error');
