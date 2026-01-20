@@ -2590,6 +2590,9 @@ class CadenceApp {
   }
 
   switchClassTab(tabName) {
+    // Close any open modals
+    document.getElementById('student-detail-modal').classList.add('hidden');
+
     // Update tab buttons
     document.querySelectorAll('.class-tab').forEach(tab => {
       tab.classList.toggle('active', tab.dataset.tab === tabName);
