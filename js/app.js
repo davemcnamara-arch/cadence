@@ -1078,32 +1078,23 @@ class CadenceApp {
       return;
     }
 
-    // Check if already tracking
-    const { data: existing } = await supabase
-      .from('student_songs')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('song_id', songId)
-      .eq('instrument_id', this.currentInstrument)
-      .maybeSingle();  // Use maybeSingle() instead of single() to avoid 406 on 0 rows
-
-    if (existing) {
-      this.showToast('Already tracking this song!', 'info');
-      return;
-    }
-
-    const { error } = await supabase
-      .from('student_songs')
-      .insert([{
-        user_id: userId,
-        song_id: songId,
-        instrument_id: this.currentInstrument,
-        status: 'learning'
-      }]);
+    // Use RPC function to bypass RLS issues
+    const { data, error } = await supabase.rpc('add_student_song', {
+      p_student_id: userId,
+      p_song_id: songId,
+      p_instrument_id: this.currentInstrument,
+      p_status: 'learning'
+    });
 
     if (error) {
       console.error('Error adding song:', error);
-      this.showToast('Failed to add song', 'error');
+      if (error.message.includes('Already tracking')) {
+        this.showToast('Already tracking this song!', 'info');
+      } else if (error.message.includes('Permission denied')) {
+        this.showToast('Permission denied', 'error');
+      } else {
+        this.showToast('Failed to add song', 'error');
+      }
       return;
     }
 
