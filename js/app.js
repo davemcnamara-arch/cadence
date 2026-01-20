@@ -316,13 +316,13 @@ class CadenceApp {
       // Student tabs will be active by default
       await this.loadStudentClassesHeader();
     } else if (user.role === 'teacher' || user.role === 'admin') {
-      // Hide student features for teachers and admins
+      // Hide student-only features for teachers and admins
       document.querySelectorAll('.student-tab').forEach(tab => tab.classList.add('hidden'));
-      document.getElementById('grade-new-song-btn')?.classList.add('hidden');
       document.getElementById('join-class-toggle-btn')?.classList.add('hidden');
       document.getElementById('export-progress-btn')?.classList.add('hidden');
-      document.getElementById('add-instrument-btn')?.classList.add('hidden');
-      document.getElementById('remove-instrument-btn')?.classList.add('hidden');
+
+      // Keep song and instrument controls visible for Song Library access
+      // Teachers/admins can now add/manage songs via Song Library tab
 
       // Show teacher tabs
       document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.remove('hidden'));
@@ -493,11 +493,13 @@ class CadenceApp {
 
   async addInstrument(instrumentId) {
     const user = auth.getCurrentUser();
+    // Use student ID if in preview mode, otherwise use current user
+    const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
     const { data, error } = await supabase
       .from('student_progress')
       .insert([{
-        user_id: user.id,
+        user_id: userId,
         instrument_id: instrumentId,
         current_level: 1
       }])
@@ -542,12 +544,14 @@ class CadenceApp {
     }
 
     const user = auth.getCurrentUser();
+    // Use student ID if in preview mode, otherwise use current user
+    const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
     // Delete all student songs for this instrument
     const { error: songsError } = await supabase
       .from('student_songs')
       .delete()
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('instrument_id', this.currentInstrument);
 
     if (songsError) {
@@ -560,7 +564,7 @@ class CadenceApp {
     const { error: progressError } = await supabase
       .from('student_progress')
       .delete()
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('instrument_id', this.currentInstrument);
 
     if (progressError) {
@@ -1461,6 +1465,8 @@ class CadenceApp {
 
   async submitSongGrading() {
     const user = auth.getCurrentUser();
+    // Use student ID if in preview mode, otherwise use current user
+    const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
     try {
       // First, check if song exists
@@ -1485,7 +1491,7 @@ class CadenceApp {
             spotify_url: this.gradingData.spotify_url,
             chords_url: this.gradingData.chords_url,
             tutorial_url: this.gradingData.tutorial_url,
-            added_by_user_id: user.id,
+            added_by_user_id: user.id, // Keep teacher ID for song creation tracking
             approved: true // Auto-approve for MVP
           }])
           .select()
@@ -1495,25 +1501,25 @@ class CadenceApp {
         songId = newSong.id;
       }
 
-      // Add rating
+      // Add rating (use student ID in preview mode)
       const { error: ratingError } = await supabase
         .from('song_ratings')
         .insert([{
           song_id: songId,
           instrument_id: this.gradingData.instrument,
           assessed_level: this.gradingData.level,
-          user_id: user.id,
+          user_id: userId,
           checklist_responses_json: this.gradingData.checklistResponses
         }]);
 
       if (ratingError) throw ratingError;
 
-      // Add to learning if checked
+      // Add to learning if checked (use student ID in preview mode)
       if (document.getElementById('add-to-learning').checked) {
         await supabase
           .from('student_songs')
           .insert([{
-            user_id: user.id,
+            user_id: userId,
             song_id: songId,
             instrument_id: this.gradingData.instrument,
             status: 'learning'
@@ -2709,12 +2715,10 @@ class CadenceApp {
     document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.add('hidden'));
     document.querySelectorAll('.student-tab').forEach(tab => tab.classList.remove('hidden'));
 
-    // Hide action buttons in student views
+    // Hide only export and join class buttons in preview mode
+    // Keep instrument and song controls visible so teacher can make changes
     const actionButtons = [
-      'grade-new-song-btn',
       'export-progress-btn',
-      'add-instrument-btn',
-      'remove-instrument-btn',
       'join-class-toggle-btn'
     ];
     actionButtons.forEach(btnId => {
@@ -2824,12 +2828,9 @@ class CadenceApp {
       document.querySelectorAll('.student-tab').forEach(tab => tab.classList.add('hidden'));
     }
 
-    // Show action buttons again
+    // Show action buttons again (only those we hid)
     const actionButtons = [
-      'grade-new-song-btn',
-      'export-progress-btn',
-      'add-instrument-btn',
-      'remove-instrument-btn'
+      'export-progress-btn'
     ];
     actionButtons.forEach(btnId => {
       const btn = document.getElementById(btnId);
