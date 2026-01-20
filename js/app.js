@@ -1565,7 +1565,14 @@ class CadenceApp {
       }
     } catch (error) {
       console.error('Error submitting grading:', error);
-      this.showToast('Failed to submit grading', 'error');
+      console.error('Error details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      const errorMsg = error.message || error.details || 'Failed to submit grading';
+      this.showToast(`Failed to submit grading: ${errorMsg}`, 'error');
     }
   }
 
