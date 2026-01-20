@@ -9,6 +9,7 @@ class CadenceApp {
     this.levels = [];
     this.songs = [];
     this.studentProgress = [];
+    this.studentSongs = [];
     this.currentView = 'pathway';
     this.currentStep = 1;
     this.gradingData = {};
@@ -953,6 +954,19 @@ class CadenceApp {
 
   async renderSongs() {
     await this.loadSongs();
+
+    // Load student songs if not in preview mode
+    if (!this.previewMode.active) {
+      const user = auth.getCurrentUser();
+      if (user) {
+        const { data: studentSongs } = await supabase
+          .from('student_songs')
+          .select('*')
+          .eq('user_id', user.id);
+        this.studentSongs = studentSongs || [];
+      }
+    }
+
     this.filterSongs();
   }
 
