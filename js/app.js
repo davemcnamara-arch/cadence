@@ -1085,7 +1085,7 @@ class CadenceApp {
       .eq('user_id', userId)
       .eq('song_id', songId)
       .eq('instrument_id', this.currentInstrument)
-      .single();
+      .maybeSingle();  // Use maybeSingle() instead of single() to avoid 406 on 0 rows
 
     if (existing) {
       this.showToast('Already tracking this song!', 'info');
