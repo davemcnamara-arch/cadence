@@ -378,10 +378,13 @@ class CadenceApp {
 
   async loadStudentProgress() {
     const user = auth.getCurrentUser();
+    // Use student ID if in preview mode, otherwise use current user
+    const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
+
     const { data, error } = await supabase
       .from('student_progress')
       .select('*')
-      .eq('user_id', user.id);
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Error loading progress:', error);
@@ -1061,6 +1064,8 @@ class CadenceApp {
 
   async addSongToLearning(songId) {
     const user = auth.getCurrentUser();
+    // Use student ID if in preview mode, otherwise use current user
+    const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
     // Validate that an instrument is selected
     if (!this.currentInstrument) {
@@ -1072,7 +1077,7 @@ class CadenceApp {
     const { data: existing } = await supabase
       .from('student_songs')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('song_id', songId)
       .eq('instrument_id', this.currentInstrument)
       .single();
@@ -1085,7 +1090,7 @@ class CadenceApp {
     const { error } = await supabase
       .from('student_songs')
       .insert([{
-        user_id: user.id,
+        user_id: userId,
         song_id: songId,
         instrument_id: this.currentInstrument,
         status: 'learning'
@@ -1760,6 +1765,8 @@ class CadenceApp {
     const chordsRating = document.getElementById('chords-rating').value;
     const tutorialRating = document.getElementById('tutorial-rating').value;
     const user = auth.getCurrentUser();
+    // Use student ID if in preview mode, otherwise use current user
+    const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
     // Save ratings if provided
     if (chordsRating || tutorialRating) {
@@ -1767,7 +1774,7 @@ class CadenceApp {
         .from('resource_ratings')
         .insert({
           student_song_id: this.pendingMasteredSong.studentSongId,
-          user_id: user.id,
+          user_id: userId,
           chords_rating: chordsRating ? parseInt(chordsRating) : null,
           tutorial_rating: tutorialRating ? parseInt(tutorialRating) : null
         });
@@ -1817,6 +1824,8 @@ class CadenceApp {
 
   async checkLevelAdvancement(instrumentId) {
     const user = auth.getCurrentUser();
+    // Use student ID if in preview mode, otherwise use current user
+    const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
     // Get current progress for this instrument
     const progress = this.studentProgress.find(p => p.instrument_id === instrumentId);
@@ -1830,7 +1839,7 @@ class CadenceApp {
     const { data: masteredSongs, error: queryError } = await supabase
       .from('student_songs')
       .select('*, songs!inner(*)')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('instrument_id', instrumentId)
       .eq('status', 'mastered');
 
@@ -1851,7 +1860,7 @@ class CadenceApp {
       const { error } = await supabase
         .from('student_progress')
         .update({ current_level: newLevel })
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('instrument_id', instrumentId);
 
       if (!error) {
