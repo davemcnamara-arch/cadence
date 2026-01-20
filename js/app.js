@@ -2747,7 +2747,7 @@ class CadenceApp {
         instruments (icon, name)
       `)
       .in('user_id', studentIds)
-      .order('created_at', { ascending: false })
+      .order('date_started', { ascending: false })
       .limit(20);
 
     if (error) {
@@ -2762,7 +2762,7 @@ class CadenceApp {
     }
 
     const html = data.map(item => {
-      const timeAgo = this.getTimeAgo(item.created_at);
+      const timeAgo = this.getTimeAgo(item.date_started);
       const status = item.status === 'mastered' ? 'mastered' : 'started learning';
 
       return `
@@ -3042,7 +3042,7 @@ class CadenceApp {
         instruments (icon, name)
       `)
       .in('user_id', studentIds)
-      .order('created_at', { ascending: false })
+      .order('date_graded', { ascending: false })
       .limit(50);
 
     if (error) {
@@ -3064,7 +3064,7 @@ class CadenceApp {
     }
 
     const html = this.submissions.map(submission => {
-      const timeAgo = this.getTimeAgo(submission.created_at);
+      const timeAgo = this.getTimeAgo(submission.date_graded);
 
       return `
         <div class="submission-card">
