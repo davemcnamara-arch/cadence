@@ -2735,20 +2735,15 @@ class CadenceApp {
     const container = document.getElementById('class-timeline');
     if (!container) return;
 
-    // Load recent student activity (songs added, level progression)
-    const studentIds = this.classStudents.map(m => m.user_id);
+    if (!this.currentClass) {
+      container.innerHTML = '<p style="color: var(--text-secondary);">No class selected</p>';
+      return;
+    }
 
-    const { data, error } = await supabase
-      .from('student_songs')
-      .select(`
-        *,
-        users!inner (name),
-        songs (title, artist),
-        instruments (icon, name)
-      `)
-      .in('user_id', studentIds)
-      .order('date_started', { ascending: false })
-      .limit(20);
+    // Use RPC function to bypass RLS
+    const { data, error } = await supabase.rpc('get_class_timeline', {
+      p_class_id: this.currentClass.id
+    });
 
     if (error) {
       console.error('Error loading timeline:', error);
@@ -2768,12 +2763,12 @@ class CadenceApp {
       return `
         <div class="timeline-item">
           <div class="timeline-header">
-            <span class="timeline-student">${item.users.name}</span>
+            <span class="timeline-student">${item.student_name}</span>
             <span class="timeline-time">${timeAgo}</span>
           </div>
           <div class="timeline-content">
-            ${status} <span class="timeline-highlight">${item.songs.title}</span>
-            by ${item.songs.artist} on ${item.instruments.icon} ${item.instruments.name}
+            ${status} <span class="timeline-highlight">${item.song_title}</span>
+            by ${item.song_artist} on ${item.instrument_icon} ${item.instrument_name}
           </div>
         </div>
       `;
