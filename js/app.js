@@ -1547,7 +1547,6 @@ class CadenceApp {
         p_assessed_level: this.gradingData.level,
         p_checklist_responses_json: this.gradingData.checklistResponses,
         p_youtube_url: this.gradingData.youtube_url || null,
-        p_spotify_url: this.gradingData.spotify_url || null,
         p_chords_url: this.gradingData.chords_url || null,
         p_tutorial_url: this.gradingData.tutorial_url || null,
         p_add_to_learning: document.getElementById('add-to-learning').checked
