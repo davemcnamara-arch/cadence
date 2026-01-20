@@ -1017,6 +1017,22 @@ class CadenceApp {
     const chordsRating = this.formatResourceRating(song.resource_ratings?.chords);
     const tutorialRating = this.formatResourceRating(song.resource_ratings?.tutorial);
 
+    // Check if student is already tracking this song
+    const studentSong = this.studentSongs.find(ss =>
+      ss.song_id === song.id && ss.instrument_id === this.currentInstrument
+    );
+
+    let actionButton = '';
+    if (studentSong) {
+      if (studentSong.status === 'mastered') {
+        actionButton = `<button class="btn btn-secondary" disabled style="opacity: 0.6; cursor: not-allowed;">Already Mastered</button>`;
+      } else {
+        actionButton = `<button class="btn btn-secondary" disabled style="opacity: 0.6; cursor: not-allowed;">Already Learning</button>`;
+      }
+    } else {
+      actionButton = `<button class="btn btn-primary" onclick="event.stopPropagation(); app.addSongToLearning('${song.id}')">Start Learning</button>`;
+    }
+
     return `
       <div class="song-card" data-song-id="${song.id}">
         <div class="song-header">
@@ -1024,7 +1040,7 @@ class CadenceApp {
             <h3 class="song-title">${song.title}</h3>
             <p class="song-artist">${song.artist}</p>
           </div>
-          <button class="btn btn-primary" onclick="event.stopPropagation(); app.addSongToLearning('${song.id}')">Start Learning</button>
+          ${actionButton}
         </div>
         <div class="song-meta">
           <span class="song-tag level">${levelLabel}</span>
@@ -1108,8 +1124,10 @@ class CadenceApp {
       await this.loadSongs();
     }
 
-    // Re-render the progress view if currently viewing it
-    if (this.currentView === 'progress') {
+    // Re-render current view to update button states
+    if (this.currentView === 'songs') {
+      this.renderSongs();
+    } else if (this.currentView === 'progress') {
       this.renderProgress();
     }
   }
