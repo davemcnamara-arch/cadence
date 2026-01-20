@@ -1537,62 +1537,23 @@ class CadenceApp {
     const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
     try {
-      // First, check if song exists
-      let songId;
-      const { data: existingSong } = await supabase
-        .from('songs')
-        .select('id')
-        .eq('title', this.gradingData.title)
-        .eq('artist', this.gradingData.artist)
-        .single();
+      // Use RPC function to handle the entire grading workflow
+      // This bypasses RLS and handles all validation internally
+      const { data, error } = await supabase.rpc('grade_song', {
+        p_student_id: userId,
+        p_title: this.gradingData.title,
+        p_artist: this.gradingData.artist,
+        p_instrument_id: this.gradingData.instrument,
+        p_assessed_level: this.gradingData.level,
+        p_checklist_responses_json: this.gradingData.checklistResponses,
+        p_youtube_url: this.gradingData.youtube_url || null,
+        p_spotify_url: this.gradingData.spotify_url || null,
+        p_chords_url: this.gradingData.chords_url || null,
+        p_tutorial_url: this.gradingData.tutorial_url || null,
+        p_add_to_learning: document.getElementById('add-to-learning').checked
+      });
 
-      if (existingSong) {
-        songId = existingSong.id;
-      } else {
-        // Create new song
-        const { data: newSong, error: songError } = await supabase
-          .from('songs')
-          .insert([{
-            title: this.gradingData.title,
-            artist: this.gradingData.artist,
-            youtube_url: this.gradingData.youtube_url,
-            spotify_url: this.gradingData.spotify_url,
-            chords_url: this.gradingData.chords_url,
-            tutorial_url: this.gradingData.tutorial_url,
-            added_by_user_id: user.id, // Keep teacher ID for song creation tracking
-            approved: true // Auto-approve for MVP
-          }])
-          .select()
-          .single();
-
-        if (songError) throw songError;
-        songId = newSong.id;
-      }
-
-      // Add rating (use student ID in preview mode)
-      const { error: ratingError } = await supabase
-        .from('song_ratings')
-        .insert([{
-          song_id: songId,
-          instrument_id: this.gradingData.instrument,
-          assessed_level: this.gradingData.level,
-          user_id: userId,
-          checklist_responses_json: this.gradingData.checklistResponses
-        }]);
-
-      if (ratingError) throw ratingError;
-
-      // Add to learning if checked (use student ID in preview mode)
-      if (document.getElementById('add-to-learning').checked) {
-        await supabase
-          .from('student_songs')
-          .insert([{
-            user_id: userId,
-            song_id: songId,
-            instrument_id: this.gradingData.instrument,
-            status: 'learning'
-          }]);
-      }
+      if (error) throw error;
 
       // Close modal and refresh
       document.getElementById('song-grading-modal').classList.add('hidden');
