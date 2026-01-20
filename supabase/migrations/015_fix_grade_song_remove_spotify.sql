@@ -1,5 +1,6 @@
--- Create a function to handle song grading workflow
--- This bypasses RLS and validates teacher access internally
+-- Fix grade_song function to remove spotify_url parameter
+-- The spotify_url column was removed in migration 006_remove_spotify.sql
+-- This migration updates the function to match the current schema
 
 CREATE OR REPLACE FUNCTION grade_song(
   p_student_id UUID,
