@@ -2560,8 +2560,20 @@ class CadenceApp {
     this.currentClass = this.classes.find(c => c.id === classId);
     if (!this.currentClass) return;
 
+    // Clear stale data from previous class
+    this.classStudents = [];
+
+    // Clear any rendered tab content from previous class
+    const timelineContainer = document.getElementById('class-timeline');
+    if (timelineContainer) timelineContainer.innerHTML = '';
+    const rosterContainer = document.getElementById('class-roster');
+    if (rosterContainer) rosterContainer.innerHTML = '';
+    const progressContainer = document.getElementById('progress-heatmap');
+    if (progressContainer) progressContainer.innerHTML = '';
+
     // Close any open modals
-    document.getElementById('student-detail-modal').classList.add('hidden');
+    const modal = document.getElementById('student-detail-modal');
+    if (modal) modal.classList.add('hidden');
 
     // Hide classes list, show class detail
     document.getElementById('classes-list').classList.add('hidden');
@@ -2582,16 +2594,19 @@ class CadenceApp {
 
   showClassesList() {
     // Close any open modals
-    document.getElementById('student-detail-modal').classList.add('hidden');
+    const modal = document.getElementById('student-detail-modal');
+    if (modal) modal.classList.add('hidden');
 
     document.getElementById('class-detail-view').classList.add('hidden');
     document.getElementById('classes-list').classList.remove('hidden');
     this.currentClass = null;
+    this.classStudents = [];
   }
 
   switchClassTab(tabName) {
     // Close any open modals
-    document.getElementById('student-detail-modal').classList.add('hidden');
+    const modal = document.getElementById('student-detail-modal');
+    if (modal) modal.classList.add('hidden');
 
     // Update tab buttons
     document.querySelectorAll('.class-tab').forEach(tab => {
@@ -2659,7 +2674,8 @@ class CadenceApp {
 
   renderClassRoster() {
     // Close any open modals to prevent showing students from other classes
-    document.getElementById('student-detail-modal').classList.add('hidden');
+    const modal = document.getElementById('student-detail-modal');
+    if (modal) modal.classList.add('hidden');
 
     const container = document.getElementById('class-roster');
     if (!container) return;
@@ -2701,7 +2717,8 @@ class CadenceApp {
 
   async renderProgressHeatmap() {
     // Close any open modals to prevent showing students from other classes
-    document.getElementById('student-detail-modal').classList.add('hidden');
+    const modal = document.getElementById('student-detail-modal');
+    if (modal) modal.classList.add('hidden');
 
     const container = document.getElementById('progress-heatmap');
     if (!container || this.classStudents.length === 0) {
@@ -2742,7 +2759,8 @@ class CadenceApp {
 
   async renderClassTimeline() {
     // Close any open modals to prevent showing students from other classes
-    document.getElementById('student-detail-modal').classList.add('hidden');
+    const modal = document.getElementById('student-detail-modal');
+    if (modal) modal.classList.add('hidden');
 
     const container = document.getElementById('class-timeline');
     if (!container) return;
