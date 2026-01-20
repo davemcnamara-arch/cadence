@@ -2,7 +2,8 @@
 -- This bypasses RLS policies to get accurate student counts
 
 CREATE OR REPLACE FUNCTION public.get_teacher_classes(
-  p_teacher_id UUID
+  p_teacher_id UUID,
+  p_include_archived BOOLEAN DEFAULT false
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -12,7 +13,8 @@ AS $$
 DECLARE
   v_result JSON;
 BEGIN
-  -- Get all non-archived classes for the teacher with student counts
+  -- Get classes for the teacher with student counts
+  -- Optionally include archived classes based on parameter
   SELECT json_agg(
     json_build_object(
       'id', c.id,
@@ -33,7 +35,7 @@ BEGIN
   INTO v_result
   FROM classes c
   WHERE c.teacher_id = p_teacher_id
-    AND c.archived = false;
+    AND (p_include_archived = true OR c.archived = false);
 
   -- Return the result (will be null if no classes)
   RETURN COALESCE(v_result, '[]'::json);
@@ -46,4 +48,4 @@ END;
 $$;
 
 -- Grant execute permission to authenticated users
-GRANT EXECUTE ON FUNCTION public.get_teacher_classes(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_teacher_classes(UUID, BOOLEAN) TO authenticated;

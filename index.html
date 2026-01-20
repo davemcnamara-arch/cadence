@@ -206,6 +206,10 @@
 
         <div class="song-filters">
           <input type="text" id="class-search" placeholder="Search classes..." class="search-input">
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" id="show-archived-classes" style="cursor: pointer;">
+            <span>Show archived classes</span>
+          </label>
         </div>
 
         <div id="classes-list" class="classes-grid">
@@ -229,6 +233,7 @@
             <div style="display: flex; gap: 0.5rem;">
               <button id="edit-class-btn" class="btn btn-secondary">Edit Class</button>
               <button id="export-class-data-btn" class="btn btn-secondary">Export Class Data</button>
+              <button id="archive-class-btn" class="btn btn-secondary" style="color: var(--warning);">Archive Class</button>
             </div>
           </div>
 
@@ -621,6 +626,26 @@
             <button type="submit" class="btn btn-primary">Save Changes</button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Archive Class Confirmation -->
+  <div id="archive-class-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>Archive Class</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 1rem;">Are you sure you want to archive "<span id="archive-class-name"></span>"?</p>
+        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1.5rem;">
+          Archived classes will be hidden from your active class list. Students will no longer be able to join using the class code. You can view and unarchive classes later by checking "Show archived classes".
+        </p>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button id="confirm-archive-btn" class="btn btn-primary" style="background-color: var(--warning);">Archive Class</button>
+        </div>
       </div>
     </div>
   </div>
