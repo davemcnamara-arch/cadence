@@ -2396,7 +2396,12 @@ class CadenceApp {
       return;
     }
 
-    const html = classes.map(cls => {
+    // Sort classes alphabetically by name
+    const sortedClasses = [...classes].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+    );
+
+    const html = sortedClasses.map(cls => {
       const memberCount = cls.student_count || 0;
       return `
         <div class="class-card" onclick="app.viewClass('${cls.id}')">
