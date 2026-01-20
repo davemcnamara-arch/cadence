@@ -2454,28 +2454,38 @@ class CadenceApp {
 
     console.log('Loading students for class:', this.currentClass.id);
 
-    // Use RPC function to bypass RLS recursion issues
-    const { data, error } = await supabase.rpc('get_class_students', {
-      p_class_id: this.currentClass.id
-    });
+    try {
+      // Use RPC function to bypass RLS recursion issues
+      const { data, error } = await supabase.rpc('get_class_students', {
+        p_class_id: this.currentClass.id
+      });
 
-    if (error) {
-      console.error('Error loading class students:', error);
+      console.log('RPC response - data:', data, 'error:', error);
+
+      if (error) {
+        console.error('Error loading class students:', error);
+        this.classStudents = [];
+        document.getElementById('class-detail-count').textContent = '0 students';
+        return;
+      }
+
+      console.log('Raw class members data:', data);
+      console.log('Type of data:', typeof data);
+
+      // Data is already in the right format from the function
+      this.classStudents = data || [];
+
+      console.log('Processed class students:', this.classStudents);
+      console.log('Student count:', this.classStudents.length);
+
+      // Update student count
+      document.getElementById('class-detail-count').textContent =
+        `${this.classStudents.length} student${this.classStudents.length !== 1 ? 's' : ''}`;
+    } catch (err) {
+      console.error('Exception in loadClassStudents:', err);
       this.classStudents = [];
       document.getElementById('class-detail-count').textContent = '0 students';
-      return;
     }
-
-    console.log('Raw class members data:', data);
-
-    // Data is already in the right format from the function
-    this.classStudents = data || [];
-
-    console.log('Processed class students:', this.classStudents);
-
-    // Update student count
-    document.getElementById('class-detail-count').textContent =
-      `${this.classStudents.length} student${this.classStudents.length !== 1 ? 's' : ''}`;
   }
 
   renderClassRoster() {
