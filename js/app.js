@@ -1478,7 +1478,6 @@ class CadenceApp {
       this.gradingData.instrument = instrument;
       this.gradingData.level = parseInt(level);
       this.gradingData.youtube_url = document.getElementById('song-youtube').value;
-      this.gradingData.spotify_url = document.getElementById('song-spotify').value;
       this.gradingData.chords_url = document.getElementById('song-chords').value;
       this.gradingData.tutorial_url = document.getElementById('song-tutorial').value;
     }
