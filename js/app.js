@@ -1099,6 +1099,19 @@ class CadenceApp {
     }
 
     this.showToast('Song added to Currently Learning!', 'success');
+
+    // Reload student data to show the new song
+    if (this.previewMode.active) {
+      await this.loadStudentPreviewData(this.previewMode.studentId);
+    } else {
+      // Reload own songs if not in preview mode
+      await this.loadSongs();
+    }
+
+    // Re-render the progress view if currently viewing it
+    if (this.currentView === 'progress') {
+      this.renderProgress();
+    }
   }
 
   setupSongGradingForm() {
