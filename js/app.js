@@ -230,6 +230,24 @@ class CadenceApp {
       editClassBtn.addEventListener('click', () => this.showEditClassModal());
     }
 
+    // Teacher: Archive class
+    const archiveClassBtn = document.getElementById('archive-class-btn');
+    if (archiveClassBtn) {
+      archiveClassBtn.addEventListener('click', () => this.showArchiveClassModal());
+    }
+
+    // Teacher: Confirm archive
+    const confirmArchiveBtn = document.getElementById('confirm-archive-btn');
+    if (confirmArchiveBtn) {
+      confirmArchiveBtn.addEventListener('click', () => this.archiveClass());
+    }
+
+    // Teacher: Show archived classes toggle
+    const showArchivedCheckbox = document.getElementById('show-archived-classes');
+    if (showArchivedCheckbox) {
+      showArchivedCheckbox.addEventListener('change', () => this.loadClasses());
+    }
+
     // Student: Join class
     const joinClassBtn = document.getElementById('join-class-btn');
     if (joinClassBtn) {
@@ -2167,9 +2185,13 @@ class CadenceApp {
   async loadClasses() {
     const user = auth.getCurrentUser();
 
+    // Check if we should include archived classes
+    const showArchived = document.getElementById('show-archived-classes')?.checked || false;
+
     // Use RPC function to bypass RLS and get accurate student counts
     const { data, error } = await supabase.rpc('get_teacher_classes', {
-      p_teacher_id: user.id
+      p_teacher_id: user.id,
+      p_include_archived: showArchived
     });
 
     if (error) {
@@ -2354,6 +2376,90 @@ class CadenceApp {
     }
   }
 
+  showArchiveClassModal() {
+    if (!this.currentClass) {
+      this.showToast('No class selected', 'error');
+      return;
+    }
+
+    // Populate modal with class name
+    document.getElementById('archive-class-name').textContent = this.currentClass.name;
+
+    // Show modal
+    document.getElementById('archive-class-modal').classList.remove('hidden');
+  }
+
+  async archiveClass() {
+    try {
+      if (!this.currentClass) {
+        this.showToast('No class selected', 'error');
+        return;
+      }
+
+      console.log('Archiving class:', this.currentClass.name);
+
+      // Update the class to set archived = true
+      const { data, error } = await supabase
+        .from('classes')
+        .update({
+          archived: true
+        })
+        .eq('id', this.currentClass.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error archiving class:', error);
+        this.showToast('Failed to archive class', 'error');
+        return;
+      }
+
+      // Close modal
+      document.getElementById('archive-class-modal').classList.add('hidden');
+
+      // Go back to classes list
+      this.showClassesList();
+
+      // Reload classes to update the view
+      await this.loadClasses();
+
+      this.showToast(`Class "${this.currentClass.name}" archived successfully`, 'success');
+    } catch (error) {
+      console.error('Unexpected error archiving class:', error);
+      this.showToast('An unexpected error occurred. Please try again.', 'error');
+    }
+  }
+
+  async unarchiveClass(classId) {
+    try {
+      console.log('Unarchiving class:', classId);
+
+      // Update the class to set archived = false
+      const { data, error } = await supabase
+        .from('classes')
+        .update({
+          archived: false
+        })
+        .eq('id', classId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error unarchiving class:', error);
+        this.showToast('Failed to unarchive class', 'error');
+        return;
+      }
+
+      // Reload classes to update the view
+      await this.loadClasses();
+
+      this.showToast(`Class "${data.name}" unarchived successfully`, 'success');
+    } catch (error) {
+      console.error('Unexpected error unarchiving class:', error);
+      this.showToast('An unexpected error occurred. Please try again.', 'error');
+    }
+  }
+
   filterClasses() {
     const searchTerm = document.getElementById('class-search')?.value.toLowerCase() || '';
 
@@ -2398,21 +2504,46 @@ class CadenceApp {
 
     const html = classes.map(cls => {
       const memberCount = cls.student_count || 0;
-      return `
-        <div class="class-card" onclick="app.viewClass('${cls.id}')">
-          <div class="class-card-header">
-            <div>
-              <h3>${cls.name}</h3>
-              ${cls.year_level ? `<p style="color: var(--text-secondary); font-size: 0.875rem;">${cls.year_level}</p>` : ''}
+      const isArchived = cls.archived;
+
+      if (isArchived) {
+        // Archived class card with unarchive button
+        return `
+          <div class="class-card" style="opacity: 0.7; position: relative;">
+            <div class="class-card-header">
+              <div>
+                <h3>${cls.name} <span style="background-color: var(--text-secondary); color: white; padding: 0.125rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: normal;">ARCHIVED</span></h3>
+                ${cls.year_level ? `<p style="color: var(--text-secondary); font-size: 0.875rem;">${cls.year_level}</p>` : ''}
+              </div>
+              <span class="class-code-badge">${cls.class_code}</span>
             </div>
-            <span class="class-code-badge">${cls.class_code}</span>
+            <div class="class-card-meta">
+              <span>${memberCount} student${memberCount !== 1 ? 's' : ''}</span>
+              <span>Created ${new Date(cls.created_at).toLocaleDateString('en-GB')}</span>
+            </div>
+            <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">
+              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); app.unarchiveClass('${cls.id}')" style="width: 100%;">Unarchive Class</button>
+            </div>
           </div>
-          <div class="class-card-meta">
-            <span>${memberCount} student${memberCount !== 1 ? 's' : ''}</span>
-            <span>Created ${new Date(cls.created_at).toLocaleDateString('en-GB')}</span>
+        `;
+      } else {
+        // Active class card (clickable)
+        return `
+          <div class="class-card" onclick="app.viewClass('${cls.id}')">
+            <div class="class-card-header">
+              <div>
+                <h3>${cls.name}</h3>
+                ${cls.year_level ? `<p style="color: var(--text-secondary); font-size: 0.875rem;">${cls.year_level}</p>` : ''}
+              </div>
+              <span class="class-code-badge">${cls.class_code}</span>
+            </div>
+            <div class="class-card-meta">
+              <span>${memberCount} student${memberCount !== 1 ? 's' : ''}</span>
+              <span>Created ${new Date(cls.created_at).toLocaleDateString('en-GB')}</span>
+            </div>
           </div>
-        </div>
-      `;
+        `;
+      }
     }).join('');
 
     container.innerHTML = html;
