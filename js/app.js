@@ -2560,6 +2560,9 @@ class CadenceApp {
     this.currentClass = this.classes.find(c => c.id === classId);
     if (!this.currentClass) return;
 
+    // Close any open modals
+    document.getElementById('student-detail-modal').classList.add('hidden');
+
     // Hide classes list, show class detail
     document.getElementById('classes-list').classList.add('hidden');
     document.getElementById('class-detail-view').classList.remove('hidden');
@@ -2578,6 +2581,9 @@ class CadenceApp {
   }
 
   showClassesList() {
+    // Close any open modals
+    document.getElementById('student-detail-modal').classList.add('hidden');
+
     document.getElementById('class-detail-view').classList.add('hidden');
     document.getElementById('classes-list').classList.remove('hidden');
     this.currentClass = null;
