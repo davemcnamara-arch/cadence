@@ -3317,6 +3317,7 @@ class CadenceApp {
       e.preventDefault();
 
       if (!this.editingRatingId) {
+        console.error('No editing rating ID set');
         this.showToast('Error: No rating ID found', 'error');
         return;
       }
@@ -3324,17 +3325,33 @@ class CadenceApp {
       const newLevel = parseInt(document.getElementById('edit-song-level').value);
       const notes = document.getElementById('edit-song-notes').value;
 
+      console.log('Updating song rating:', {
+        ratingId: this.editingRatingId,
+        newLevel: newLevel,
+        notes: notes
+      });
+
       try {
         // Update the song_ratings table
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('song_ratings')
           .update({
-            assessed_level: newLevel,
-            // Optionally store notes if we add a notes column later
+            assessed_level: newLevel
           })
-          .eq('id', this.editingRatingId);
+          .eq('id', this.editingRatingId)
+          .select();
 
-        if (error) throw error;
+        console.log('Update result:', { data, error });
+
+        if (error) {
+          console.error('Update error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          throw error;
+        }
 
         document.getElementById('edit-song-level-modal').classList.add('hidden');
         this.showToast('Song level updated successfully', 'success');
@@ -3343,7 +3360,7 @@ class CadenceApp {
         await this.loadSubmissions();
       } catch (error) {
         console.error('Error updating song level:', error);
-        this.showToast('Failed to update song level', 'error');
+        this.showToast(`Failed to update song level: ${error.message}`, 'error');
       }
     });
   }
