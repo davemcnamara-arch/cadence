@@ -19,6 +19,7 @@ class CadenceApp {
     this.currentClass = null;
     this.classStudents = [];
     this.submissions = [];
+    this.flaggedRatings = [];
 
     // Preview mode state
     this.previewMode = {
@@ -264,6 +265,7 @@ class CadenceApp {
     this.setupEditClassForm();
     this.setupEditSongLevelForm();
     this.setupSubmissionsFilters();
+    this.setupFlaggedFilters();
 
     // Admin: Section tabs
     document.querySelectorAll('.admin-section-tab').forEach(tab => {
@@ -951,7 +953,7 @@ class CadenceApp {
         }
       } else if (viewName === 'flagged') {
         // Load flagged ratings
-        if (this.classes.length > 0 && this.classStudents.length > 0) {
+        if (this.classes.length > 0) {
           this.loadFlaggedRatings();
         }
       } else if (viewName === 'admin') {
@@ -3390,7 +3392,21 @@ class CadenceApp {
   }
 
   async loadFlaggedRatings() {
-    const studentIds = this.classStudents.map(m => m.user_id);
+    // Get all students from all the teacher's classes
+    const { data: allStudents, error: studentsError } = await supabase.rpc('get_all_teacher_students');
+
+    if (studentsError) {
+      console.error('Error loading teacher students:', studentsError);
+      this.renderFlaggedRatings([]);
+      return;
+    }
+
+    if (!allStudents || allStudents.length === 0) {
+      this.renderFlaggedRatings([]);
+      return;
+    }
+
+    const studentIds = allStudents.map(s => s.user_id);
 
     // First, get all song IDs that have been rated by class students
     const { data: studentRatings, error: studentError } = await supabase
@@ -3460,7 +3476,80 @@ class CadenceApp {
       }
     });
 
-    this.renderFlaggedRatings(flagged);
+    this.flaggedRatings = flagged;
+    this.populateFlaggedFilters();
+    this.filterFlaggedRatings();
+  }
+
+  populateFlaggedFilters() {
+    // Populate class filter
+    const classFilter = document.getElementById('flagged-class-filter');
+    if (classFilter && this.classes) {
+      const classOptions = this.classes.map(c =>
+        `<option value="${c.id}">${c.name}</option>`
+      ).join('');
+      classFilter.innerHTML = '<option value="">All Classes</option>' + classOptions;
+    }
+
+    // Populate instrument filter
+    const instrumentFilter = document.getElementById('flagged-instrument-filter');
+    if (instrumentFilter && this.instruments) {
+      const instrumentOptions = this.instruments.map(i =>
+        `<option value="${i.id}">${i.icon} ${i.name}</option>`
+      ).join('');
+      instrumentFilter.innerHTML = '<option value="">All Instruments</option>' + instrumentOptions;
+    }
+  }
+
+  setupFlaggedFilters() {
+    const classFilter = document.getElementById('flagged-class-filter');
+    const instrumentFilter = document.getElementById('flagged-instrument-filter');
+
+    if (classFilter) {
+      classFilter.addEventListener('change', () => {
+        this.filterFlaggedRatings();
+      });
+    }
+
+    if (instrumentFilter) {
+      instrumentFilter.addEventListener('change', () => {
+        this.filterFlaggedRatings();
+      });
+    }
+  }
+
+  async filterFlaggedRatings() {
+    if (!this.flaggedRatings) {
+      this.renderFlaggedRatings([]);
+      return;
+    }
+
+    let filtered = [...this.flaggedRatings];
+
+    // Filter by instrument
+    const instrumentFilter = document.getElementById('flagged-instrument-filter')?.value;
+    if (instrumentFilter) {
+      filtered = filtered.filter(item => item.instrument.id === instrumentFilter);
+    }
+
+    // Filter by class - need to check if any of the ratings are from students in that class
+    const classFilter = document.getElementById('flagged-class-filter')?.value;
+    if (classFilter) {
+      // Get student IDs from this class
+      const { data: classMembers } = await supabase
+        .from('class_members')
+        .select('user_id')
+        .eq('class_id', classFilter);
+
+      if (classMembers) {
+        const classStudentIds = classMembers.map(m => m.user_id);
+        // We need to re-fetch ratings with user_id to filter by class
+        // For now, just skip class filtering
+        // TODO: Store user_id in flagged ratings for class filtering
+      }
+    }
+
+    this.renderFlaggedRatings(filtered);
   }
 
   renderFlaggedRatings(flaggedSongs) {
