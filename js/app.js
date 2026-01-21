@@ -1116,8 +1116,81 @@ class CadenceApp {
   }
 
   async viewSongDetails(songId) {
-    // Future enhancement: show detailed modal with all ratings
-    console.log('View song details:', songId);
+    const song = this.songs.find(s => s.id === songId);
+    if (!song) {
+      console.error('Song not found:', songId);
+      return;
+    }
+
+    // Fetch all ratings for this song with user names
+    const { data: ratings, error } = await supabase
+      .from('song_ratings')
+      .select(`
+        *,
+        users (name),
+        instruments (icon, name)
+      `)
+      .eq('song_id', songId)
+      .order('date_graded', { ascending: false });
+
+    if (error) {
+      console.error('Error loading song ratings:', error);
+      return;
+    }
+
+    // Update modal title
+    document.getElementById('song-details-title').textContent = `${song.title} - ${song.artist}`;
+
+    // Render content
+    const content = document.getElementById('song-details-content');
+
+    if (!ratings || ratings.length === 0) {
+      content.innerHTML = `
+        <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">
+          No ratings yet for this song.
+        </p>
+      `;
+    } else {
+      const avgLevel = (ratings.reduce((sum, r) => sum + r.assessed_level, 0) / ratings.length).toFixed(1);
+
+      content.innerHTML = `
+        <div style="margin-bottom: 2rem;">
+          <h3>Overall</h3>
+          <p><strong>Average Level:</strong> ${avgLevel} (based on ${ratings.length} rating${ratings.length !== 1 ? 's' : ''})</p>
+        </div>
+        <div>
+          <h3>All Ratings</h3>
+          <div style="display: flex; flex-direction: column; gap: 1rem;">
+            ${ratings.map(rating => {
+              const timeAgo = this.getTimeAgo(rating.date_graded);
+              const userName = rating.users?.name || 'Unknown User';
+              const instrumentDisplay = rating.instruments ? `${rating.instruments.icon} ${rating.instruments.name}` : 'Unknown Instrument';
+
+              return `
+                <div style="border: 1px solid var(--border); border-radius: 8px; padding: 1rem;">
+                  <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                    <div>
+                      <strong>${userName}</strong>
+                      <div style="color: var(--text-secondary); font-size: 0.875rem;">${instrumentDisplay} • ${timeAgo}</div>
+                    </div>
+                    <div style="font-weight: 600; color: var(--primary);">Level ${rating.assessed_level}</div>
+                  </div>
+                  ${rating.notes ? `
+                    <div style="margin-top: 0.75rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 4px;">
+                      <div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.25rem;">Notes:</div>
+                      <div style="font-size: 0.875rem; white-space: pre-wrap;">${rating.notes}</div>
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Show modal
+    document.getElementById('song-details-modal').classList.remove('hidden');
   }
 
   async addSongToLearning(songId) {
@@ -3163,8 +3236,14 @@ class CadenceApp {
               <div class="submission-detail-value">Level ${submission.assessed_level}</div>
             </div>
           </div>
+          ${submission.notes ? `
+            <div class="submission-notes">
+              <div class="submission-notes-label">Notes:</div>
+              <div class="submission-notes-text">${submission.notes}</div>
+            </div>
+          ` : ''}
           <div class="submission-actions">
-            <button class="btn btn-secondary btn-sm" onclick="app.editSongLevel('${submission.id}', '${submission.song_id}', '${submission.songs.title}', ${submission.assessed_level})">Edit Level</button>
+            <button class="btn btn-secondary btn-sm" onclick="app.editSongLevel('${submission.id}', '${submission.song_id}', '${submission.songs.title}', ${submission.assessed_level}, '${(submission.notes || '').replace(/'/g, "\\'")}')">Edit Level</button>
           </div>
         </div>
       `;
@@ -3336,7 +3415,8 @@ class CadenceApp {
         const { data, error } = await supabase
           .rpc('update_song_rating', {
             p_rating_id: this.editingRatingId,
-            p_assessed_level: newLevel
+            p_assessed_level: newLevel,
+            p_notes: notes || null
           });
 
         console.log('Update result:', { data, error });
@@ -3363,12 +3443,13 @@ class CadenceApp {
     });
   }
 
-  editSongLevel(ratingId, songId, songTitle, currentLevel) {
+  editSongLevel(ratingId, songId, songTitle, currentLevel, currentNotes = '') {
     // Store the rating ID so the form handler can use it
     this.editingRatingId = ratingId;
 
     document.getElementById('edit-song-info').textContent = `Editing: ${songTitle}`;
     document.getElementById('edit-song-level').value = currentLevel;
+    document.getElementById('edit-song-notes').value = currentNotes || '';
     document.getElementById('edit-song-level-modal').classList.remove('hidden');
   }
 
