@@ -3039,39 +3039,16 @@ class CadenceApp {
     const user = auth.getCurrentUser();
     console.log('loadSubmissions - current user:', user.id);
 
-    // First, get all class IDs for this teacher
-    const { data: classes, error: classesError } = await supabase
-      .from('classes')
-      .select('id')
-      .eq('teacher_id', user.id);
-
-    console.log('loadSubmissions - classes query result:', { classes, classesError });
-
-    if (classesError) {
-      console.error('Error loading classes:', classesError);
-      return;
-    }
-
-    if (!classes || classes.length === 0) {
-      console.log('loadSubmissions - no classes found');
-      this.submissions = [];
-      this.renderSubmissionsFeed();
-      return;
-    }
-
-    const classIds = classes.map(c => c.id);
-    console.log('loadSubmissions - classIds:', classIds);
-
-    // Get all students from those classes
+    // Use RPC function to get all students from teacher's classes
     const { data: students, error: studentsError } = await supabase
-      .from('class_members')
-      .select('user_id')
-      .in('class_id', classIds);
+      .rpc('get_all_teacher_students');
 
-    console.log('loadSubmissions - students query result:', { students, studentsError });
+    console.log('loadSubmissions - students from RPC:', { students, studentsError });
 
     if (studentsError) {
       console.error('Error loading students:', studentsError);
+      this.submissions = [];
+      this.renderSubmissionsFeed();
       return;
     }
 
@@ -3082,7 +3059,7 @@ class CadenceApp {
       return;
     }
 
-    const studentIds = students.map(m => m.user_id);
+    const studentIds = students.map(s => s.user_id);
     console.log('loadSubmissions - studentIds:', studentIds);
 
     // Get submissions from those students
@@ -3105,7 +3082,7 @@ class CadenceApp {
       return;
     }
 
-    this.submissions = data;
+    this.submissions = data || [];
     console.log('loadSubmissions - final submissions:', this.submissions);
     this.renderSubmissionsFeed();
   }
