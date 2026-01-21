@@ -689,6 +689,7 @@ class CadenceApp {
     const dropdown = document.getElementById('current-instrument');
     const filterDropdown = document.getElementById('filter-instrument');
     const gradingDropdown = document.getElementById('grading-instrument');
+    const user = auth.getCurrentUser();
 
     const html = this.studentProgress.map(progress => {
       const instrument = this.instruments.find(i => i.id === progress.instrument_id);
@@ -707,9 +708,17 @@ class CadenceApp {
       filterDropdown.value = 'my-instruments';
     }
 
-    // Update grading dropdown with student's instruments
+    // Update grading dropdown
+    // Teachers can grade for any instrument, students only for their own
     if (gradingDropdown) {
-      gradingDropdown.innerHTML = html;
+      if (user.role === 'teacher' || user.role === 'admin') {
+        const allInstrumentsHtml = this.instruments.map(i =>
+          `<option value="${i.id}">${i.icon} ${i.name}</option>`
+        ).join('');
+        gradingDropdown.innerHTML = allInstrumentsHtml;
+      } else {
+        gradingDropdown.innerHTML = html;
+      }
     }
   }
 
@@ -1266,21 +1275,10 @@ class CadenceApp {
 
   setupSongGradingForm() {
     const form = document.getElementById('song-grading-form');
-    const instrumentSelect = document.getElementById('grading-instrument');
     const levelSelect = document.getElementById('grading-level');
     const nextBtn = document.getElementById('next-step-btn');
     const prevBtn = document.getElementById('prev-step-btn');
     const submitBtn = document.getElementById('submit-grade-btn');
-
-    // Instrument selection triggers checklist regeneration
-    if (instrumentSelect) {
-      instrumentSelect.addEventListener('change', () => {
-        const level = parseInt(levelSelect.value);
-        if (level) {
-          this.generateGradingChecklist(level);
-        }
-      });
-    }
 
     // Level selection triggers checklist generation
     if (levelSelect) {
@@ -3334,17 +3332,37 @@ class CadenceApp {
   async loadFlaggedRatings() {
     const studentIds = this.classStudents.map(m => m.user_id);
 
-    // Get all songs with ratings from class students
+    // First, get all song IDs that have been rated by class students
+    const { data: studentRatings, error: studentError } = await supabase
+      .from('song_ratings')
+      .select('song_id')
+      .in('user_id', studentIds);
+
+    if (studentError) {
+      console.error('Error loading student ratings:', studentError);
+      return;
+    }
+
+    // Get unique song IDs
+    const songIds = [...new Set(studentRatings.map(r => r.song_id))];
+
+    if (songIds.length === 0) {
+      this.renderFlaggedRatings([]);
+      return;
+    }
+
+    // Now get ALL ratings for these songs (including teacher ratings)
     const { data, error } = await supabase
       .from('song_ratings')
       .select(`
         song_id,
         assessed_level,
+        user_id,
         users!inner (name),
         songs!inner (title, artist),
         instruments (icon, name)
       `)
-      .in('user_id', studentIds);
+      .in('song_id', songIds);
 
     if (error) {
       console.error('Error loading ratings:', error);
