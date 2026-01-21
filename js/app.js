@@ -935,8 +935,8 @@ class CadenceApp {
       } else if (viewName === 'classes') {
         this.renderClassesList();
       } else if (viewName === 'submissions') {
-        // Load submissions when first opened or if class students exist
-        if (this.classes.length > 0 && this.classStudents.length > 0) {
+        // Load submissions when first opened
+        if (this.classes.length > 0) {
           this.loadSubmissions();
         }
       } else if (viewName === 'flagged') {
@@ -3036,7 +3036,31 @@ class CadenceApp {
   }
 
   async loadSubmissions() {
-    const studentIds = this.classStudents.map(m => m.user_id);
+    const user = auth.getCurrentUser();
+
+    // Get all students from all classes taught by this teacher
+    const { data: students, error: studentsError } = await supabase
+      .from('class_members')
+      .select('user_id')
+      .in('class_id',
+        supabase
+          .from('classes')
+          .select('id')
+          .eq('teacher_id', user.id)
+      );
+
+    if (studentsError) {
+      console.error('Error loading students:', studentsError);
+      return;
+    }
+
+    const studentIds = students.map(m => m.user_id);
+
+    if (studentIds.length === 0) {
+      this.submissions = [];
+      this.renderSubmissionsFeed();
+      return;
+    }
 
     const { data, error } = await supabase
       .from('song_ratings')
