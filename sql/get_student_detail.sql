@@ -1,5 +1,6 @@
 -- Database function to get student detail data for teachers
 -- This bypasses RLS policies to show student progress and songs
+-- SECURITY: Requires authorization check - user must be student or their teacher
 
 CREATE OR REPLACE FUNCTION public.get_student_detail(
   p_student_id UUID
@@ -10,8 +11,33 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+  v_current_user_id UUID;
+  v_is_authorized BOOLEAN;
   v_result JSON;
 BEGIN
+  -- Get the current user
+  v_current_user_id := auth.uid();
+
+  -- Check authorization: user must be either:
+  -- 1. The student themselves, OR
+  -- 2. A teacher with the student in their class
+  SELECT (
+    v_current_user_id = p_student_id
+    OR
+    EXISTS (
+      SELECT 1
+      FROM classes c
+      JOIN class_members cm ON c.id = cm.class_id
+      WHERE c.teacher_id = v_current_user_id
+        AND cm.user_id = p_student_id
+    )
+  ) INTO v_is_authorized;
+
+  -- Deny access if not authorized
+  IF NOT v_is_authorized THEN
+    RAISE EXCEPTION 'Permission denied: You do not have access to this student''s data';
+  END IF;
+
   -- Get student's progress and songs in one query
   SELECT json_build_object(
     'progress', (
@@ -83,7 +109,11 @@ BEGIN
 
 EXCEPTION
   WHEN OTHERS THEN
-    -- Return empty structure on error
+    -- Re-raise permission denied errors
+    IF SQLERRM LIKE 'Permission denied%' THEN
+      RAISE;
+    END IF;
+    -- Return empty structure on other errors
     RETURN json_build_object('progress', '[]'::json, 'songs', '[]'::json);
 END;
 $$;
