@@ -1042,8 +1042,49 @@ class CadenceApp {
 
   renderSongCard(song) {
     const allRatings = song.song_ratings || [];
-    // Filter ratings for current instrument only
-    const ratings = allRatings.filter(r => r.instrument_id === this.currentInstrument);
+
+    // Determine which instrument to show ratings for
+    const instrumentFilter = document.getElementById('filter-instrument')?.value || '';
+    let activeInstrument;
+
+    if (instrumentFilter && instrumentFilter !== 'my-instruments' && instrumentFilter !== '') {
+      // Specific instrument filter is active
+      activeInstrument = instrumentFilter;
+    } else if (this.currentInstrument) {
+      // Student with current instrument selected
+      activeInstrument = this.currentInstrument;
+    } else {
+      // No specific instrument filter (teacher viewing all, or "my instruments")
+      // Check if ANY instrument has discrepancies
+      const byInstrument = {};
+      allRatings.forEach(r => {
+        if (!byInstrument[r.instrument_id]) byInstrument[r.instrument_id] = [];
+        byInstrument[r.instrument_id].push(r.assessed_level);
+      });
+
+      let hasAnyDiscrepancy = false;
+      Object.values(byInstrument).forEach(levels => {
+        if (levels.length >= 2) {
+          const min = Math.min(...levels);
+          const max = Math.max(...levels);
+          if (max - min >= 2) hasAnyDiscrepancy = true;
+        }
+      });
+
+      if (hasAnyDiscrepancy) {
+        return this.renderSongCardWithData(song, '⚠️', 'Flagged for Review', allRatings.length);
+      } else if (allRatings.length > 0) {
+        const avgLevel = (allRatings.reduce((sum, r) => sum + r.assessed_level, 0) / allRatings.length).toFixed(1);
+        return this.renderSongCardWithData(song, avgLevel, `Level ${avgLevel}`, allRatings.length);
+      } else if (song.suggested_level) {
+        return this.renderSongCardWithData(song, song.suggested_level, `Level ${song.suggested_level} (suggested)`, 0);
+      } else {
+        return this.renderSongCardWithData(song, '?', 'Not rated', 0);
+      }
+    }
+
+    // Filter ratings for specific instrument
+    const ratings = allRatings.filter(r => r.instrument_id === activeInstrument);
     let levelDisplay, levelLabel;
 
     if (ratings.length > 0) {
@@ -1068,6 +1109,11 @@ class CadenceApp {
       levelDisplay = '?';
       levelLabel = 'Not rated';
     }
+
+    return this.renderSongCardWithData(song, levelDisplay, levelLabel, ratings.length);
+  }
+
+  renderSongCardWithData(song, levelDisplay, levelLabel, ratingsCount) {
 
     // Get current instrument name for search queries
     const instrumentName = this.instruments.find(i => i.id === this.currentInstrument)?.name || '';
@@ -1103,7 +1149,7 @@ class CadenceApp {
         </div>
         <div class="song-meta">
           <span class="song-tag level">${levelLabel}</span>
-          <span class="song-tag">${ratings.length} rating${ratings.length !== 1 ? 's' : ''}</span>
+          <span class="song-tag">${ratingsCount} rating${ratingsCount !== 1 ? 's' : ''}</span>
         </div>
         <div class="song-actions">
           ${song.chords_url ? `
