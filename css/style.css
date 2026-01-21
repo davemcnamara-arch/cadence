@@ -441,6 +441,19 @@ body {
   color: white;
 }
 
+.tab-notification-badge {
+  display: inline-block;
+  background: #ef4444;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  margin-left: 0.4rem;
+  min-width: 1.2rem;
+  text-align: center;
+}
+
 .user-menu {
   display: flex;
   align-items: center;

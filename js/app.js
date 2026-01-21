@@ -1041,11 +1041,13 @@ class CadenceApp {
   }
 
   renderSongCard(song) {
-    const ratings = song.song_ratings || [];
+    const allRatings = song.song_ratings || [];
+    // Filter ratings for current instrument only
+    const ratings = allRatings.filter(r => r.instrument_id === this.currentInstrument);
     let levelDisplay, levelLabel;
 
     if (ratings.length > 0) {
-      // Check for discrepancies (2+ level difference)
+      // Check for discrepancies (2+ level difference) for this instrument
       const levels = ratings.map(r => r.assessed_level);
       const min = Math.min(...levels);
       const max = Math.max(...levels);
@@ -3368,6 +3370,7 @@ class CadenceApp {
       .from('song_ratings')
       .select(`
         song_id,
+        instrument_id,
         assessed_level,
         user_id,
         users!inner (name),
@@ -3381,10 +3384,10 @@ class CadenceApp {
       return;
     }
 
-    // Group by song and find discrepancies
+    // Group by song AND instrument to find discrepancies
     const songGroups = {};
     data.forEach(rating => {
-      const key = `${rating.song_id}`;
+      const key = `${rating.song_id}-${rating.instrument_id}`;
       if (!songGroups[key]) {
         songGroups[key] = {
           song: rating.songs,
@@ -3417,6 +3420,17 @@ class CadenceApp {
   renderFlaggedRatings(flaggedSongs) {
     const container = document.getElementById('flagged-ratings-list');
     if (!container) return;
+
+    // Update notification badge
+    const badge = document.getElementById('flagged-count-badge');
+    if (badge) {
+      if (flaggedSongs.length > 0) {
+        badge.textContent = flaggedSongs.length;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
 
     if (flaggedSongs.length === 0) {
       container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No flagged ratings found</p>';
