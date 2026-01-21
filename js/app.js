@@ -3070,12 +3070,17 @@ class CadenceApp {
     const studentIds = students.map(s => s.user_id);
     console.log('loadSubmissions - studentIds:', studentIds);
 
+    // Create a lookup map for student info (since RLS might block the users join)
+    const studentMap = {};
+    students.forEach(s => {
+      studentMap[s.user_id] = { name: s.name, email: s.email };
+    });
+
     // Get submissions from those students
     const { data, error } = await supabase
       .from('song_ratings')
       .select(`
         *,
-        users!inner (name),
         songs!inner (title, artist),
         instruments (icon, name)
       `)
@@ -3090,7 +3095,11 @@ class CadenceApp {
       return;
     }
 
-    this.submissions = data || [];
+    // Attach student info from our map
+    this.submissions = (data || []).map(submission => ({
+      ...submission,
+      users: studentMap[submission.user_id] || { name: 'Unknown Student' }
+    }));
     console.log('loadSubmissions - final submissions:', this.submissions);
     this.renderSubmissionsFeed();
   }
