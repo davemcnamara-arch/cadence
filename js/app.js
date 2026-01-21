@@ -3332,14 +3332,12 @@ class CadenceApp {
       });
 
       try {
-        // Update the song_ratings table
+        // Use RPC function to update rating (bypasses RLS)
         const { data, error } = await supabase
-          .from('song_ratings')
-          .update({
-            assessed_level: newLevel
-          })
-          .eq('id', this.editingRatingId)
-          .select();
+          .rpc('update_song_rating', {
+            p_rating_id: this.editingRatingId,
+            p_assessed_level: newLevel
+          });
 
         console.log('Update result:', { data, error });
 
