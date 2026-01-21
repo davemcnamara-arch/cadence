@@ -1525,6 +1525,7 @@ class CadenceApp {
   showSongGradingModal() {
     this.currentStep = 1;
     this.gradingData = {};
+    this.updateInstrumentDropdown(); // Populate instrument dropdown
     document.getElementById('song-grading-modal').classList.remove('hidden');
     document.getElementById('song-grading-form').reset();
     this.updateGradingStep();
