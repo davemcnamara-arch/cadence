@@ -1122,12 +1122,24 @@ class CadenceApp {
       return;
     }
 
-    // Fetch all ratings for this song with user names
+    const user = auth.getCurrentUser();
+
+    // Get list of students if user is a teacher (to show their names)
+    let studentMap = {};
+    if (user.role === 'teacher') {
+      const { data: students } = await supabase.rpc('get_all_teacher_students');
+      if (students) {
+        students.forEach(s => {
+          studentMap[s.user_id] = s.name;
+        });
+      }
+    }
+
+    // Fetch all ratings for this song (without user join due to RLS)
     const { data: ratings, error } = await supabase
       .from('song_ratings')
       .select(`
         *,
-        users (name),
         instruments (icon, name)
       `)
       .eq('song_id', songId)
@@ -1163,7 +1175,17 @@ class CadenceApp {
           <div style="display: flex; flex-direction: column; gap: 1rem;">
             ${ratings.map(rating => {
               const timeAgo = this.getTimeAgo(rating.date_graded);
-              const userName = rating.users?.name || 'Unknown User';
+
+              // Determine user name display
+              let userName;
+              if (rating.user_id === user.id) {
+                userName = 'You';
+              } else if (studentMap[rating.user_id]) {
+                userName = studentMap[rating.user_id]; // Teacher viewing their student
+              } else {
+                userName = 'Student'; // Anonymous for other students
+              }
+
               const instrumentDisplay = rating.instruments ? `${rating.instruments.icon} ${rating.instruments.name}` : 'Unknown Instrument';
 
               return `
