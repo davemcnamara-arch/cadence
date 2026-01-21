@@ -263,6 +263,7 @@ class CadenceApp {
     this.setupCreateClassForm();
     this.setupEditClassForm();
     this.setupEditSongLevelForm();
+    this.setupSubmissionsFilters();
 
     // Admin: Section tabs
     document.querySelectorAll('.admin-section-tab').forEach(tab => {
@@ -3101,6 +3102,9 @@ class CadenceApp {
       users: studentMap[submission.user_id] || { name: 'Unknown Student' }
     }));
     console.log('loadSubmissions - final submissions:', this.submissions);
+
+    // Populate filter dropdowns
+    this.populateSubmissionsFilters();
     this.renderSubmissionsFeed();
   }
 
@@ -3113,7 +3117,31 @@ class CadenceApp {
       return;
     }
 
-    const html = this.submissions.map(submission => {
+    // Apply filters
+    const classFilter = document.getElementById('submissions-class-filter')?.value || '';
+    const instrumentFilter = document.getElementById('submissions-instrument-filter')?.value || '';
+
+    let filteredSubmissions = this.submissions;
+
+    // Filter by instrument
+    if (instrumentFilter) {
+      filteredSubmissions = filteredSubmissions.filter(s => s.instrument_id === instrumentFilter);
+    }
+
+    // Filter by class - need to check if student is in the selected class
+    if (classFilter && this.submissionsClassMemberships) {
+      const studentIdsInClass = this.submissionsClassMemberships
+        .filter(m => m.class_id === classFilter)
+        .map(m => m.user_id);
+      filteredSubmissions = filteredSubmissions.filter(s => studentIdsInClass.includes(s.user_id));
+    }
+
+    if (filteredSubmissions.length === 0) {
+      container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No submissions match the selected filters</p>';
+      return;
+    }
+
+    const html = filteredSubmissions.map(submission => {
       const timeAgo = this.getTimeAgo(submission.date_graded);
 
       return `
@@ -3143,6 +3171,52 @@ class CadenceApp {
     }).join('');
 
     container.innerHTML = html;
+  }
+
+  async populateSubmissionsFilters() {
+    // Populate class filter
+    const classFilter = document.getElementById('submissions-class-filter');
+    if (classFilter && this.classes) {
+      const classOptions = this.classes.map(c =>
+        `<option value="${c.id}">${c.name}</option>`
+      ).join('');
+      classFilter.innerHTML = '<option value="">All Classes</option>' + classOptions;
+    }
+
+    // Populate instrument filter
+    const instrumentFilter = document.getElementById('submissions-instrument-filter');
+    if (instrumentFilter && this.instruments) {
+      const instrumentOptions = this.instruments.map(i =>
+        `<option value="${i.id}">${i.icon} ${i.name}</option>`
+      ).join('');
+      instrumentFilter.innerHTML = '<option value="">All Instruments</option>' + instrumentOptions;
+    }
+
+    // Fetch class memberships for filtering
+    const user = auth.getCurrentUser();
+    const { data: memberships } = await supabase
+      .from('class_members')
+      .select('user_id, class_id')
+      .in('class_id', this.classes.map(c => c.id));
+
+    this.submissionsClassMemberships = memberships || [];
+  }
+
+  setupSubmissionsFilters() {
+    const classFilter = document.getElementById('submissions-class-filter');
+    const instrumentFilter = document.getElementById('submissions-instrument-filter');
+
+    if (classFilter) {
+      classFilter.addEventListener('change', () => {
+        this.renderSubmissionsFeed();
+      });
+    }
+
+    if (instrumentFilter) {
+      instrumentFilter.addEventListener('change', () => {
+        this.renderSubmissionsFeed();
+      });
+    }
   }
 
   async loadFlaggedRatings() {
@@ -3241,13 +3315,43 @@ class CadenceApp {
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      // Implementation for editing song level
-      document.getElementById('edit-song-level-modal').classList.add('hidden');
-      this.showToast('Song level updated', 'success');
+
+      if (!this.editingRatingId) {
+        this.showToast('Error: No rating ID found', 'error');
+        return;
+      }
+
+      const newLevel = parseInt(document.getElementById('edit-song-level').value);
+      const notes = document.getElementById('edit-song-notes').value;
+
+      try {
+        // Update the song_ratings table
+        const { error } = await supabase
+          .from('song_ratings')
+          .update({
+            assessed_level: newLevel,
+            // Optionally store notes if we add a notes column later
+          })
+          .eq('id', this.editingRatingId);
+
+        if (error) throw error;
+
+        document.getElementById('edit-song-level-modal').classList.add('hidden');
+        this.showToast('Song level updated successfully', 'success');
+
+        // Reload submissions to show the updated level
+        await this.loadSubmissions();
+      } catch (error) {
+        console.error('Error updating song level:', error);
+        this.showToast('Failed to update song level', 'error');
+      }
     });
   }
 
   editSongLevel(ratingId, songId, songTitle, currentLevel) {
+    // Store the rating ID so the form handler can use it
+    this.editingRatingId = ratingId;
+
     document.getElementById('edit-song-info').textContent = `Editing: ${songTitle}`;
     document.getElementById('edit-song-level').value = currentLevel;
     document.getElementById('edit-song-level-modal').classList.remove('hidden');
