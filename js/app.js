@@ -1045,9 +1045,20 @@ class CadenceApp {
     let levelDisplay, levelLabel;
 
     if (ratings.length > 0) {
-      const avgLevel = (ratings.reduce((sum, r) => sum + r.assessed_level, 0) / ratings.length).toFixed(1);
-      levelDisplay = avgLevel;
-      levelLabel = `Level ${avgLevel}`;
+      // Check for discrepancies (2+ level difference)
+      const levels = ratings.map(r => r.assessed_level);
+      const min = Math.min(...levels);
+      const max = Math.max(...levels);
+      const hasDiscrepancy = (max - min >= 2) && ratings.length >= 2;
+
+      if (hasDiscrepancy) {
+        levelDisplay = '⚠️';
+        levelLabel = 'Flagged for Review';
+      } else {
+        const avgLevel = (ratings.reduce((sum, r) => sum + r.assessed_level, 0) / ratings.length).toFixed(1);
+        levelDisplay = avgLevel;
+        levelLabel = `Level ${avgLevel}`;
+      }
     } else if (song.suggested_level) {
       levelDisplay = song.suggested_level;
       levelLabel = `Level ${song.suggested_level} (suggested)`;
