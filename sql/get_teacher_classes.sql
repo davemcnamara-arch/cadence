@@ -1,5 +1,6 @@
 -- Database function to get teacher's classes with student counts
 -- This bypasses RLS policies to get accurate student counts
+-- SECURITY: Requires authorization check - user must request their own classes
 
 CREATE OR REPLACE FUNCTION public.get_teacher_classes(
   p_teacher_id UUID,
@@ -11,8 +12,17 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+  v_current_user_id UUID;
   v_result JSON;
 BEGIN
+  -- Get the current user
+  v_current_user_id := auth.uid();
+
+  -- Authorization check: user must be requesting their own classes
+  IF v_current_user_id != p_teacher_id THEN
+    RAISE EXCEPTION 'Permission denied: You can only view your own classes';
+  END IF;
+
   -- Get classes for the teacher with student counts
   -- Optionally include archived classes based on parameter
   SELECT json_agg(
@@ -42,7 +52,11 @@ BEGIN
 
 EXCEPTION
   WHEN OTHERS THEN
-    -- Return empty array on error
+    -- Re-raise permission denied errors
+    IF SQLERRM LIKE 'Permission denied%' THEN
+      RAISE;
+    END IF;
+    -- Return empty array on other errors
     RETURN '[]'::json;
 END;
 $$;

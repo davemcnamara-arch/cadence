@@ -1,5 +1,6 @@
 -- Database function to get students in a class
 -- This bypasses RLS policies to avoid circular recursion issues
+-- SECURITY: Requires authorization check - user must be teacher or class member
 
 CREATE OR REPLACE FUNCTION public.get_class_students(
   p_class_id UUID
@@ -10,8 +11,37 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+  v_current_user_id UUID;
+  v_is_authorized BOOLEAN;
   v_result JSON;
 BEGIN
+  -- Get the current user
+  v_current_user_id := auth.uid();
+
+  -- Check authorization: user must be either:
+  -- 1. The teacher of this class, OR
+  -- 2. A member of this class
+  SELECT (
+    EXISTS (
+      SELECT 1
+      FROM classes c
+      WHERE c.id = p_class_id
+        AND c.teacher_id = v_current_user_id
+    )
+    OR
+    EXISTS (
+      SELECT 1
+      FROM class_members cm
+      WHERE cm.class_id = p_class_id
+        AND cm.user_id = v_current_user_id
+    )
+  ) INTO v_is_authorized;
+
+  -- Deny access if not authorized
+  IF NOT v_is_authorized THEN
+    RAISE EXCEPTION 'Permission denied: You do not have access to this class';
+  END IF;
+
   -- Get all students in the class with their progress
   SELECT json_agg(
     json_build_object(
@@ -48,7 +78,11 @@ BEGIN
 
 EXCEPTION
   WHEN OTHERS THEN
-    -- Return empty array on error
+    -- Re-raise permission denied errors
+    IF SQLERRM LIKE 'Permission denied%' THEN
+      RAISE;
+    END IF;
+    -- Return empty array on other errors
     RETURN '[]'::json;
 END;
 $$;
