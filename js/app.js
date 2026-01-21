@@ -3038,30 +3038,45 @@ class CadenceApp {
   async loadSubmissions() {
     const user = auth.getCurrentUser();
 
-    // Get all students from all classes taught by this teacher
+    // First, get all class IDs for this teacher
+    const { data: classes, error: classesError } = await supabase
+      .from('classes')
+      .select('id')
+      .eq('teacher_id', user.id);
+
+    if (classesError) {
+      console.error('Error loading classes:', classesError);
+      return;
+    }
+
+    if (!classes || classes.length === 0) {
+      this.submissions = [];
+      this.renderSubmissionsFeed();
+      return;
+    }
+
+    const classIds = classes.map(c => c.id);
+
+    // Get all students from those classes
     const { data: students, error: studentsError } = await supabase
       .from('class_members')
       .select('user_id')
-      .in('class_id',
-        supabase
-          .from('classes')
-          .select('id')
-          .eq('teacher_id', user.id)
-      );
+      .in('class_id', classIds);
 
     if (studentsError) {
       console.error('Error loading students:', studentsError);
       return;
     }
 
-    const studentIds = students.map(m => m.user_id);
-
-    if (studentIds.length === 0) {
+    if (!students || students.length === 0) {
       this.submissions = [];
       this.renderSubmissionsFeed();
       return;
     }
 
+    const studentIds = students.map(m => m.user_id);
+
+    // Get submissions from those students
     const { data, error } = await supabase
       .from('song_ratings')
       .select(`
