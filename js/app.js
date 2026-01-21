@@ -1266,10 +1266,21 @@ class CadenceApp {
 
   setupSongGradingForm() {
     const form = document.getElementById('song-grading-form');
+    const instrumentSelect = document.getElementById('grading-instrument');
     const levelSelect = document.getElementById('grading-level');
     const nextBtn = document.getElementById('next-step-btn');
     const prevBtn = document.getElementById('prev-step-btn');
     const submitBtn = document.getElementById('submit-grade-btn');
+
+    // Instrument selection triggers checklist regeneration
+    if (instrumentSelect) {
+      instrumentSelect.addEventListener('change', () => {
+        const level = parseInt(levelSelect.value);
+        if (level) {
+          this.generateGradingChecklist(level);
+        }
+      });
+    }
 
     // Level selection triggers checklist generation
     if (levelSelect) {
