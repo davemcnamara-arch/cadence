@@ -3037,6 +3037,7 @@ class CadenceApp {
 
   async loadSubmissions() {
     const user = auth.getCurrentUser();
+    console.log('loadSubmissions - current user:', user.id);
 
     // First, get all class IDs for this teacher
     const { data: classes, error: classesError } = await supabase
@@ -3044,18 +3045,22 @@ class CadenceApp {
       .select('id')
       .eq('teacher_id', user.id);
 
+    console.log('loadSubmissions - classes query result:', { classes, classesError });
+
     if (classesError) {
       console.error('Error loading classes:', classesError);
       return;
     }
 
     if (!classes || classes.length === 0) {
+      console.log('loadSubmissions - no classes found');
       this.submissions = [];
       this.renderSubmissionsFeed();
       return;
     }
 
     const classIds = classes.map(c => c.id);
+    console.log('loadSubmissions - classIds:', classIds);
 
     // Get all students from those classes
     const { data: students, error: studentsError } = await supabase
@@ -3063,18 +3068,22 @@ class CadenceApp {
       .select('user_id')
       .in('class_id', classIds);
 
+    console.log('loadSubmissions - students query result:', { students, studentsError });
+
     if (studentsError) {
       console.error('Error loading students:', studentsError);
       return;
     }
 
     if (!students || students.length === 0) {
+      console.log('loadSubmissions - no students found');
       this.submissions = [];
       this.renderSubmissionsFeed();
       return;
     }
 
     const studentIds = students.map(m => m.user_id);
+    console.log('loadSubmissions - studentIds:', studentIds);
 
     // Get submissions from those students
     const { data, error } = await supabase
@@ -3089,12 +3098,15 @@ class CadenceApp {
       .order('date_graded', { ascending: false })
       .limit(50);
 
+    console.log('loadSubmissions - submissions query result:', { data, error });
+
     if (error) {
       console.error('Error loading submissions:', error);
       return;
     }
 
     this.submissions = data;
+    console.log('loadSubmissions - final submissions:', this.submissions);
     this.renderSubmissionsFeed();
   }
 
