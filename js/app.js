@@ -3039,6 +3039,14 @@ class CadenceApp {
     const user = auth.getCurrentUser();
     console.log('loadSubmissions - current user:', user.id);
 
+    // DEBUG: Check all song_ratings in the database
+    const { data: allRatings } = await supabase
+      .from('song_ratings')
+      .select('id, user_id, assessed_level, date_graded, users(name), songs(title)')
+      .order('date_graded', { ascending: false })
+      .limit(10);
+    console.log('DEBUG - All recent song_ratings:', allRatings);
+
     // Use RPC function to get all students from teacher's classes
     const { data: students, error: studentsError } = await supabase
       .rpc('get_all_teacher_students');
