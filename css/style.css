@@ -1693,6 +1693,30 @@ body {
   color: var(--primary-color);
 }
 
+.flagged-resolve {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.flagged-resolve label {
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.resolve-level-select {
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  min-width: 200px;
+}
+
 /* Join Class Section */
 .join-class-section {
   background: var(--bg-primary);
