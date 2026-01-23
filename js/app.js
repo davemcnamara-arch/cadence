@@ -2011,17 +2011,322 @@ class CadenceApp {
     document.getElementById('submit-grade-btn').classList.toggle('hidden', this.currentStep !== 3);
   }
 
+  calculateLevelFromResponses() {
+    const responses = this.gradingData.checklistResponses;
+    if (!responses || Object.keys(responses).length === 0) {
+      return this.gradingData.level; // Fallback to user's selection
+    }
+
+    // Get the current level's checklist to understand the question structure
+    const instrument = this.instruments.find(i => i.id === this.gradingData.instrument);
+    if (!instrument) return this.gradingData.level;
+
+    // Initialize scores for each level (1-5)
+    const levelScores = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    let totalQuestions = 0;
+
+    // Process each response
+    Object.entries(responses).forEach(([question, answer]) => {
+      totalQuestions++;
+
+      // Analyze each question and map answers to levels
+      const questionLower = question.toLowerCase();
+      const answerLower = answer.toLowerCase();
+
+      // Universal patterns across all instruments
+
+      // Number of chords pattern
+      if (questionLower.includes('number of chords')) {
+        if (answerLower.includes('2-3')) {
+          levelScores[1] += 3;
+          levelScores[2] += 1;
+        } else if (answerLower.includes('4-5')) {
+          levelScores[1] += 2;
+          levelScores[2] += 3;
+        } else if (answerLower.includes('6-7') || answerLower.includes('6+')) {
+          levelScores[2] += 3;
+          levelScores[3] += 1;
+        } else if (answerLower.includes('8-10') || answerLower.includes('8+')) {
+          levelScores[2] += 1;
+          levelScores[3] += 3;
+        } else if (answerLower.includes('10+')) {
+          levelScores[3] += 3;
+          levelScores[4] += 1;
+        }
+      }
+
+      // Chord types/complexity
+      else if (questionLower.includes('chord type') || questionLower.includes('chord complexity') || questionLower.includes('voicing')) {
+        if (answerLower.includes('open') && answerLower.includes('only')) {
+          levelScores[1] += 3;
+          levelScores[2] += 1;
+        } else if (answerLower.includes('basic triad') || answerLower.includes('major/minor')) {
+          levelScores[1] += 2;
+          levelScores[2] += 3;
+        } else if (answerLower.includes('7th') && !answerLower.includes('9th') && !answerLower.includes('extended')) {
+          levelScores[2] += 2;
+          levelScores[3] += 3;
+          levelScores[4] += 1;
+        } else if (answerLower.includes('inversion')) {
+          levelScores[3] += 3;
+          levelScores[4] += 1;
+        } else if (answerLower.includes('extended') || answerLower.includes('9th') || answerLower.includes('11th') || answerLower.includes('13th')) {
+          levelScores[4] += 3;
+          levelScores[5] += 2;
+        } else if (answerLower.includes('alteration') || answerLower.includes('substitution')) {
+          levelScores[5] += 3;
+        } else if (answerLower.includes('barre')) {
+          levelScores[2] += 1;
+          levelScores[3] += 3;
+        }
+      }
+
+      // Patterns and techniques
+      else if (questionLower.includes('pattern') || questionLower.includes('technique')) {
+        if (answerLower.includes('single') || answerLower.includes('basic') || answerLower.includes('block chord') && answerLower.includes('only')) {
+          levelScores[1] += 3;
+          levelScores[2] += 1;
+        } else if (answerLower.includes('2') || answerLower.includes('1-2') || answerLower.includes('arpeggio') || answerLower.includes('broken chord')) {
+          levelScores[2] += 3;
+          levelScores[3] += 1;
+        } else if (answerLower.includes('3') || answerLower.includes('varied') || answerLower.includes('mixed')) {
+          levelScores[3] += 3;
+          levelScores[4] += 1;
+        } else if (answerLower.includes('complex') || answerLower.includes('advanced')) {
+          levelScores[4] += 2;
+          levelScores[5] += 3;
+        }
+      }
+
+      // Hand coordination/independence
+      else if (questionLower.includes('coordination') || questionLower.includes('independence')) {
+        if (answerLower.includes('separate')) {
+          levelScores[1] += 3;
+        } else if (answerLower.includes('basic') || answerLower.includes('simple')) {
+          levelScores[1] += 2;
+          levelScores[2] += 2;
+        } else if (answerLower.includes('moderate') || answerLower.includes('good')) {
+          levelScores[2] += 1;
+          levelScores[3] += 3;
+          levelScores[4] += 1;
+        } else if (answerLower.includes('excellent') || answerLower.includes('very good')) {
+          levelScores[4] += 3;
+          levelScores[5] += 2;
+        } else if (answerLower.includes('mastered')) {
+          levelScores[5] += 3;
+        }
+      }
+
+      // Complexity/technical demands
+      else if (questionLower.includes('complexity') || questionLower.includes('technical demand')) {
+        if (answerLower.includes('straightforward') || answerLower.includes('moderate')) {
+          levelScores[3] += 1;
+          levelScores[4] += 3;
+        } else if (answerLower.includes('high') && !answerLower.includes('very')) {
+          levelScores[4] += 2;
+          levelScores[5] += 3;
+        } else if (answerLower.includes('very high')) {
+          levelScores[5] += 3;
+        }
+      }
+
+      // Rhythm complexity
+      else if (questionLower.includes('rhythm') || questionLower.includes('timing')) {
+        if (answerLower.includes('simple') || answerLower.includes('steady') || answerLower.includes('straight')) {
+          levelScores[1] += 3;
+          levelScores[2] += 1;
+        } else if (answerLower.includes('some') || answerLower.includes('variation')) {
+          levelScores[2] += 2;
+          levelScores[3] += 2;
+        } else if (answerLower.includes('syncopat') || answerLower.includes('complex')) {
+          levelScores[3] += 2;
+          levelScores[4] += 3;
+          levelScores[5] += 1;
+        }
+      }
+
+      // Dynamics and expression
+      else if (questionLower.includes('dynamic') || questionLower.includes('expression')) {
+        if (answerLower.includes('none')) {
+          levelScores[1] += 3;
+        } else if (answerLower.includes('basic')) {
+          levelScores[2] += 3;
+          levelScores[3] += 1;
+        } else if (answerLower.includes('moderate') || answerLower.includes('some')) {
+          levelScores[3] += 3;
+          levelScores[4] += 1;
+        } else if (answerLower.includes('expressive') || answerLower.includes('fully') || answerLower.includes('exceptional')) {
+          levelScores[4] += 2;
+          levelScores[5] += 3;
+        }
+      }
+
+      // Song structure
+      else if (questionLower.includes('structure') || questionLower.includes('section')) {
+        if (answerLower.includes('single') || answerLower.includes('repeating')) {
+          levelScores[1] += 3;
+          levelScores[2] += 1;
+        } else if (answerLower.includes('verse/chorus') || answerLower.includes('2 section')) {
+          levelScores[2] += 3;
+          levelScores[3] += 1;
+        } else if (answerLower.includes('3 section') || answerLower.includes('bridge')) {
+          levelScores[3] += 3;
+          levelScores[4] += 1;
+        } else if (answerLower.includes('4+') || answerLower.includes('multiple') || answerLower.includes('complex')) {
+          levelScores[4] += 2;
+          levelScores[5] += 2;
+        }
+      }
+
+      // Improvisation
+      else if (questionLower.includes('improvisation')) {
+        if (answerLower.includes('none')) {
+          levelScores[1] += 1;
+          levelScores[2] += 1;
+          levelScores[3] += 1;
+        } else if (answerLower.includes('minimal') || answerLower.includes('structured')) {
+          levelScores[4] += 3;
+          levelScores[5] += 1;
+        } else if (answerLower.includes('free')) {
+          levelScores[5] += 3;
+        }
+      }
+
+      // Style mastery
+      else if (questionLower.includes('style mastery') || questionLower.includes('mastery level')) {
+        if (answerLower.includes('developing')) {
+          levelScores[4] += 3;
+        } else if (answerLower.includes('competent')) {
+          levelScores[4] += 1;
+          levelScores[5] += 2;
+        } else if (answerLower.includes('advanced')) {
+          levelScores[5] += 3;
+        }
+      }
+
+      // Playing approach (for piano)
+      else if (questionLower.includes('playing approach') || questionLower.includes('reading')) {
+        // This doesn't directly indicate level, just approach
+        // Slight bias: notation-only might suggest more traditional/classical training
+        if (answerLower.includes('both')) {
+          // Both is generally more advanced
+          levelScores[3] += 1;
+          levelScores[4] += 1;
+          levelScores[5] += 1;
+        }
+      }
+
+      // Time signature
+      else if (questionLower.includes('time signature')) {
+        if (answerLower.includes('4/4') && answerLower.includes('only')) {
+          levelScores[1] += 3;
+          levelScores[2] += 1;
+        } else if (answerLower.includes('includes other') || answerLower.includes('various')) {
+          levelScores[2] += 1;
+          levelScores[3] += 2;
+          levelScores[4] += 1;
+        }
+      }
+
+      // Barre chords (guitar specific)
+      else if (questionLower.includes('barre')) {
+        if (answerLower.includes('none')) {
+          levelScores[1] += 3;
+          levelScores[2] += 1;
+        } else if (answerLower.includes('1-2') || answerLower.includes('some')) {
+          levelScores[2] += 2;
+          levelScores[3] += 2;
+        } else if (answerLower.includes('several') || answerLower.includes('many')) {
+          levelScores[3] += 2;
+          levelScores[4] += 3;
+        } else if (answerLower.includes('primarily')) {
+          levelScores[4] += 2;
+          levelScores[5] += 2;
+        }
+      }
+
+      // Fingerpicking (guitar/bass specific)
+      else if (questionLower.includes('fingerpick') || questionLower.includes('fingerstyle')) {
+        if (answerLower.includes('none') || answerLower.includes('strumming only')) {
+          levelScores[1] += 2;
+          levelScores[2] += 1;
+        } else if (answerLower.includes('basic')) {
+          levelScores[2] += 2;
+          levelScores[3] += 2;
+        } else if (answerLower.includes('travis') || answerLower.includes('alternating')) {
+          levelScores[3] += 1;
+          levelScores[4] += 3;
+        } else if (answerLower.includes('complex') || answerLower.includes('advanced')) {
+          levelScores[4] += 2;
+          levelScores[5] += 3;
+        }
+      }
+
+      // Primary style (for branching levels 4-5)
+      else if (questionLower.includes('primary style')) {
+        // This helps identify the branch but doesn't heavily weight the level
+        // All branches are level 4 or 5
+        levelScores[4] += 1;
+        levelScores[5] += 1;
+      }
+    });
+
+    // Calculate weighted average and find the level with highest score
+    let maxScore = 0;
+    let suggestedLevel = this.gradingData.level;
+
+    for (let level = 1; level <= 5; level++) {
+      if (levelScores[level] > maxScore) {
+        maxScore = levelScores[level];
+        suggestedLevel = level;
+      }
+    }
+
+    // If scores are very close, favor the user's original assessment
+    const userLevel = this.gradingData.level;
+    if (Math.abs(levelScores[suggestedLevel] - levelScores[userLevel]) <= totalQuestions * 0.3) {
+      suggestedLevel = userLevel;
+    }
+
+    return suggestedLevel;
+  }
+
   showLevelSuggestion() {
-    const suggested = this.gradingData.level;
+    const suggested = this.calculateLevelFromResponses();
+    const userSelected = this.gradingData.level;
     const container = document.getElementById('level-suggestion');
+
+    // Update the grading data with the suggested level
+    this.gradingData.level = suggested;
+
+    const differenceNote = suggested !== userSelected
+      ? `<p style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">
+          <em>Note: You initially selected Level ${userSelected}, but based on your responses, Level ${suggested} appears to be a better fit.</em>
+         </p>`
+      : `<p style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--success);">
+          <em>✓ This matches your initial assessment of Level ${userSelected}.</em>
+         </p>`;
 
     container.innerHTML = `
       <div class="suggested-level">Level ${suggested}</div>
-      <p>Based on your responses, this song appears to be at <strong>Level ${suggested}</strong></p>
-      <p style="margin-top: 1rem; font-size: 0.875rem; color: var(--text-secondary);">
-        You can adjust this if you think it should be different.
-      </p>
+      <p><strong>Based on your responses, this song appears to be at Level ${suggested}</strong></p>
+      ${differenceNote}
+      <div class="form-group" style="margin-top: 1.5rem;">
+        <label for="final-level-select">You can adjust this if you think it should be different:</label>
+        <select id="final-level-select" class="form-control">
+          <option value="1" ${suggested === 1 ? 'selected' : ''}>Level 1 - Foundation</option>
+          <option value="2" ${suggested === 2 ? 'selected' : ''}>Level 2 - Expanding Vocabulary</option>
+          <option value="3" ${suggested === 3 ? 'selected' : ''}>Level 3 - Technical Development</option>
+          <option value="4" ${suggested === 4 ? 'selected' : ''}>Level 4 - Style Integration</option>
+          <option value="5" ${suggested === 5 ? 'selected' : ''}>Level 5 - Advanced Techniques</option>
+        </select>
+      </div>
     `;
+
+    // Add event listener to update the grading data when user adjusts
+    document.getElementById('final-level-select').addEventListener('change', (e) => {
+      this.gradingData.level = parseInt(e.target.value);
+    });
   }
 
   async submitSongGrading() {
