@@ -1149,9 +1149,26 @@ class CadenceApp {
       console.error('⚠️ DUPLICATES IN FILTERED RESULTS!');
       const dups = filteredIds.filter((id, index) => filteredIds.indexOf(id) !== index);
       console.error('Duplicate IDs in filtered:', dups);
+      // Show details of duplicate songs
+      dups.forEach(dupId => {
+        const duplicateSongs = filteredSongs.filter(s => s.id === dupId);
+        console.error(`Duplicate song "${duplicateSongs[0].title}" appears ${duplicateSongs.length} times:`);
+        duplicateSongs.forEach((s, idx) => {
+          console.error(`  Instance ${idx + 1}:`, {
+            title: s.title,
+            chords_url: s.chords_url,
+            tutorial_url: s.tutorial_url,
+            youtube_url: s.youtube_url,
+            num_ratings: s.song_ratings?.length,
+            instrument_id: s.instrument_id
+          });
+        });
+      });
     }
 
+    console.log('🔍 filterSongs: Clearing grid and rendering HTML...');
     grid.innerHTML = filteredSongs.map(song => this.renderSongCard(song)).join('');
+    console.log('🔍 filterSongs: Grid updated, DOM now has', grid.querySelectorAll('.song-card').length, 'song cards');
 
     // Add event listeners to song cards
     grid.querySelectorAll('.song-card').forEach(card => {
@@ -1252,21 +1269,28 @@ class CadenceApp {
     const chordsRating = this.formatResourceRating(song.resource_ratings?.chords);
     const tutorialRating = this.formatResourceRating(song.resource_ratings?.tutorial);
 
+    // Check user role - only show "Start Learning" button for students
+    const user = auth.getCurrentUser();
+    const isStudent = user.role === 'student';
+
     // Check if student is already tracking this song
     const studentSong = this.studentSongs.find(ss =>
       ss.song_id === song.id && ss.instrument_id === this.currentInstrument
     );
 
     let actionButton = '';
-    if (studentSong) {
-      if (studentSong.status === 'mastered') {
-        actionButton = `<button class="btn btn-secondary" disabled style="opacity: 0.6; cursor: not-allowed;">Already Mastered</button>`;
+    if (isStudent) {
+      if (studentSong) {
+        if (studentSong.status === 'mastered') {
+          actionButton = `<button class="btn btn-secondary" disabled style="opacity: 0.6; cursor: not-allowed;">Already Mastered</button>`;
+        } else {
+          actionButton = `<button class="btn btn-secondary" disabled style="opacity: 0.6; cursor: not-allowed;">Already Learning</button>`;
+        }
       } else {
-        actionButton = `<button class="btn btn-secondary" disabled style="opacity: 0.6; cursor: not-allowed;">Already Learning</button>`;
+        actionButton = `<button class="btn btn-primary" onclick="event.stopPropagation(); app.addSongToLearning('${song.id}')">Start Learning</button>`;
       }
-    } else {
-      actionButton = `<button class="btn btn-primary" onclick="event.stopPropagation(); app.addSongToLearning('${song.id}')">Start Learning</button>`;
     }
+    // Teachers/admins get no action button
 
     return `
       <div class="song-card" data-song-id="${song.id}">
@@ -3964,13 +3988,23 @@ class CadenceApp {
 
       this.showToast('Link approved successfully', 'success');
 
+      console.log('🔗 Link approved, currentView is:', this.currentView);
+
       // Reload flagged ratings to update the pending links list
+      console.log('🔗 About to call loadFlaggedRatings...');
       await this.loadFlaggedRatings();
+      console.log('🔗 loadFlaggedRatings completed');
 
       // Also reload songs to update the song library with the new link
+      console.log('🔗 About to call loadSongs...');
       await this.loadSongs();
+      console.log('🔗 loadSongs completed, this.songs.length:', this.songs.length);
+
       if (this.currentView === 'songs') {
+        console.log('🔗 Current view is songs, calling filterSongs...');
         this.filterSongs();
+      } else {
+        console.log('🔗 Current view is NOT songs, skipping filterSongs');
       }
     } catch (error) {
       console.error('Exception in approvePendingLink:', error);
