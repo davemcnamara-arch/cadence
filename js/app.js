@@ -3476,6 +3476,7 @@ class CadenceApp {
       const key = `${rating.song_id}-${rating.instrument_id}`;
       if (!songGroups[key]) {
         songGroups[key] = {
+          songId: rating.song_id,
           song: rating.songs,
           instrument: rating.instruments,
           ratings: []
@@ -3601,7 +3602,7 @@ class CadenceApp {
       return;
     }
 
-    const html = flaggedSongs.map(item => {
+    const html = flaggedSongs.map((item, index) => {
       const levels = item.ratings.map(r => r.level);
       const discrepancy = Math.max(...levels) - Math.min(...levels);
 
@@ -3622,11 +3623,61 @@ class CadenceApp {
               </div>
             `).join('')}
           </div>
+          <div class="flagged-resolve">
+            <label for="resolve-level-${index}">Set official level:</label>
+            <select id="resolve-level-${index}" class="resolve-level-select">
+              <option value="">Choose level...</option>
+              <option value="1">Level 1 - Foundation</option>
+              <option value="2">Level 2 - Expanding Vocabulary</option>
+              <option value="3">Level 3 - Technical Development</option>
+              <option value="4">Level 4 - Style Integration</option>
+              <option value="5">Level 5 - Advanced Techniques</option>
+            </select>
+            <button class="btn btn-primary" onclick="app.resolveFlaggedRating('${item.songId}', 'resolve-level-${index}')">Resolve</button>
+          </div>
         </div>
       `;
     }).join('');
 
     container.innerHTML = html;
+  }
+
+  async resolveFlaggedRating(songId, selectId) {
+    const selectElement = document.getElementById(selectId);
+    const level = parseInt(selectElement.value);
+
+    if (!level) {
+      this.showToast('Please select a level', 'warning');
+      return;
+    }
+
+    try {
+      // Update the song's suggested_level
+      const { error } = await supabase
+        .from('songs')
+        .update({ suggested_level: level })
+        .eq('id', songId);
+
+      if (error) {
+        console.error('Error resolving flagged rating:', error);
+        this.showToast('Failed to resolve rating: ' + error.message, 'error');
+        return;
+      }
+
+      this.showToast('Official level set successfully', 'success');
+
+      // Reload flagged ratings to remove the resolved song
+      await this.loadFlaggedRatings();
+
+      // Also reload songs to update the song library display
+      await this.loadSongs();
+      if (this.currentView === 'songs') {
+        this.filterSongs();
+      }
+    } catch (error) {
+      console.error('Exception in resolveFlaggedRating:', error);
+      this.showToast('Failed to resolve rating', 'error');
+    }
   }
 
   setupEditSongLevelForm() {
