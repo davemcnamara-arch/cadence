@@ -2210,11 +2210,16 @@ class CadenceApp {
     const user = auth.getCurrentUser();
 
     // Get the student song to check which instrument it's for
-    const { data: studentSong } = await supabase
-      .from('student_songs')
-      .select('*, songs(*)')
-      .eq('id', studentSongId)
-      .single();
+    // Use RPC function to bypass RLS when in preview mode
+    const { data: studentSong, error } = await supabase.rpc('get_student_song_detail', {
+      p_student_song_id: studentSongId
+    });
+
+    if (error) {
+      console.error('Error getting student song:', error);
+      this.showToast('Failed to load song details', 'error');
+      return;
+    }
 
     if (!studentSong) return;
 
@@ -2305,13 +2310,12 @@ class CadenceApp {
 
     const { studentSongId, instrumentId } = this.pendingMasteredSong;
 
-    const { error } = await supabase
-      .from('student_songs')
-      .update({
-        status: 'mastered',
-        date_completed: new Date().toISOString()
-      })
-      .eq('id', studentSongId);
+    // Use RPC function to bypass RLS when in preview mode
+    const { error } = await supabase.rpc('update_student_song_status', {
+      p_student_song_id: studentSongId,
+      p_status: 'mastered',
+      p_date_completed: new Date().toISOString()
+    });
 
     if (error) {
       console.error('Error marking song mastered:', error);
@@ -2390,13 +2394,12 @@ class CadenceApp {
   }
 
   async unmasterSong(studentSongId) {
-    const { error } = await supabase
-      .from('student_songs')
-      .update({
-        status: 'learning',
-        date_completed: null
-      })
-      .eq('id', studentSongId);
+    // Use RPC function to bypass RLS when in preview mode
+    const { error } = await supabase.rpc('update_student_song_status', {
+      p_student_song_id: studentSongId,
+      p_status: 'learning',
+      p_date_completed: null
+    });
 
     if (error) {
       console.error('Error unmarking song:', error);
@@ -2413,10 +2416,10 @@ class CadenceApp {
       return;
     }
 
-    const { error } = await supabase
-      .from('student_songs')
-      .delete()
-      .eq('id', studentSongId);
+    // Use RPC function to bypass RLS when in preview mode
+    const { error } = await supabase.rpc('remove_student_song', {
+      p_student_song_id: studentSongId
+    });
 
     if (error) {
       console.error('Error removing song:', error);
