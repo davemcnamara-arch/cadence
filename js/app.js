@@ -1404,7 +1404,6 @@ class CadenceApp {
         </div>
         <div class="song-meta">
           <span class="song-tag level">${levelLabel}</span>
-          <span class="song-tag">${ratingsCount} rating${ratingsCount !== 1 ? 's' : ''}</span>
         </div>
         <div class="song-actions">
           ${song.chords_url ? `
