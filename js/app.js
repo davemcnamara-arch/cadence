@@ -346,6 +346,11 @@ class CadenceApp {
     await this.loadStudentProgress();
     console.log('👤 loadStudentProgress completed');
 
+    // Initialize instrument dropdown after loading data
+    console.log('👤 About to call updateInstrumentDropdown...');
+    this.updateInstrumentDropdown();
+    console.log('👤 updateInstrumentDropdown completed');
+
     // Update UI
     document.getElementById('user-name').textContent = user.name;
     this.showApp();
@@ -1037,6 +1042,8 @@ class CadenceApp {
       if (viewName === 'pathway') {
         this.renderPathway();
       } else if (viewName === 'songs') {
+        // Update instrument dropdown before rendering songs
+        this.updateInstrumentDropdown();
         this.renderSongs();
       } else if (viewName === 'progress') {
         this.renderProgress();
