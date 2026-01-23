@@ -1871,6 +1871,16 @@ class CadenceApp {
           console.log('🎵 Updated local song object:', song.title, fieldName, '=', url || null);
         }
 
+        // Also update the song data within studentSongs for progress view
+        if (this.studentSongs) {
+          this.studentSongs.forEach(studentSong => {
+            if (studentSong.songs && studentSong.songs.id === songId) {
+              studentSong.songs[fieldName] = url || null;
+              console.log('🎵 Updated studentSongs nested song object');
+            }
+          });
+        }
+
         // Close modal
         document.getElementById('edit-resource-modal').classList.add('hidden');
 
