@@ -44,10 +44,16 @@ class CadenceApp {
     console.log('🎵 Cadence: Loading screen shown');
 
     // Initialize auth
-    auth.onAuthStateChange = (user) => {
+    auth.onAuthStateChange = async (user) => {
       console.log('🎵 Cadence: Auth state changed, user:', user ? 'logged in' : 'not logged in');
       if (user) {
-        this.onUserSignedIn(user);
+        console.log('🎵 Cadence: Calling onUserSignedIn...');
+        try {
+          await this.onUserSignedIn(user);
+          console.log('🎵 Cadence: onUserSignedIn completed successfully');
+        } catch (error) {
+          console.error('❌ Error in onUserSignedIn:', error);
+        }
       } else {
         this.showLoginScreen();
       }
@@ -332,9 +338,13 @@ class CadenceApp {
   }
 
   async onUserSignedIn(user) {
+    console.log('👤 onUserSignedIn called for user:', user.name, 'role:', user.role);
     // Load user data
+    console.log('👤 About to call loadInstruments...');
     await this.loadInstruments();
+    console.log('👤 loadInstruments completed, about to call loadStudentProgress...');
     await this.loadStudentProgress();
+    console.log('👤 loadStudentProgress completed');
 
     // Update UI
     document.getElementById('user-name').textContent = user.name;
