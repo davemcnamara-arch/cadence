@@ -100,6 +100,12 @@ class CadenceApp {
         e.preventDefault();
         e.stopPropagation();
         try {
+          // Unsubscribe from real-time updates
+          if (this.songUpdatesSubscription) {
+            console.log('🔔 Unsubscribing from song updates...');
+            await this.songUpdatesSubscription.unsubscribe();
+          }
+
           const result = await auth.signOut();
           console.log('Sign out result:', result);
           // Force reload to clear all state and show login screen
@@ -351,6 +357,9 @@ class CadenceApp {
     this.updateInstrumentDropdown();
     console.log('👤 updateInstrumentDropdown completed');
 
+    // Set up real-time subscription for song updates (approved links)
+    this.setupSongUpdatesSubscription();
+
     // Update UI
     document.getElementById('user-name').textContent = user.name;
     this.showApp();
@@ -557,6 +566,51 @@ class CadenceApp {
       this.loadingSongs = false;
       console.log('🎵 loadSongs: Clearing loadingSongs flag, final song count:', this.songs.length);
     }
+  }
+
+  setupSongUpdatesSubscription() {
+    console.log('🔔 Setting up real-time song updates subscription...');
+
+    // Subscribe to changes in the songs table
+    const subscription = supabase
+      .channel('song-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'songs'
+        },
+        (payload) => {
+          console.log('🔔 Song updated in database:', payload.new.title);
+          console.log('🔔 Current view:', this.currentView);
+
+          // Only reload if user is viewing the songs tab
+          if (this.currentView === 'songs') {
+            console.log('🔔 User is viewing songs, reloading...');
+            this.loadSongs().then(() => {
+              this.filterSongs();
+              this.showToast('Song updated with new link!', 'info');
+            });
+          } else if (this.currentView === 'progress') {
+            // Also update progress view if it shows songs
+            console.log('🔔 User is viewing progress, reloading...');
+            this.loadSongs().then(() => {
+              this.renderProgress();
+            });
+          } else {
+            console.log('🔔 User not viewing songs, updating in background...');
+            // Still update the data in background so it's fresh when they switch views
+            this.loadSongs();
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('🔔 Subscription status:', status);
+      });
+
+    // Store subscription so we can unsubscribe later if needed
+    this.songUpdatesSubscription = subscription;
   }
 
   showInstrumentSelection() {
@@ -1142,11 +1196,12 @@ class CadenceApp {
     }
 
     console.log('🔍 filterSongs: Rendering', filteredSongs.length, 'songs');
-    // Check for duplicates in filtered results
+
+    // Check for duplicates by ID
     const filteredIds = filteredSongs.map(s => s.id);
     const uniqueFilteredIds = [...new Set(filteredIds)];
     if (filteredIds.length !== uniqueFilteredIds.length) {
-      console.error('⚠️ DUPLICATES IN FILTERED RESULTS!');
+      console.error('⚠️ DUPLICATES BY ID IN FILTERED RESULTS!');
       const dups = filteredIds.filter((id, index) => filteredIds.indexOf(id) !== index);
       console.error('Duplicate IDs in filtered:', dups);
       // Show details of duplicate songs
@@ -1155,7 +1210,9 @@ class CadenceApp {
         console.error(`Duplicate song "${duplicateSongs[0].title}" appears ${duplicateSongs.length} times:`);
         duplicateSongs.forEach((s, idx) => {
           console.error(`  Instance ${idx + 1}:`, {
+            id: s.id,
             title: s.title,
+            artist: s.artist,
             chords_url: s.chords_url,
             tutorial_url: s.tutorial_url,
             youtube_url: s.youtube_url,
@@ -1166,9 +1223,46 @@ class CadenceApp {
       });
     }
 
+    // Also check for duplicates by title/artist (same song, different IDs)
+    const titleArtistKeys = filteredSongs.map(s => `${s.title}|||${s.artist}`);
+    const uniqueTitleArtist = [...new Set(titleArtistKeys)];
+    if (titleArtistKeys.length !== uniqueTitleArtist.length) {
+      console.error('⚠️ DUPLICATES BY TITLE/ARTIST IN FILTERED RESULTS!');
+      const dupTitles = titleArtistKeys.filter((key, index) => titleArtistKeys.indexOf(key) !== index);
+      console.error('Duplicate title/artist combinations:', dupTitles);
+      dupTitles.forEach(dupKey => {
+        const [title, artist] = dupKey.split('|||');
+        const duplicateSongs = filteredSongs.filter(s => s.title === title && s.artist === artist);
+        console.error(`"${title}" by "${artist}" appears ${duplicateSongs.length} times with different IDs:`);
+        duplicateSongs.forEach((s, idx) => {
+          console.error(`  Instance ${idx + 1}:`, {
+            id: s.id,
+            chords_url: s.chords_url,
+            tutorial_url: s.tutorial_url,
+            youtube_url: s.youtube_url,
+            num_ratings: s.song_ratings?.length
+          });
+        });
+      });
+    }
+
     console.log('🔍 filterSongs: Clearing grid and rendering HTML...');
-    grid.innerHTML = filteredSongs.map(song => this.renderSongCard(song)).join('');
+    const renderedHTML = filteredSongs.map((song, index) => {
+      const html = this.renderSongCard(song);
+      // Add a comment to track which index each song is from
+      return `<!-- Song ${index}: ${song.title} (ID: ${song.id}) -->\n${html}`;
+    }).join('\n');
+    grid.innerHTML = renderedHTML;
     console.log('🔍 filterSongs: Grid updated, DOM now has', grid.querySelectorAll('.song-card').length, 'song cards');
+
+    // Verify no duplicate data-song-id attributes in DOM
+    const domSongIds = Array.from(grid.querySelectorAll('.song-card')).map(card => card.dataset.songId);
+    const uniqueDomIds = [...new Set(domSongIds)];
+    if (domSongIds.length !== uniqueDomIds.length) {
+      console.error('⚠️ DUPLICATE data-song-id IN DOM!');
+      const dupDomIds = domSongIds.filter((id, index) => domSongIds.indexOf(id) !== index);
+      console.error('Duplicate song IDs in DOM:', dupDomIds);
+    }
 
     // Add event listeners to song cards
     grid.querySelectorAll('.song-card').forEach(card => {
