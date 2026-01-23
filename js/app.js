@@ -2357,6 +2357,11 @@ class CadenceApp {
     if (this.currentView === 'classes') {
       this.renderClassesList();
     }
+
+    // Load flagged ratings to update notification badge
+    if (this.classes.length > 0) {
+      this.loadFlaggedRatings();
+    }
   }
 
   showCreateClassModal() {
@@ -3652,11 +3657,11 @@ class CadenceApp {
     }
 
     try {
-      // Update the song's suggested_level
-      const { error } = await supabase
-        .from('songs')
-        .update({ suggested_level: level })
-        .eq('id', songId);
+      // Update the song's suggested_level using RPC to bypass RLS
+      const { error } = await supabase.rpc('update_song_suggested_level', {
+        p_song_id: songId,
+        p_level: level
+      });
 
       if (error) {
         console.error('Error resolving flagged rating:', error);
