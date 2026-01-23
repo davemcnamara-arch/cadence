@@ -444,12 +444,14 @@ class CadenceApp {
   async loadSongs() {
     // Prevent concurrent calls
     if (this.loadingSongs) {
-      console.log('⏳ loadSongs already in progress, skipping...');
+      console.log('⏳ loadSongs already in progress, skipping this call');
       return;
     }
     this.loadingSongs = true;
+    console.log('🎵 loadSongs: Setting loadingSongs flag to true');
 
     try {
+      console.log('🎵 loadSongs: Starting to load songs...');
       const { data, error } = await supabase
         .from('songs')
         .select(`
@@ -462,6 +464,8 @@ class CadenceApp {
         `)
         .eq('approved', true)
         .order('date_added', { ascending: false });
+
+      console.log('🎵 loadSongs: Received', data?.length, 'songs from database');
 
       if (error) {
         console.error('Error loading songs:', error);
@@ -501,22 +505,37 @@ class CadenceApp {
     const songIds = this.songs.map(s => s.id);
     const uniqueIds = [...new Set(songIds)];
     if (songIds.length !== uniqueIds.length) {
-      console.warn('⚠️ Duplicate songs detected in loadSongs!');
+      console.warn('⚠️ Duplicate songs detected in loadSongs FROM DATABASE!');
       const duplicates = songIds.filter((id, index) => songIds.indexOf(id) !== index);
       console.warn('Duplicate IDs:', duplicates);
+      console.warn('Showing all instances of duplicated songs:');
+      duplicates.forEach(dupId => {
+        const instances = this.songs.filter(s => s.id === dupId);
+        console.warn(`Song ID ${dupId}:`, instances.map(s => ({
+          title: s.title,
+          chords_url: s.chords_url,
+          tutorial_url: s.tutorial_url,
+          youtube_url: s.youtube_url,
+          num_ratings: s.song_ratings?.length
+        })));
+      });
       // Remove duplicates - keep only the first occurrence of each song
       const seen = new Set();
       this.songs = this.songs.filter(song => {
         if (seen.has(song.id)) {
+          console.warn(`Removing duplicate of song: ${song.title}`);
           return false;
         }
         seen.add(song.id);
         return true;
       });
       console.log('✓ Duplicates removed, unique songs:', this.songs.length);
+    } else {
+      console.log('✓ No duplicates in database results, total songs:', this.songs.length);
     }
     } finally {
       this.loadingSongs = false;
+      console.log('🎵 loadSongs: Clearing loadingSongs flag, final song count:', this.songs.length);
     }
   }
 
@@ -724,10 +743,14 @@ class CadenceApp {
     const gradingDropdown = document.getElementById('grading-instrument');
     const user = auth.getCurrentUser();
 
-    const html = this.studentProgress.map(progress => {
-      const instrument = this.instruments.find(i => i.id === progress.instrument_id);
-      return `<option value="${instrument.id}">${instrument.icon} ${instrument.name}</option>`;
-    }).join('');
+    // Only build student progress dropdown if there is progress
+    let html = '';
+    if (this.studentProgress && this.studentProgress.length > 0) {
+      html = this.studentProgress.map(progress => {
+        const instrument = this.instruments.find(i => i.id === progress.instrument_id);
+        return `<option value="${instrument.id}">${instrument.icon} ${instrument.name}</option>`;
+      }).join('');
+    }
 
     if (dropdown) dropdown.innerHTML = html;
 
@@ -1033,9 +1056,20 @@ class CadenceApp {
   }
 
   filterSongs() {
+    console.log('🔍 filterSongs: Starting with', this.songs.length, 'songs');
     const searchTerm = document.getElementById('song-search')?.value.toLowerCase() || '';
     const instrumentFilter = document.getElementById('filter-instrument')?.value || '';
     const levelFilter = document.getElementById('filter-level')?.value || '';
+    console.log('🔍 Filters:', { searchTerm, instrumentFilter, levelFilter });
+
+    // Check for duplicates in this.songs before filtering
+    const songIds = this.songs.map(s => s.id);
+    const uniqueIds = [...new Set(songIds)];
+    if (songIds.length !== uniqueIds.length) {
+      console.error('⚠️ DUPLICATES FOUND IN this.songs DURING filterSongs!');
+      const duplicates = songIds.filter((id, index) => songIds.indexOf(id) !== index);
+      console.error('Duplicate IDs:', duplicates);
+    }
 
     let filteredSongs = this.songs;
 
@@ -1075,6 +1109,16 @@ class CadenceApp {
     if (!filteredSongs || filteredSongs.length === 0) {
       grid.innerHTML = '<p style="color: var(--text-secondary);">No songs found. Be the first to grade a song!</p>';
       return;
+    }
+
+    console.log('🔍 filterSongs: Rendering', filteredSongs.length, 'songs');
+    // Check for duplicates in filtered results
+    const filteredIds = filteredSongs.map(s => s.id);
+    const uniqueFilteredIds = [...new Set(filteredIds)];
+    if (filteredIds.length !== uniqueFilteredIds.length) {
+      console.error('⚠️ DUPLICATES IN FILTERED RESULTS!');
+      const dups = filteredIds.filter((id, index) => filteredIds.indexOf(id) !== index);
+      console.error('Duplicate IDs in filtered:', dups);
     }
 
     grid.innerHTML = filteredSongs.map(song => this.renderSongCard(song)).join('');
