@@ -358,8 +358,7 @@ class CadenceApp {
     console.log('👤 updateInstrumentDropdown completed');
 
     // Set up real-time subscription for song updates (approved links)
-    // TEMPORARILY DISABLED to debug duplicate issue
-    // this.setupSongUpdatesSubscription();
+    this.setupSongUpdatesSubscription();
 
     // Update UI
     document.getElementById('user-name').textContent = user.name;
@@ -585,6 +584,13 @@ class CadenceApp {
         (payload) => {
           console.log('🔔 Song updated in database:', payload.new.title);
           console.log('🔔 Current view:', this.currentView);
+          console.log('🔔 approvingLink flag:', this.approvingLink);
+
+          // Skip if we're already handling this update via approvePendingLink
+          if (this.approvingLink) {
+            console.log('🔔 Skipping real-time update - already handled by approval flow');
+            return;
+          }
 
           // Only reload if user is viewing the songs tab
           if (this.currentView === 'songs') {
@@ -4070,6 +4076,9 @@ class CadenceApp {
     console.log('🔗 Approving pending link:', linkId);
 
     try {
+      // Set flag to prevent real-time subscription from double-loading
+      this.approvingLink = true;
+
       // Call the RPC function to approve the link
       const { error } = await supabase.rpc('approve_pending_link', {
         pending_link_id: linkId
@@ -4078,6 +4087,7 @@ class CadenceApp {
       if (error) {
         console.error('Error approving link:', error);
         this.showToast('Failed to approve link: ' + error.message, 'error');
+        this.approvingLink = false;
         return;
       }
 
@@ -4101,9 +4111,15 @@ class CadenceApp {
       } else {
         console.log('🔗 Current view is NOT songs, skipping filterSongs');
       }
+
+      // Clear flag after a short delay to allow real-time subscription to catch up
+      setTimeout(() => {
+        this.approvingLink = false;
+      }, 1000);
     } catch (error) {
       console.error('Exception in approvePendingLink:', error);
       this.showToast('Failed to approve link', 'error');
+      this.approvingLink = false;
     }
   }
 
