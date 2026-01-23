@@ -358,7 +358,8 @@ class CadenceApp {
     console.log('👤 updateInstrumentDropdown completed');
 
     // Set up real-time subscription for song updates (approved links)
-    this.setupSongUpdatesSubscription();
+    // TEMPORARILY DISABLED to debug duplicate issue
+    // this.setupSongUpdatesSubscription();
 
     // Update UI
     document.getElementById('user-name').textContent = user.name;
