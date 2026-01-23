@@ -403,10 +403,11 @@ BEGIN
       "Simple pop melodies"
     ]'::jsonb,
     '{
+      "Playing approach": ["chord chart only", "simple notation only", "both"],
+      "Number of chords": ["2-3", "4-5", "6+"],
       "Hand coordination": ["separate hands", "hands together - simple", "hands together - complex"],
-      "Right hand": ["single notes", "simple melody", "complex melody"],
-      "Left hand": ["single notes", "basic chords", "chord progressions"],
-      "Reading": ["chord symbols only", "simple notation", "complex notation"],
+      "Left hand technique": ["single notes", "basic chords", "chord progressions"],
+      "Right hand technique": ["single notes/chords", "simple melody", "melody + chords"],
       "Song structure": ["single section", "verse/chorus", "multiple sections"]
     }'::jsonb,
     ARRAY['Let It Be (simplified)', 'Imagine (basic)', 'Clocks (riff only)']
@@ -423,11 +424,13 @@ BEGIN
       "Verse/chorus structure"
     ]'::jsonb,
     '{
+      "Playing approach": ["chord chart only", "notation only", "both"],
+      "Number of chords": ["4-5", "6-7", "8+"],
       "Chord types": ["major/minor only", "includes 7ths", "extended chords"],
-      "Patterns": ["block chords", "arpeggios", "broken chords", "mixed"],
+      "Patterns": ["block chords only", "arpeggios/broken chords", "mixed patterns"],
       "Hand independence": ["basic", "moderate", "advanced"],
-      "Rhythm": ["simple", "syncopated", "complex"],
-      "Dynamics": ["none", "basic", "expressive"]
+      "Rhythm complexity": ["simple/steady", "some variation", "syncopated"],
+      "Dynamics": ["none", "basic loud/soft", "expressive"]
     }'::jsonb,
     ARRAY['Someone Like You', 'A Thousand Years', 'The Scientist']
   );
@@ -443,11 +446,13 @@ BEGIN
       "Simple accompaniment patterns"
     ]'::jsonb,
     '{
-      "Chord inversions": ["root position", "1st inversion", "2nd inversion"],
-      "Pedal use": ["none", "basic sustain", "advanced"],
-      "Accompaniment patterns": ["block chords", "alberti bass", "arpeggios", "mixed"],
-      "Independence": ["moderate", "good", "excellent"],
-      "Expression": ["basic", "moderate", "advanced"]
+      "Playing approach": ["chord chart only", "notation only", "both"],
+      "Chord complexity": ["basic triads", "inversions", "7ths and inversions"],
+      "Number of chords": ["6-8", "8-10", "10+"],
+      "Pedal use": ["none", "basic sustain", "controlled pedaling"],
+      "Accompaniment patterns": ["block chords", "alberti bass/arpeggios", "varied patterns"],
+      "Hand independence": ["moderate", "good", "excellent"],
+      "Expression/dynamics": ["basic", "moderate", "expressive"]
     }'::jsonb,
     ARRAY['River Flows in You', 'All of Me', 'Stay With Me']
   );
@@ -462,10 +467,12 @@ BEGIN
       "Electronic elements"
     ]'::jsonb,
     '{
-      "Primary style": ["contemporary/pop", "singer-songwriter", "jazz/blues"],
-      "Voicings": ["basic triads", "7ths", "extended chords"],
-      "Modern elements": ["none", "some", "integrated"],
-      "Performance aspects": ["technique only", "some expression", "fully expressive"]
+      "Primary style": ["contemporary/pop", "singer-songwriter", "jazz/blues", "classical pieces"],
+      "Playing approach": ["chord charts", "notation", "both/mixed"],
+      "Chord voicings": ["basic triads", "7ths", "extended/jazz chords"],
+      "Complexity": ["straightforward", "moderate", "complex arrangements"],
+      "Modern elements": ["none", "some", "well integrated"],
+      "Performance/expression": ["technique focus", "some expression", "fully expressive"]
     }'::jsonb,
     ARRAY['Radioactive', 'Pompeii'],
     true, 'Contemporary/Pop'
@@ -481,10 +488,12 @@ BEGIN
       "Storytelling through playing"
     ]'::jsonb,
     '{
-      "Primary style": ["contemporary/pop", "singer-songwriter", "jazz/blues"],
-      "Voicings": ["basic triads", "7ths", "extended chords"],
-      "Vocal integration": ["none", "basic", "advanced"],
-      "Performance aspects": ["technique only", "some expression", "fully expressive"]
+      "Primary style": ["contemporary/pop", "singer-songwriter", "jazz/blues", "classical pieces"],
+      "Playing approach": ["chord charts", "notation", "both/mixed"],
+      "Chord voicings": ["basic triads", "7ths", "extended/jazz chords"],
+      "Complexity": ["straightforward", "moderate", "complex arrangements"],
+      "Vocal integration": ["instrumental only", "basic accompaniment", "integrated with vocals"],
+      "Performance/expression": ["technique focus", "some expression", "fully expressive"]
     }'::jsonb,
     ARRAY['The A Team', 'Say Something'],
     true, 'Singer-Songwriter'
@@ -500,10 +509,12 @@ BEGIN
       "Comping patterns"
     ]'::jsonb,
     '{
-      "Primary style": ["contemporary/pop", "singer-songwriter", "jazz/blues"],
-      "Voicings": ["basic triads", "7ths", "extended chords"],
-      "Swing feel": ["none", "basic", "good"],
-      "Performance aspects": ["technique only", "some expression", "fully expressive"]
+      "Primary style": ["contemporary/pop", "singer-songwriter", "jazz/blues", "classical pieces"],
+      "Playing approach": ["chord charts", "notation", "both/mixed"],
+      "Chord voicings": ["basic triads", "7ths", "extended/jazz chords"],
+      "Complexity": ["straightforward", "moderate", "complex arrangements"],
+      "Swing/groove": ["none", "basic feel", "strong swing/groove"],
+      "Performance/expression": ["technique focus", "some expression", "fully expressive"]
     }'::jsonb,
     ARRAY['Just the Two of Us', 'Ain''t No Sunshine'],
     true, 'Jazz/Blues'
@@ -519,10 +530,11 @@ BEGIN
       "Reharmonization"
     ]'::jsonb,
     '{
-      "Advanced harmony": ["basic 7ths", "extended chords", "alterations"],
+      "Playing approach": ["chord charts", "notation", "both/mixed"],
+      "Harmonic complexity": ["7ths", "9ths/11ths/13ths", "alterations/substitutions"],
+      "Technical demands": ["moderate", "high", "very high"],
       "Two-hand independence": ["good", "very good", "mastered"],
-      "Improvisation": ["none", "structured", "free"],
-      "Complexity": ["moderate", "high", "very high"],
+      "Improvisation elements": ["none", "structured", "free improvisation"],
       "Style mastery": ["developing", "competent", "advanced"]
     }'::jsonb,
     ARRAY['Comptine d''un autre été', 'Mad World'],
@@ -539,10 +551,11 @@ BEGIN
       "Dynamic control"
     ]'::jsonb,
     '{
-      "Advanced harmony": ["basic 7ths", "extended chords", "alterations"],
+      "Playing approach": ["chord charts", "notation", "both/mixed"],
+      "Harmonic complexity": ["7ths", "9ths/11ths/13ths", "alterations/substitutions"],
+      "Technical demands": ["moderate", "high", "very high"],
       "Two-hand independence": ["good", "very good", "mastered"],
-      "Improvisation": ["none", "structured", "free"],
-      "Complexity": ["moderate", "high", "very high"],
+      "Improvisation elements": ["none", "structured", "free improvisation"],
       "Style mastery": ["developing", "competent", "advanced"]
     }'::jsonb,
     ARRAY['Hallelujah (full arrangement)', 'Fix You'],
@@ -559,10 +572,11 @@ BEGIN
       "Jazz vocabulary"
     ]'::jsonb,
     '{
-      "Advanced harmony": ["basic 7ths", "extended chords", "alterations"],
+      "Playing approach": ["chord charts", "notation", "both/mixed"],
+      "Harmonic complexity": ["7ths", "9ths/11ths/13ths", "alterations/substitutions"],
+      "Technical demands": ["moderate", "high", "very high"],
       "Two-hand independence": ["good", "very good", "mastered"],
-      "Improvisation": ["none", "structured", "free"],
-      "Complexity": ["moderate", "high", "very high"],
+      "Improvisation elements": ["none", "structured", "free improvisation"],
       "Style mastery": ["developing", "competent", "advanced"]
     }'::jsonb,
     ARRAY['Autumn Leaves', 'Blue Bossa'],
