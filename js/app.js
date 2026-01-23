@@ -1497,13 +1497,26 @@ class CadenceApp {
       'youtube_url': 'YouTube URL'
     };
 
-    const modalTitle = currentValue ? 'Edit Resource Link' : 'Add Resource Link';
+    const isStudent = this.auth.hasRole('student');
+    const modalTitle = isStudent
+      ? (currentValue ? 'Submit Resource Link for Approval' : 'Submit Resource Link for Approval')
+      : (currentValue ? 'Edit Resource Link' : 'Add Resource Link');
     const fieldLabel = fieldLabels[fieldName] || 'URL';
 
     document.getElementById('edit-resource-title').textContent = modalTitle;
     document.getElementById('edit-resource-song-info').textContent = `${title} - ${artist}`;
     document.getElementById('resource-url-label').textContent = fieldLabel;
     document.getElementById('resource-url').value = currentValue;
+
+    // Show/hide approval message for students
+    const approvalMessage = document.getElementById('pending-approval-message');
+    if (approvalMessage) {
+      if (isStudent) {
+        approvalMessage.classList.remove('hidden');
+      } else {
+        approvalMessage.classList.add('hidden');
+      }
+    }
 
     // Show modal
     document.getElementById('edit-resource-modal').classList.remove('hidden');
@@ -1537,49 +1550,91 @@ class CadenceApp {
         throw new Error('Not authenticated - no access token');
       }
 
-      console.log('🎵 About to update database using REST API...');
+      // Check if user is a student - if so, submit for approval instead
+      const isStudent = this.auth.hasRole('student');
+      console.log('🎵 User is student:', isStudent);
 
-      // Use REST API directly instead of Supabase client
-      const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/songs?id=eq.${songId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
-          'Authorization': `Bearer ${accessToken}`,
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify({ [fieldName]: url || null })
-      });
+      if (isStudent) {
+        // Students submit links for teacher approval
+        console.log('🎵 Submitting link for teacher approval...');
 
-      console.log('🎵 Response status:', response.status);
-      console.log('🎵 Response ok:', response.ok);
+        const response = await fetch('https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/pending_links', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+            'Authorization': `Bearer ${accessToken}`,
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
+            song_id: songId,
+            link_type: fieldName,
+            url: url,
+            submitted_by_user_id: this.auth.currentUser.id
+          })
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('🎵 Response error:', errorText);
-        throw new Error(`Update failed: ${response.status} ${errorText}`);
-      }
+        console.log('🎵 Response status:', response.status);
+        console.log('🎵 Response ok:', response.ok);
 
-      console.log('🎵 Update successful!');
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('🎵 Response error:', errorText);
+          throw new Error(`Submission failed: ${response.status} ${errorText}`);
+        }
 
-      // Update the local song object immediately so UI reflects the change
-      const song = this.songs.find(s => s.id === songId);
-      if (song) {
-        song[fieldName] = url || null;
-        console.log('🎵 Updated local song object:', song.title, fieldName, '=', url || null);
-      }
+        console.log('🎵 Link submitted for approval!');
 
-      // Close modal
-      document.getElementById('edit-resource-modal').classList.add('hidden');
+        // Close modal
+        document.getElementById('edit-resource-modal').classList.add('hidden');
 
-      // Show success message
-      this.showToast('Resource link updated successfully', 'success');
+        // Show success message
+        this.showToast('Link submitted for teacher approval', 'success');
+      } else {
+        // Teachers can update links directly
+        console.log('🎵 Teacher updating link directly...');
 
-      // Re-render the current view with updated local data (don't reload from DB)
-      if (this.currentView === 'songs') {
-        this.filterSongs();
-      } else if (this.currentView === 'progress') {
-        this.renderProgress();
+        const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/songs?id=eq.${songId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+            'Authorization': `Bearer ${accessToken}`,
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({ [fieldName]: url || null })
+        });
+
+        console.log('🎵 Response status:', response.status);
+        console.log('🎵 Response ok:', response.ok);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('🎵 Response error:', errorText);
+          throw new Error(`Update failed: ${response.status} ${errorText}`);
+        }
+
+        console.log('🎵 Update successful!');
+
+        // Update the local song object immediately so UI reflects the change
+        const song = this.songs.find(s => s.id === songId);
+        if (song) {
+          song[fieldName] = url || null;
+          console.log('🎵 Updated local song object:', song.title, fieldName, '=', url || null);
+        }
+
+        // Close modal
+        document.getElementById('edit-resource-modal').classList.add('hidden');
+
+        // Show success message
+        this.showToast('Resource link updated successfully', 'success');
+
+        // Re-render the current view with updated local data (don't reload from DB)
+        if (this.currentView === 'songs') {
+          this.filterSongs();
+        } else if (this.currentView === 'progress') {
+          this.renderProgress();
+        }
       }
     } catch (error) {
       console.error('🎵 Error updating resource:', error);
@@ -3516,7 +3571,27 @@ class CadenceApp {
 
     console.log('🚩 Flagged songs:', flagged);
 
+    // Also load pending links for teacher approval
+    const { data: pendingLinks, error: pendingError } = await supabase
+      .from('pending_links')
+      .select(`
+        id,
+        song_id,
+        link_type,
+        url,
+        submitted_at,
+        submitted_by_user_id,
+        songs!inner (title, artist),
+        users!pending_links_submitted_by_user_id_fkey (name)
+      `)
+      .eq('status', 'pending')
+      .order('submitted_at', { ascending: false });
+
+    console.log('🔗 Pending links:', pendingLinks);
+    console.log('🔗 Pending links error:', pendingError);
+
     this.flaggedRatings = flagged;
+    this.pendingLinks = pendingLinks || [];
     this.populateFlaggedFilters();
     this.filterFlaggedRatings();
   }
@@ -3596,23 +3671,73 @@ class CadenceApp {
     const container = document.getElementById('flagged-ratings-list');
     if (!container) return;
 
-    // Update notification badge
+    // Update notification badge - count both flagged ratings and pending links
+    const totalCount = flaggedSongs.length + (this.pendingLinks?.length || 0);
     const badge = document.getElementById('flagged-count-badge');
     if (badge) {
-      if (flaggedSongs.length > 0) {
-        badge.textContent = flaggedSongs.length;
+      if (totalCount > 0) {
+        badge.textContent = totalCount;
         badge.classList.remove('hidden');
       } else {
         badge.classList.add('hidden');
       }
     }
 
-    if (flaggedSongs.length === 0) {
-      container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No flagged ratings found</p>';
-      return;
+    // Build HTML for pending links section
+    let pendingLinksHtml = '';
+    if (this.pendingLinks && this.pendingLinks.length > 0) {
+      const linkTypeLabels = {
+        'youtube_url': 'YouTube Video',
+        'chords_url': 'Chords/Tabs',
+        'tutorial_url': 'Tutorial Video'
+      };
+
+      pendingLinksHtml = `
+        <div style="margin-bottom: 2rem;">
+          <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Pending Link Approvals (${this.pendingLinks.length})</h3>
+          ${this.pendingLinks.map(link => {
+            const linkLabel = linkTypeLabels[link.link_type] || link.link_type;
+            const submittedDate = new Date(link.submitted_at).toLocaleDateString();
+            const submitterName = link.users?.name || 'Unknown';
+
+            return `
+              <div class="flagged-card" style="border-left: 4px solid #ffc107;">
+                <div class="flagged-header">
+                  <div>
+                    <div class="flagged-song-title">${link.songs.title}</div>
+                    <div class="flagged-song-meta">${link.songs.artist} • ${linkLabel}</div>
+                  </div>
+                  <div style="text-align: right; font-size: 0.875rem; color: var(--text-secondary);">
+                    <div>Submitted by ${submitterName}</div>
+                    <div>${submittedDate}</div>
+                  </div>
+                </div>
+                <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 4px; margin: 1rem 0;">
+                  <div style="font-weight: 500; margin-bottom: 0.5rem; color: var(--text-primary);">Submitted URL:</div>
+                  <a href="${link.url}" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color); word-break: break-all;">${link.url}</a>
+                </div>
+                <div class="flagged-resolve">
+                  <button class="btn btn-primary" onclick="app.approvePendingLink('${link.id}')">
+                    <span style="margin-right: 0.5rem;">✓</span> Approve
+                  </button>
+                  <button class="btn btn-secondary" onclick="app.rejectPendingLink('${link.id}')" style="margin-left: 0.5rem;">
+                    <span style="margin-right: 0.5rem;">✗</span> Reject
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
     }
 
-    const html = flaggedSongs.map((item, index) => {
+    // Build HTML for flagged ratings section
+    let flaggedRatingsHtml = '';
+    if (flaggedSongs.length > 0) {
+      flaggedRatingsHtml = `
+        <div>
+          <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Flagged Rating Discrepancies (${flaggedSongs.length})</h3>
+          ${flaggedSongs.map((item, index) => {
       const levels = item.ratings.map(r => r.level);
       const discrepancy = Math.max(...levels) - Math.min(...levels);
 
@@ -3647,9 +3772,17 @@ class CadenceApp {
           </div>
         </div>
       `;
-    }).join('');
+    }).join('')}
+        </div>
+      `;
+    }
 
-    container.innerHTML = html;
+    // Combine both sections
+    if (pendingLinksHtml || flaggedRatingsHtml) {
+      container.innerHTML = pendingLinksHtml + flaggedRatingsHtml;
+    } else {
+      container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No flagged ratings or pending links found</p>';
+    }
   }
 
   async resolveFlaggedRating(songId, selectId) {
@@ -3687,6 +3820,62 @@ class CadenceApp {
     } catch (error) {
       console.error('Exception in resolveFlaggedRating:', error);
       this.showToast('Failed to resolve rating', 'error');
+    }
+  }
+
+  async approvePendingLink(linkId) {
+    console.log('🔗 Approving pending link:', linkId);
+
+    try {
+      // Call the RPC function to approve the link
+      const { error } = await supabase.rpc('approve_pending_link', {
+        pending_link_id: linkId
+      });
+
+      if (error) {
+        console.error('Error approving link:', error);
+        this.showToast('Failed to approve link: ' + error.message, 'error');
+        return;
+      }
+
+      this.showToast('Link approved successfully', 'success');
+
+      // Reload flagged ratings to update the pending links list
+      await this.loadFlaggedRatings();
+
+      // Also reload songs to update the song library with the new link
+      await this.loadSongs();
+      if (this.currentView === 'songs') {
+        this.filterSongs();
+      }
+    } catch (error) {
+      console.error('Exception in approvePendingLink:', error);
+      this.showToast('Failed to approve link', 'error');
+    }
+  }
+
+  async rejectPendingLink(linkId) {
+    console.log('🔗 Rejecting pending link:', linkId);
+
+    try {
+      // Call the RPC function to reject the link
+      const { error } = await supabase.rpc('reject_pending_link', {
+        pending_link_id: linkId
+      });
+
+      if (error) {
+        console.error('Error rejecting link:', error);
+        this.showToast('Failed to reject link: ' + error.message, 'error');
+        return;
+      }
+
+      this.showToast('Link rejected', 'success');
+
+      // Reload flagged ratings to update the pending links list
+      await this.loadFlaggedRatings();
+    } catch (error) {
+      console.error('Exception in rejectPendingLink:', error);
+      this.showToast('Failed to reject link', 'error');
     }
   }
 

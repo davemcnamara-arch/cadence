@@ -519,6 +519,9 @@
       </div>
       <div class="modal-body">
         <p id="edit-resource-song-info" style="margin-bottom: 16px; color: var(--text-secondary);"></p>
+        <div id="pending-approval-message" class="hidden" style="margin-bottom: 16px; padding: 12px; background-color: #fff3cd; border-left: 4px solid #ffc107; color: #856404; border-radius: 4px;">
+          <strong>Note:</strong> Your link will be submitted for teacher approval before it becomes visible to other students.
+        </div>
         <form id="edit-resource-form">
           <div class="form-group">
             <label for="resource-url" id="resource-url-label">URL</label>
@@ -526,7 +529,7 @@
           </div>
           <div class="form-actions">
             <button type="button" class="btn btn-secondary" id="cancel-edit-resource">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save</button>
+            <button type="submit" class="btn btn-primary">Submit</button>
           </div>
         </form>
       </div>
