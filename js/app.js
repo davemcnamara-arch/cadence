@@ -2140,9 +2140,6 @@ class CadenceApp {
     const chordsRating = this.formatResourceRating(studentSong.resource_ratings?.chords);
     const tutorialRating = this.formatResourceRating(studentSong.resource_ratings?.tutorial);
 
-    // Check if in preview mode
-    const isPreview = this.previewMode.active;
-
     return `
       <div class="song-list-item">
         <div class="info">
@@ -2153,32 +2150,32 @@ class CadenceApp {
               <span style="display: inline-flex; align-items: center; gap: 2px;">
                 <a href="${song.chords_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">Chords</a>
                 ${chordsRating}
-                ${!isPreview ? `<button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'chords_url', '${song.chords_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit chords link">✎</button>` : ''}
+                <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'chords_url', '${song.chords_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit chords link">✎</button>
               </span>
-            ` : !isPreview ? `
+            ` : `
               <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add chords link">+ Chords</button>
-            ` : ''}
+            `}
             ${song.tutorial_url ? `
               <span style="display: inline-flex; align-items: center; gap: 2px;">
                 <a href="${song.tutorial_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">Tutorial</a>
                 ${tutorialRating}
-                ${!isPreview ? `<button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'tutorial_url', '${song.tutorial_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit tutorial link">✎</button>` : ''}
+                <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'tutorial_url', '${song.tutorial_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit tutorial link">✎</button>
               </span>
-            ` : !isPreview ? `
+            ` : `
               <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'tutorial_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add tutorial link">+ Tutorial</button>
-            ` : ''}
+            `}
             ${song.youtube_url ? `
               <span style="display: inline-flex; align-items: center; gap: 2px;">
                 <a href="${song.youtube_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">YouTube</a>
-                ${!isPreview ? `<button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'youtube_url', '${song.youtube_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit YouTube link">✎</button>` : ''}
+                <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'youtube_url', '${song.youtube_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit YouTube link">✎</button>
               </span>
-            ` : !isPreview ? `
+            ` : `
               <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
-            ` : ''}
+            `}
           </div>
         </div>
         <div class="actions">
-          ${!isPreview ? (studentSong.status === 'learning' ? `
+          ${studentSong.status === 'learning' ? `
             <button class="btn btn-primary" onclick="app.markSongMastered('${studentSong.id}')">
               Mark Mastered
             </button>
@@ -2193,9 +2190,7 @@ class CadenceApp {
             <button class="btn-text btn-danger" onclick="app.removeSong('${studentSong.id}')">
               Remove
             </button>
-          `) : (studentSong.status === 'mastered' ? `
-            <span style="color: var(--secondary-color); font-weight: 600;">✓ Mastered</span>
-          ` : '')}
+          `}
         </div>
       </div>
     `;
