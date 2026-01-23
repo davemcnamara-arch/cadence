@@ -442,23 +442,32 @@ class CadenceApp {
   }
 
   async loadSongs() {
-    const { data, error } = await supabase
-      .from('songs')
-      .select(`
-        *,
-        song_ratings (
-          assessed_level,
-          instrument_id,
-          user_id
-        )
-      `)
-      .eq('approved', true)
-      .order('date_added', { ascending: false });
-
-    if (error) {
-      console.error('Error loading songs:', error);
+    // Prevent concurrent calls
+    if (this.loadingSongs) {
+      console.log('⏳ loadSongs already in progress, skipping...');
       return;
     }
+    this.loadingSongs = true;
+
+    try {
+      const { data, error } = await supabase
+        .from('songs')
+        .select(`
+          *,
+          song_ratings (
+            assessed_level,
+            instrument_id,
+            user_id
+          )
+        `)
+        .eq('approved', true)
+        .order('date_added', { ascending: false });
+
+      if (error) {
+        console.error('Error loading songs:', error);
+        this.loadingSongs = false;
+        return;
+      }
 
     // Load resource ratings separately and attach to songs
     const { data: resourceRatings } = await supabase
@@ -487,6 +496,28 @@ class CadenceApp {
       ...song,
       resource_ratings: ratingsMap[song.id] || { chords: [], tutorial: [] }
     }));
+
+    // Check for duplicates and log them
+    const songIds = this.songs.map(s => s.id);
+    const uniqueIds = [...new Set(songIds)];
+    if (songIds.length !== uniqueIds.length) {
+      console.warn('⚠️ Duplicate songs detected in loadSongs!');
+      const duplicates = songIds.filter((id, index) => songIds.indexOf(id) !== index);
+      console.warn('Duplicate IDs:', duplicates);
+      // Remove duplicates - keep only the first occurrence of each song
+      const seen = new Set();
+      this.songs = this.songs.filter(song => {
+        if (seen.has(song.id)) {
+          return false;
+        }
+        seen.add(song.id);
+        return true;
+      });
+      console.log('✓ Duplicates removed, unique songs:', this.songs.length);
+    }
+    } finally {
+      this.loadingSongs = false;
+    }
   }
 
   showInstrumentSelection() {
@@ -705,15 +736,26 @@ class CadenceApp {
       // Save current selection before rebuilding
       const currentSelection = filterDropdown.value;
 
-      const allInstrumentsHtml = '<option value="my-instruments">My Instruments</option>' +
-        '<option value="">All Instruments</option>' +
-        this.instruments.map(i => `<option value="${i.id}">${i.icon} ${i.name}</option>`).join('');
+      // For teachers/admins, don't show "My Instruments" option
+      let allInstrumentsHtml;
+      if (user.role === 'teacher' || user.role === 'admin') {
+        allInstrumentsHtml = '<option value="">All Instruments</option>' +
+          this.instruments.map(i => `<option value="${i.id}">${i.icon} ${i.name}</option>`).join('');
+      } else {
+        allInstrumentsHtml = '<option value="my-instruments">My Instruments</option>' +
+          '<option value="">All Instruments</option>' +
+          this.instruments.map(i => `<option value="${i.id}">${i.icon} ${i.name}</option>`).join('');
+      }
       filterDropdown.innerHTML = allInstrumentsHtml;
 
-      // Restore previous selection if it exists, otherwise default to "My Instruments"
-      if (currentSelection) {
+      // Restore previous selection if it exists, otherwise use appropriate default
+      if (currentSelection && filterDropdown.querySelector(`option[value="${currentSelection}"]`)) {
         filterDropdown.value = currentSelection;
+      } else if (user.role === 'teacher' || user.role === 'admin') {
+        // Teachers default to "All Instruments"
+        filterDropdown.value = '';
       } else {
+        // Students default to "My Instruments"
         filterDropdown.value = 'my-instruments';
       }
     }
