@@ -2317,6 +2317,13 @@ class CadenceApp {
       return;
     }
 
+    // Update local studentSongs data to reflect the change
+    const studentSong = this.studentSongs.find(ss => ss.id === studentSongId);
+    if (studentSong) {
+      studentSong.status = 'mastered';
+      studentSong.date_completed = new Date().toISOString();
+    }
+
     this.showToast('Song marked as mastered!', 'success');
 
     // Check for level advancement
@@ -2401,6 +2408,13 @@ class CadenceApp {
       return;
     }
 
+    // Update local studentSongs data to reflect the change
+    const studentSong = this.studentSongs.find(ss => ss.id === studentSongId);
+    if (studentSong) {
+      studentSong.status = 'learning';
+      studentSong.date_completed = null;
+    }
+
     this.showToast('Song moved back to learning', 'success');
     this.renderProgress();
   }
@@ -2419,6 +2433,12 @@ class CadenceApp {
       console.error('Error removing song:', error);
       this.showToast('Failed to remove song', 'error');
       return;
+    }
+
+    // Update local studentSongs data to remove the song
+    const index = this.studentSongs.findIndex(ss => ss.id === studentSongId);
+    if (index !== -1) {
+      this.studentSongs.splice(index, 1);
     }
 
     this.showToast('Song removed successfully', 'success');
