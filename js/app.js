@@ -393,6 +393,7 @@ class CadenceApp {
   }
 
   async loadInstruments() {
+    console.log('🎸 loadInstruments: Starting...');
     const { data, error } = await supabase
       .from('instruments')
       .select('*')
@@ -405,6 +406,7 @@ class CadenceApp {
     }
 
     this.instruments = data;
+    console.log('🎸 loadInstruments: Loaded', data?.length, 'instruments:', data?.map(i => i.name));
   }
 
   async loadStudentProgress() {
@@ -442,6 +444,9 @@ class CadenceApp {
   }
 
   async loadSongs() {
+    const stackTrace = new Error().stack;
+    console.log('🎵 loadSongs: CALLED FROM:', stackTrace.split('\n')[2]?.trim());
+
     // Prevent concurrent calls
     if (this.loadingSongs) {
       console.log('⏳ loadSongs already in progress, skipping this call');
@@ -743,6 +748,11 @@ class CadenceApp {
     const gradingDropdown = document.getElementById('grading-instrument');
     const user = auth.getCurrentUser();
 
+    console.log('🎸 updateInstrumentDropdown called');
+    console.log('🎸 this.instruments:', this.instruments?.length, 'instruments');
+    console.log('🎸 this.studentProgress:', this.studentProgress?.length, 'progress entries');
+    console.log('🎸 user.role:', user.role);
+
     // Only build student progress dropdown if there is progress
     let html = '';
     if (this.studentProgress && this.studentProgress.length > 0) {
@@ -762,14 +772,17 @@ class CadenceApp {
       // For teachers/admins, don't show "My Instruments" option
       let allInstrumentsHtml;
       if (user.role === 'teacher' || user.role === 'admin') {
+        console.log('🎸 Building teacher dropdown with', this.instruments?.length, 'instruments');
         allInstrumentsHtml = '<option value="">All Instruments</option>' +
-          this.instruments.map(i => `<option value="${i.id}">${i.icon} ${i.name}</option>`).join('');
+          (this.instruments || []).map(i => `<option value="${i.id}">${i.icon} ${i.name}</option>`).join('');
+        console.log('🎸 Teacher dropdown HTML length:', allInstrumentsHtml.length);
       } else {
         allInstrumentsHtml = '<option value="my-instruments">My Instruments</option>' +
           '<option value="">All Instruments</option>' +
-          this.instruments.map(i => `<option value="${i.id}">${i.icon} ${i.name}</option>`).join('');
+          (this.instruments || []).map(i => `<option value="${i.id}">${i.icon} ${i.name}</option>`).join('');
       }
       filterDropdown.innerHTML = allInstrumentsHtml;
+      console.log('🎸 Filter dropdown updated, option count:', filterDropdown.options.length);
 
       // Restore previous selection if it exists, otherwise use appropriate default
       if (currentSelection && filterDropdown.querySelector(`option[value="${currentSelection}"]`)) {
