@@ -3412,8 +3412,19 @@ class CadenceApp {
       return;
     }
 
+    // Create a user map for displaying names
+    const userMap = {};
+    allStudents.forEach(s => {
+      userMap[s.user_id] = s.name;
+    });
+
+    // Add current teacher to the map
+    const user = auth.getCurrentUser();
+    userMap[user.id] = user.name || 'Teacher';
+
     const studentIds = allStudents.map(s => s.user_id);
     console.log('🚩 Student IDs:', studentIds);
+    console.log('🚩 User map:', userMap);
 
     // First, get all song IDs that have been rated by class students
     const { data: studentRatings, error: studentError } = await supabase
@@ -3439,6 +3450,7 @@ class CadenceApp {
     }
 
     // Now get ALL ratings for these songs (including teacher ratings)
+    // Don't use inner join on users to avoid RLS issues
     const { data, error } = await supabase
       .from('song_ratings')
       .select(`
@@ -3446,7 +3458,6 @@ class CadenceApp {
         instrument_id,
         assessed_level,
         user_id,
-        users!inner (name),
         songs!inner (title, artist),
         instruments (icon, name)
       `)
@@ -3471,7 +3482,7 @@ class CadenceApp {
         };
       }
       songGroups[key].ratings.push({
-        student: rating.users.name,
+        student: userMap[rating.user_id] || 'Unknown',
         level: rating.assessed_level
       });
     });
