@@ -1370,9 +1370,9 @@ class CadenceApp {
     const chordsRating = this.formatResourceRating(song.resource_ratings?.chords);
     const tutorialRating = this.formatResourceRating(song.resource_ratings?.tutorial);
 
-    // Check user role - only show "Start Learning" button for students
+    // Check user role - show "Start Learning" button for students or in preview mode
     const user = auth.getCurrentUser();
-    const isStudent = user.role === 'student';
+    const isStudent = user.role === 'student' || this.previewMode.active;
 
     // Check if student is already tracking this song
     const studentSong = this.studentSongs.find(ss =>
