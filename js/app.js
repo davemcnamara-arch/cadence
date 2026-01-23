@@ -100,12 +100,22 @@ class CadenceApp {
         e.preventDefault();
         e.stopPropagation();
         try {
-          // Unsubscribe from real-time updates
+          // Unsubscribe from real-time updates with timeout
           if (this.songUpdatesSubscription) {
             console.log('🔔 Unsubscribing from song updates...');
-            await this.songUpdatesSubscription.unsubscribe();
+            try {
+              // Add timeout to prevent hanging on unsubscribe
+              await Promise.race([
+                this.songUpdatesSubscription.unsubscribe(),
+                new Promise((resolve) => setTimeout(resolve, 1000))
+              ]);
+              console.log('🔔 Unsubscribe completed');
+            } catch (unsubError) {
+              console.warn('🔔 Unsubscribe error (continuing logout):', unsubError);
+            }
           }
 
+          console.log('🔔 Calling auth.signOut()...');
           const result = await auth.signOut();
           console.log('Sign out result:', result);
           // Force reload to clear all state and show login screen
