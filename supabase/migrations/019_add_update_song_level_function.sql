@@ -21,8 +21,7 @@ BEGIN
 
   -- Update the song's suggested level
   UPDATE songs
-  SET suggested_level = p_level,
-      updated_at = NOW()
+  SET suggested_level = p_level
   WHERE id = p_song_id;
 END;
 $$;
