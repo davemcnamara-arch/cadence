@@ -1497,7 +1497,7 @@ class CadenceApp {
       'youtube_url': 'YouTube URL'
     };
 
-    const isStudent = this.auth.hasRole('student');
+    const isStudent = auth.hasRole('student');
     const modalTitle = isStudent
       ? (currentValue ? 'Submit Resource Link for Approval' : 'Submit Resource Link for Approval')
       : (currentValue ? 'Edit Resource Link' : 'Add Resource Link');
@@ -1551,7 +1551,7 @@ class CadenceApp {
       }
 
       // Check if user is a student - if so, submit for approval instead
-      const isStudent = this.auth.hasRole('student');
+      const isStudent = auth.hasRole('student');
       console.log('🎵 User is student:', isStudent);
 
       if (isStudent) {
@@ -1570,7 +1570,7 @@ class CadenceApp {
             song_id: songId,
             link_type: fieldName,
             url: url,
-            submitted_by_user_id: this.auth.currentUser.id
+            submitted_by_user_id: auth.getCurrentUser().id
           })
         });
 
