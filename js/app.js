@@ -1064,6 +1064,11 @@ class CadenceApp {
         byInstrument[r.instrument_id].push(r.assessed_level);
       });
 
+      // If song has been resolved with an official level, show that
+      if (song.suggested_level) {
+        return this.renderSongCardWithData(song, song.suggested_level, `Level ${song.suggested_level}`, allRatings.length);
+      }
+
       let hasAnyDiscrepancy = false;
       Object.values(byInstrument).forEach(levels => {
         if (levels.length >= 2) {
@@ -1078,8 +1083,6 @@ class CadenceApp {
       } else if (allRatings.length > 0) {
         const avgLevel = (allRatings.reduce((sum, r) => sum + r.assessed_level, 0) / allRatings.length).toFixed(1);
         return this.renderSongCardWithData(song, avgLevel, `Level ${avgLevel}`, allRatings.length);
-      } else if (song.suggested_level) {
-        return this.renderSongCardWithData(song, song.suggested_level, `Level ${song.suggested_level} (suggested)`, 0);
       } else {
         return this.renderSongCardWithData(song, '?', 'Not rated', 0);
       }
@@ -1089,7 +1092,11 @@ class CadenceApp {
     const ratings = allRatings.filter(r => r.instrument_id === activeInstrument);
     let levelDisplay, levelLabel;
 
-    if (ratings.length > 0) {
+    // If song has been resolved with an official level, show that
+    if (song.suggested_level) {
+      levelDisplay = song.suggested_level;
+      levelLabel = `Level ${song.suggested_level}`;
+    } else if (ratings.length > 0) {
       // Check for discrepancies (2+ level difference) for this instrument
       const levels = ratings.map(r => r.assessed_level);
       const min = Math.min(...levels);
@@ -1104,9 +1111,6 @@ class CadenceApp {
         levelDisplay = avgLevel;
         levelLabel = `Level ${avgLevel}`;
       }
-    } else if (song.suggested_level) {
-      levelDisplay = song.suggested_level;
-      levelLabel = `Level ${song.suggested_level} (suggested)`;
     } else {
       levelDisplay = '?';
       levelLabel = 'Not rated';
@@ -3463,7 +3467,7 @@ class CadenceApp {
         instrument_id,
         assessed_level,
         user_id,
-        songs!inner (title, artist),
+        songs!inner (title, artist, suggested_level),
         instruments (icon, name)
       `)
       .in('song_id', songIds);
@@ -3484,7 +3488,8 @@ class CadenceApp {
           songId: rating.song_id,
           song: rating.songs,
           instrument: rating.instruments,
-          ratings: []
+          ratings: [],
+          hasBeenResolved: rating.songs.suggested_level !== null
         };
       }
       songGroups[key].ratings.push({
@@ -3495,14 +3500,14 @@ class CadenceApp {
 
     console.log('🚩 Song groups:', songGroups);
 
-    // Find songs with 2+ level discrepancies
+    // Find songs with 2+ level discrepancies (excluding already resolved songs)
     const flagged = [];
     Object.values(songGroups).forEach(group => {
-      if (group.ratings.length >= 2) {
+      if (group.ratings.length >= 2 && !group.hasBeenResolved) {
         const levels = group.ratings.map(r => r.level);
         const min = Math.min(...levels);
         const max = Math.max(...levels);
-        console.log(`🚩 Checking ${group.song.title} - ${group.instrument?.name || 'unknown'}: levels=${levels}, min=${min}, max=${max}, diff=${max-min}`);
+        console.log(`🚩 Checking ${group.song.title} - ${group.instrument?.name || 'unknown'}: levels=${levels}, min=${min}, max=${max}, diff=${max-min}, resolved=${group.hasBeenResolved}`);
         if (max - min >= 2) {
           flagged.push(group);
         }
