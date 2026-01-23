@@ -2277,20 +2277,14 @@ class CadenceApp {
   async submitResourceRatings() {
     const chordsRating = document.getElementById('chords-rating').value;
     const tutorialRating = document.getElementById('tutorial-rating').value;
-    const user = auth.getCurrentUser();
-    // Use student ID if in preview mode, otherwise use current user
-    const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
-    // Save ratings if provided
+    // Save ratings if provided - use RPC function to bypass RLS
     if (chordsRating || tutorialRating) {
-      const { error } = await supabase
-        .from('resource_ratings')
-        .insert({
-          student_song_id: this.pendingMasteredSong.studentSongId,
-          user_id: userId,
-          chords_rating: chordsRating ? parseInt(chordsRating) : null,
-          tutorial_rating: tutorialRating ? parseInt(tutorialRating) : null
-        });
+      const { error } = await supabase.rpc('submit_resource_ratings', {
+        p_student_song_id: this.pendingMasteredSong.studentSongId,
+        p_chords_rating: chordsRating ? parseInt(chordsRating) : null,
+        p_tutorial_rating: tutorialRating ? parseInt(tutorialRating) : null
+      });
 
       if (error) {
         console.error('Error saving ratings:', error);
