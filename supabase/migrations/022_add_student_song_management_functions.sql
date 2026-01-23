@@ -200,3 +200,76 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION get_student_song_detail(UUID) TO authenticated;
+
+-- Function to submit resource ratings on behalf of students
+CREATE OR REPLACE FUNCTION submit_resource_ratings(
+  p_student_song_id UUID,
+  p_chords_rating INTEGER DEFAULT NULL,
+  p_tutorial_rating INTEGER DEFAULT NULL
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_current_user_id UUID;
+  v_student_id UUID;
+  v_has_access BOOLEAN;
+  v_result JSON;
+BEGIN
+  -- Get the current user
+  v_current_user_id := auth.uid();
+
+  -- Get the student ID from the student_song
+  SELECT user_id INTO v_student_id
+  FROM student_songs
+  WHERE id = p_student_song_id;
+
+  IF v_student_id IS NULL THEN
+    RAISE EXCEPTION 'Student song not found';
+  END IF;
+
+  -- Check if current user is the student themselves OR a teacher with access
+  SELECT (
+    v_current_user_id = v_student_id
+    OR EXISTS (
+      SELECT 1
+      FROM classes c
+      JOIN class_members cm ON c.id = cm.class_id
+      WHERE c.teacher_id = v_current_user_id
+        AND cm.user_id = v_student_id
+    )
+  ) INTO v_has_access;
+
+  IF NOT v_has_access THEN
+    RAISE EXCEPTION 'Permission denied: You do not have access to this student';
+  END IF;
+
+  -- Insert the resource rating
+  INSERT INTO resource_ratings (
+    student_song_id,
+    user_id,
+    chords_rating,
+    tutorial_rating
+  )
+  VALUES (
+    p_student_song_id,
+    v_student_id,
+    p_chords_rating,
+    p_tutorial_rating
+  )
+  RETURNING json_build_object(
+    'id', id,
+    'student_song_id', student_song_id,
+    'user_id', user_id,
+    'chords_rating', chords_rating,
+    'tutorial_rating', tutorial_rating
+  ) INTO v_result;
+
+  RETURN v_result;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION submit_resource_ratings(UUID, INTEGER, INTEGER) TO authenticated;
+
