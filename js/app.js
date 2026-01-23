@@ -3392,8 +3392,13 @@ class CadenceApp {
   }
 
   async loadFlaggedRatings() {
+    console.log('🚩 Loading flagged ratings...');
+
     // Get all students from all the teacher's classes
     const { data: allStudents, error: studentsError } = await supabase.rpc('get_all_teacher_students');
+
+    console.log('🚩 All students:', allStudents);
+    console.log('🚩 Students error:', studentsError);
 
     if (studentsError) {
       console.error('Error loading teacher students:', studentsError);
@@ -3402,17 +3407,21 @@ class CadenceApp {
     }
 
     if (!allStudents || allStudents.length === 0) {
+      console.log('🚩 No students found');
       this.renderFlaggedRatings([]);
       return;
     }
 
     const studentIds = allStudents.map(s => s.user_id);
+    console.log('🚩 Student IDs:', studentIds);
 
     // First, get all song IDs that have been rated by class students
     const { data: studentRatings, error: studentError } = await supabase
       .from('song_ratings')
       .select('song_id')
       .in('user_id', studentIds);
+
+    console.log('🚩 Student ratings:', studentRatings);
 
     if (studentError) {
       console.error('Error loading student ratings:', studentError);
@@ -3421,8 +3430,10 @@ class CadenceApp {
 
     // Get unique song IDs
     const songIds = [...new Set(studentRatings.map(r => r.song_id))];
+    console.log('🚩 Song IDs with ratings:', songIds);
 
     if (songIds.length === 0) {
+      console.log('🚩 No songs with ratings');
       this.renderFlaggedRatings([]);
       return;
     }
@@ -3440,6 +3451,8 @@ class CadenceApp {
         instruments (icon, name)
       `)
       .in('song_id', songIds);
+
+    console.log('🚩 All ratings for songs:', data);
 
     if (error) {
       console.error('Error loading ratings:', error);
@@ -3463,6 +3476,8 @@ class CadenceApp {
       });
     });
 
+    console.log('🚩 Song groups:', songGroups);
+
     // Find songs with 2+ level discrepancies
     const flagged = [];
     Object.values(songGroups).forEach(group => {
@@ -3470,11 +3485,14 @@ class CadenceApp {
         const levels = group.ratings.map(r => r.level);
         const min = Math.min(...levels);
         const max = Math.max(...levels);
+        console.log(`🚩 Checking ${group.song.title} - ${group.instrument?.name || 'unknown'}: levels=${levels}, min=${min}, max=${max}, diff=${max-min}`);
         if (max - min >= 2) {
           flagged.push(group);
         }
       }
     });
+
+    console.log('🚩 Flagged songs:', flagged);
 
     this.flaggedRatings = flagged;
     this.populateFlaggedFilters();
