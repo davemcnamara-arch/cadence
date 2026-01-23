@@ -702,12 +702,20 @@ class CadenceApp {
 
     // Update filter dropdown with all instruments
     if (filterDropdown) {
+      // Save current selection before rebuilding
+      const currentSelection = filterDropdown.value;
+
       const allInstrumentsHtml = '<option value="my-instruments">My Instruments</option>' +
         '<option value="">All Instruments</option>' +
         this.instruments.map(i => `<option value="${i.id}">${i.icon} ${i.name}</option>`).join('');
       filterDropdown.innerHTML = allInstrumentsHtml;
-      // Set default to "My Instruments"
-      filterDropdown.value = 'my-instruments';
+
+      // Restore previous selection if it exists, otherwise default to "My Instruments"
+      if (currentSelection) {
+        filterDropdown.value = currentSelection;
+      } else {
+        filterDropdown.value = 'my-instruments';
+      }
     }
 
     // Update grading dropdown
