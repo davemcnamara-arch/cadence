@@ -4868,11 +4868,19 @@ class CadenceApp {
       supabase.from('classes').select('id')
     ]);
 
-    // Debug: log any errors
-    if (usersRes.error) console.error('Users query error:', usersRes.error);
-    if (songsRes.error) console.error('Songs query error:', songsRes.error);
-    if (ratingsRes.error) console.error('Ratings query error:', ratingsRes.error);
-    if (classesRes.error) console.error('Classes query error:', classesRes.error);
+    // Debug: log full responses to see what's returned
+    console.log('Admin stats responses:', {
+      users: usersRes.data?.length,
+      songs: songsRes.data?.length,
+      ratings: ratingsRes.data?.length,
+      classes: classesRes.data?.length,
+      errors: {
+        users: usersRes.error,
+        songs: songsRes.error,
+        ratings: ratingsRes.error,
+        classes: classesRes.error
+      }
+    });
 
     const stats = {
       users: usersRes.data?.length ?? 0,
