@@ -4604,14 +4604,11 @@ class CadenceApp {
 
     try {
       // Update the rating level (if overridden) and mark as teacher_reviewed
-      console.log('⭐ Updating database...');
-      const { error } = await supabase
-        .from('song_ratings')
-        .update({
-          assessed_level: level,
-          teacher_reviewed: true
-        })
-        .eq('id', ratingId);
+      console.log('⭐ Calling approve_song_rating RPC...');
+      const { data, error } = await supabase.rpc('approve_song_rating', {
+        p_rating_id: ratingId,
+        p_assessed_level: level
+      });
 
       if (error) {
         console.error('Error reviewing rating:', error);
@@ -4619,6 +4616,7 @@ class CadenceApp {
         return;
       }
 
+      console.log('⭐ RPC response:', data);
       console.log('⭐ Database update successful');
       this.showToast('Rating reviewed successfully', 'success');
 
