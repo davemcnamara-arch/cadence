@@ -5128,6 +5128,7 @@ class CadenceApp {
 
   renderContentModeration() {
     const container = document.getElementById('content-moderation-list');
+    console.log('renderContentModeration:', { container: !!container, listLength: this.adminContentList?.length });
     if (!container) return;
 
     if (!this.adminContentList || this.adminContentList.length === 0) {
