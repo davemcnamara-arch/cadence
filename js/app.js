@@ -5045,6 +5045,7 @@ class CadenceApp {
 
   renderAdminInstruments() {
     const container = document.getElementById('instruments-admin-list');
+    console.log('renderAdminInstruments:', { container: !!container, instruments: this.instruments });
     if (!container) return;
 
     const html = this.instruments.map(inst => {
