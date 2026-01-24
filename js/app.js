@@ -5233,6 +5233,7 @@ class CadenceApp {
     }
 
     const { data, error } = await query.limit(200);
+    console.log('loadUsersManagement:', { data, error });
 
     if (error) {
       console.error('Error loading users:', error);
@@ -5245,6 +5246,7 @@ class CadenceApp {
 
   renderUsersManagement() {
     const container = document.getElementById('users-list');
+    console.log('renderUsersManagement:', { container: !!container, usersLength: this.adminUsersList?.length });
     if (!container) return;
 
     let users = this.adminUsersList || [];
