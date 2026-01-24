@@ -4860,19 +4860,19 @@ class CadenceApp {
   }
 
   async loadAdminStats() {
-    // Get system-wide statistics
-    const [usersCount, songsCount, ratingsCount, classesCount] = await Promise.all([
-      supabase.from('users').select('*', { count: 'exact', head: true }),
-      supabase.from('songs').select('*', { count: 'exact', head: true }),
-      supabase.from('song_ratings').select('*', { count: 'exact', head: true }),
-      supabase.from('classes').select('*', { count: 'exact', head: true })
+    // Get system-wide statistics using data length for reliability
+    const [usersRes, songsRes, ratingsRes, classesRes] = await Promise.all([
+      supabase.from('users').select('id'),
+      supabase.from('songs').select('id'),
+      supabase.from('song_ratings').select('id'),
+      supabase.from('classes').select('id')
     ]);
 
     const stats = {
-      users: usersCount.count || 0,
-      songs: songsCount.count || 0,
-      ratings: ratingsCount.count || 0,
-      classes: classesCount.count || 0
+      users: usersRes.data?.length ?? 0,
+      songs: songsRes.data?.length ?? 0,
+      ratings: ratingsRes.data?.length ?? 0,
+      classes: classesRes.data?.length ?? 0
     };
 
     this.renderAdminStats(stats);
