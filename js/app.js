@@ -1073,7 +1073,7 @@ class CadenceApp {
         }
       } else if (viewName === 'admin') {
         // Load admin data
-        this.renderAdminStats(this.adminStats || {users: 0, songs: 0, ratings: 0, classes: 0});
+        this.renderAdminStats(this.adminStats || {students: 0, teachers: 0, songs: 0, classes: 0});
         this.renderAdminLevels();
       }
     }
@@ -4862,14 +4862,19 @@ class CadenceApp {
   async loadAdminStats() {
     // Get system-wide statistics using data length for reliability
     const [usersRes, songsRes, ratingsRes, classesRes] = await Promise.all([
-      supabase.from('users').select('id'),
+      supabase.from('users').select('id, role'),
       supabase.from('songs').select('id'),
       supabase.from('song_ratings').select('id'),
       supabase.from('classes').select('id')
     ]);
 
+    const users = usersRes.data || [];
+    const students = users.filter(u => u.role === 'student').length;
+    const teachers = users.filter(u => u.role === 'teacher' || u.role === 'admin').length;
+
     this.adminStats = {
-      users: usersRes.data?.length ?? 0,
+      students,
+      teachers,
       songs: songsRes.data?.length ?? 0,
       ratings: ratingsRes.data?.length ?? 0,
       classes: classesRes.data?.length ?? 0
@@ -4884,20 +4889,20 @@ class CadenceApp {
 
     const html = `
       <div class="admin-stat-card">
-        <div class="admin-stat-value">${stats.users}</div>
-        <div class="admin-stat-label">Total Users</div>
+        <div class="admin-stat-value">${stats.students}</div>
+        <div class="admin-stat-label">Students</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-value">${stats.teachers}</div>
+        <div class="admin-stat-label">Teachers</div>
       </div>
       <div class="admin-stat-card">
         <div class="admin-stat-value">${stats.songs}</div>
-        <div class="admin-stat-label">Songs in Library</div>
-      </div>
-      <div class="admin-stat-card">
-        <div class="admin-stat-value">${stats.ratings}</div>
-        <div class="admin-stat-label">Total Ratings</div>
+        <div class="admin-stat-label">Songs</div>
       </div>
       <div class="admin-stat-card">
         <div class="admin-stat-value">${stats.classes}</div>
-        <div class="admin-stat-label">Active Classes</div>
+        <div class="admin-stat-label">Classes</div>
       </div>
     `;
 
