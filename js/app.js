@@ -5225,7 +5225,7 @@ class CadenceApp {
 
     let query = supabase
       .from('users')
-      .select('*, student_progress(count)')
+      .select('*, student_progress(instrument_id)')
       .order('created_at', { ascending: false });
 
     if (roleFilter) {
@@ -5266,7 +5266,7 @@ class CadenceApp {
     }
 
     const html = users.map(user => {
-      const instrumentCount = user.student_progress?.[0]?.count || 0;
+      const instrumentCount = user.student_progress?.length || 0;
 
       return `
         <div class="user-admin-card">
