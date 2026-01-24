@@ -4266,6 +4266,8 @@ class CadenceApp {
       .eq('teacher_reviewed', false)
       .order('date_graded', { ascending: false });
 
+    console.log('🔍 Unreviewed ratings count:', unreviewedRatings?.length || 0);
+    console.log('🔍 Unreviewed rating IDs:', unreviewedRatings?.map(r => r.id));
     console.log('🔍 Unreviewed ratings:', unreviewedRatings);
     console.log('🔍 Unreviewed error:', unreviewedError);
 
@@ -4283,6 +4285,7 @@ class CadenceApp {
       isNew: true
     }));
 
+    console.log('🔍 New ratings for review count:', newRatings.length);
     console.log('🔍 New ratings for review:', newRatings);
 
     // Also load pending links for teacher approval
@@ -4307,7 +4310,9 @@ class CadenceApp {
     this.flaggedRatings = flagged;
     this.newRatings = newRatings;
     this.pendingLinks = pendingLinks || [];
+    console.log('🔍 Set this.newRatings to array with length:', this.newRatings.length);
     this.populateFlaggedFilters();
+    console.log('🔍 About to call filterFlaggedRatings...');
     this.filterFlaggedRatings();
   }
 
@@ -4585,6 +4590,8 @@ class CadenceApp {
   }
 
   async reviewNewRating(ratingId, selectId) {
+    console.log('⭐ Reviewing new rating:', ratingId);
+
     const selectElement = document.getElementById(selectId);
     const level = parseInt(selectElement.value);
 
@@ -4593,8 +4600,11 @@ class CadenceApp {
       return;
     }
 
+    console.log('⭐ Setting level to:', level);
+
     try {
       // Update the rating level (if overridden) and mark as teacher_reviewed
+      console.log('⭐ Updating database...');
       const { error } = await supabase
         .from('song_ratings')
         .update({
@@ -4609,15 +4619,26 @@ class CadenceApp {
         return;
       }
 
+      console.log('⭐ Database update successful');
       this.showToast('Rating reviewed successfully', 'success');
 
+      console.log('⭐ Current view is:', this.currentView);
+
       // Reload flagged ratings to remove the reviewed rating
+      console.log('⭐ About to call loadFlaggedRatings...');
       await this.loadFlaggedRatings();
+      console.log('⭐ loadFlaggedRatings completed');
 
       // Also reload songs to update the song library display
+      console.log('⭐ About to call loadSongs...');
       await this.loadSongs();
+      console.log('⭐ loadSongs completed, this.songs.length:', this.songs.length);
+
       if (this.currentView === 'songs') {
+        console.log('⭐ Current view is songs, calling filterSongs...');
         this.filterSongs();
+      } else {
+        console.log('⭐ Current view is NOT songs, skipping filterSongs');
       }
     } catch (error) {
       console.error('Exception in reviewNewRating:', error);
