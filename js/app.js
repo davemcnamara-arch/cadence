@@ -306,9 +306,9 @@ class CadenceApp {
       contentFilterStatus.addEventListener('change', () => this.loadContentModeration());
     }
 
-    const contentFilterInstrument = document.getElementById('content-filter-instrument');
-    if (contentFilterInstrument) {
-      contentFilterInstrument.addEventListener('change', () => this.loadContentModeration());
+    const contentSearch = document.getElementById('content-search');
+    if (contentSearch) {
+      contentSearch.addEventListener('input', () => this.renderContentModeration());
     }
 
     // Admin: User filters
@@ -5135,7 +5135,21 @@ class CadenceApp {
       return;
     }
 
-    const html = this.adminContentList.map(song => {
+    // Filter by search term
+    const searchTerm = document.getElementById('content-search')?.value?.toLowerCase() || '';
+    const filteredList = this.adminContentList.filter(song => {
+      if (!searchTerm) return true;
+      return song.title?.toLowerCase().includes(searchTerm) ||
+             song.artist?.toLowerCase().includes(searchTerm) ||
+             song.users?.name?.toLowerCase().includes(searchTerm);
+    });
+
+    if (filteredList.length === 0) {
+      container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No songs match your search</p>';
+      return;
+    }
+
+    const html = filteredList.map(song => {
       const statusClass = song.approved ? 'approved' : 'pending';
       const statusText = song.approved ? 'Approved' : 'Pending';
 
