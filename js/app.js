@@ -2332,9 +2332,14 @@ class CadenceApp {
     }
 
     try {
-      // Use RPC function to handle the entire grading workflow
-      // This bypasses RLS and handles all validation internally
-      const { data, error } = await supabase.rpc('grade_song', {
+      console.log('🎯 About to call grade_song RPC...');
+
+      // Add a timeout to detect hangs
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out after 15 seconds')), 15000)
+      );
+
+      const rpcPromise = supabase.rpc('grade_song', {
         p_student_id: userId,
         p_title: this.gradingData.title,
         p_artist: this.gradingData.artist,
@@ -2346,6 +2351,8 @@ class CadenceApp {
         p_tutorial_url: this.gradingData.tutorial_url || null,
         p_add_to_learning: document.getElementById('add-to-learning').checked
       });
+
+      const { data, error } = await Promise.race([rpcPromise, timeoutPromise]);
 
       console.log('🎯 RPC response:', { data, error });
 
@@ -2360,8 +2367,8 @@ class CadenceApp {
         this.renderSongs();
       }
     } catch (error) {
-      console.error('Error submitting grading:', error);
-      console.error('Error details:', {
+      console.error('🎯 Error submitting grading:', error);
+      console.error('🎯 Error details:', {
         message: error.message,
         details: error.details,
         hint: error.hint,
