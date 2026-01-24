@@ -16,6 +16,10 @@ AS $$
   )
 $$;
 
+-- Drop existing policies if they exist (in case migration is re-run)
+DROP POLICY IF EXISTS "Admins can view all songs" ON songs;
+DROP POLICY IF EXISTS "Admins can view all classes" ON classes;
+
 -- Allow admins to view all songs (including unapproved)
 CREATE POLICY "Admins can view all songs" ON songs FOR SELECT USING (is_admin());
 
