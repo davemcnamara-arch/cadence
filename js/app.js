@@ -5000,7 +5000,6 @@ class CadenceApp {
             </div>
             <div class="level-admin-actions">
               <button class="btn btn-secondary btn-sm" onclick="app.editLevel('${level.id}')">Edit Details</button>
-              <button class="btn btn-secondary btn-sm" onclick="app.editChecklist('${level.id}')">Edit Checklist</button>
             </div>
           </div>
           <div class="level-admin-description">${level.description}</div>
@@ -5038,78 +5037,6 @@ class CadenceApp {
     document.getElementById('edit-level-form').dataset.levelId = levelId;
 
     document.getElementById('edit-level-modal').classList.remove('hidden');
-  }
-
-  async editChecklist(levelId) {
-    const level = this.adminLevels.find(l => l.id === levelId);
-    if (!level) return;
-
-    this.currentEditingChecklistId = levelId;
-    this.currentChecklistData = level.grading_checklist_json || {};
-
-    this.renderChecklistEditor();
-    document.getElementById('edit-checklist-modal').classList.remove('hidden');
-  }
-
-  renderChecklistEditor() {
-    const container = document.getElementById('checklist-criteria-container');
-    if (!container) return;
-
-    const criteria = Object.entries(this.currentChecklistData);
-
-    let html = '';
-    criteria.forEach(([criterionName, options], index) => {
-      html += this.renderCriterionEditor(criterionName, options, index);
-    });
-
-    container.innerHTML = html;
-  }
-
-  renderCriterionEditor(criterionName, options, index) {
-    const optionsArray = Array.isArray(options) ? options : [];
-
-    return `
-      <div class="criterion-editor" data-index="${index}">
-        <div class="criterion-editor-header">
-          <input type="text" class="criterion-name" value="${criterionName}" placeholder="Criterion name" />
-          <button type="button" class="btn btn-danger btn-sm" onclick="app.removeCriterion(${index})">Remove</button>
-        </div>
-        <div class="criterion-options" data-criterion="${index}">
-          ${optionsArray.map((opt, optIndex) => `
-            <div class="criterion-option-tag">
-              ${opt}
-              <button type="button" onclick="app.removeOption(${index}, ${optIndex})">×</button>
-            </div>
-          `).join('')}
-          <input type="text" class="add-option-input" placeholder="Add option..." onkeypress="if(event.key==='Enter'){event.preventDefault();app.addOption(${index}, this.value); this.value='';}" />
-        </div>
-      </div>
-    `;
-  }
-
-  removeCriterion(index) {
-    const criteria = Object.entries(this.currentChecklistData);
-    criteria.splice(index, 1);
-    this.currentChecklistData = Object.fromEntries(criteria);
-    this.renderChecklistEditor();
-  }
-
-  addOption(criterionIndex, optionValue) {
-    if (!optionValue.trim()) return;
-
-    const criteria = Object.entries(this.currentChecklistData);
-    const [criterionName, options] = criteria[criterionIndex];
-    options.push(optionValue.trim());
-
-    this.renderChecklistEditor();
-  }
-
-  removeOption(criterionIndex, optionIndex) {
-    const criteria = Object.entries(this.currentChecklistData);
-    const [criterionName, options] = criteria[criterionIndex];
-    options.splice(optionIndex, 1);
-
-    this.renderChecklistEditor();
   }
 
   // ============================================
@@ -5384,43 +5311,6 @@ class CadenceApp {
         this.showToast('Level updated successfully', 'success');
         await this.loadAdminLevels();
         this.renderAdminLevels();
-      });
-    }
-
-    // Edit Checklist Form
-    const editChecklistForm = document.getElementById('edit-checklist-form');
-    if (editChecklistForm) {
-      editChecklistForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        // Collect all criteria
-        const criteria = {};
-        document.querySelectorAll('.criterion-editor').forEach(editor => {
-          const nameInput = editor.querySelector('.criterion-name');
-          const criterionName = nameInput.value.trim();
-          if (!criterionName) return;
-
-          const index = editor.dataset.index;
-          const criteriaEntries = Object.entries(this.currentChecklistData);
-          const [, options] = criteriaEntries[index];
-
-          criteria[criterionName] = options;
-        });
-
-        const { error } = await supabase
-          .from('levels')
-          .update({ grading_checklist_json: criteria })
-          .eq('id', this.currentEditingChecklistId);
-
-        if (error) {
-          console.error('Error updating checklist:', error);
-          this.showToast('Failed to update checklist', 'error');
-          return;
-        }
-
-        document.getElementById('edit-checklist-modal').classList.add('hidden');
-        this.showToast('Checklist updated successfully', 'success');
-        await this.loadAdminLevels();
       });
     }
 
