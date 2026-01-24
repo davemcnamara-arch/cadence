@@ -363,14 +363,11 @@ class CadenceApp {
       document.querySelectorAll('.student-tab').forEach(tab => tab.classList.remove('hidden'));
       // Student tabs will be active by default
       await this.loadStudentClassesHeader();
-    } else if (user.role === 'teacher' || user.role === 'admin') {
-      // Hide student-only features for teachers and admins
+    } else if (user.role === 'teacher') {
+      // Hide student-only features for teachers
       document.querySelectorAll('.student-tab').forEach(tab => tab.classList.add('hidden'));
       document.getElementById('join-class-toggle-btn')?.classList.add('hidden');
       document.getElementById('export-progress-btn')?.classList.add('hidden');
-
-      // Keep song and instrument controls visible for Song Library access
-      // Teachers/admins can now add/manage songs via Song Library tab
 
       // Show teacher tabs
       document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.remove('hidden'));
@@ -378,12 +375,16 @@ class CadenceApp {
 
       // Switch to teacher's default view
       this.switchView('classes');
-    }
+    } else if (user.role === 'admin') {
+      // Hide student-only features for admins
+      document.querySelectorAll('.student-tab').forEach(tab => tab.classList.add('hidden'));
+      document.getElementById('join-class-toggle-btn')?.classList.add('hidden');
+      document.getElementById('export-progress-btn')?.classList.add('hidden');
 
-    // Show/hide admin tabs based on role
-    if (user.role === 'admin') {
+      // Show admin tabs only (not teacher tabs)
       document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('hidden'));
       await this.loadAdminData();
+
       // Switch to admin view as default for admins
       this.switchView('admin');
     }
