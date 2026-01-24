@@ -2037,6 +2037,8 @@ class CadenceApp {
   }
 
   nextGradingStep() {
+    console.log('🎯 nextGradingStep called, currentStep:', this.currentStep);
+
     if (this.currentStep === 1) {
       // Validate step 1
       const title = document.getElementById('song-title').value;
@@ -2063,10 +2065,13 @@ class CadenceApp {
     }
 
     if (this.currentStep === 2) {
+      console.log('🎯 Processing step 2');
       // Validate all questions are answered
       const allAnswered = Array.from(document.querySelectorAll('#grading-checklist .checklist-item')).every(item => {
         return item.querySelector('input:checked') !== null;
       });
+
+      console.log('🎯 All questions answered?', allAnswered);
 
       if (!allAnswered) {
         this.showToast('Please answer all questions', 'warning');
@@ -2083,12 +2088,14 @@ class CadenceApp {
         }
       });
       this.gradingData.checklistResponses = responses;
+      console.log('🎯 Collected responses:', responses);
 
       // Show suggestion
       this.showLevelSuggestion();
     }
 
     this.currentStep++;
+    console.log('🎯 Advanced to step:', this.currentStep);
     this.updateGradingStep();
   }
 
@@ -2277,11 +2284,14 @@ class CadenceApp {
   }
 
   showLevelSuggestion() {
+    console.log('🎯 showLevelSuggestion called');
     const suggested = this.calculateLevelFromResponses();
+    console.log('🎯 Calculated suggested level:', suggested);
     const container = document.getElementById('level-suggestion');
 
     // Update the grading data with the suggested level
     this.gradingData.level = suggested;
+    console.log('🎯 Set gradingData.level to:', this.gradingData.level);
 
     container.innerHTML = `
       <div class="suggested-level">Level ${suggested}</div>
@@ -2308,9 +2318,18 @@ class CadenceApp {
   }
 
   async submitSongGrading() {
+    console.log('🎯 submitSongGrading called');
+    console.log('🎯 gradingData:', this.gradingData);
+
     const user = auth.getCurrentUser();
     // Use student ID if in preview mode, otherwise use current user
     const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
+
+    if (!this.gradingData.level) {
+      this.showToast('Error: Level not set. Please refresh and try again.', 'error');
+      console.error('🎯 Level is missing from gradingData');
+      return;
+    }
 
     try {
       // Use RPC function to handle the entire grading workflow
@@ -2327,6 +2346,8 @@ class CadenceApp {
         p_tutorial_url: this.gradingData.tutorial_url || null,
         p_add_to_learning: document.getElementById('add-to-learning').checked
       });
+
+      console.log('🎯 RPC response:', { data, error });
 
       if (error) throw error;
 
