@@ -1598,17 +1598,55 @@ class CadenceApp {
 
   setupSongGradingForm() {
     const form = document.getElementById('song-grading-form');
-    const levelSelect = document.getElementById('grading-level');
     const nextBtn = document.getElementById('next-step-btn');
     const prevBtn = document.getElementById('prev-step-btn');
     const submitBtn = document.getElementById('submit-grade-btn');
 
-    // Level selection triggers checklist generation
-    if (levelSelect) {
-      levelSelect.addEventListener('change', (e) => {
-        const level = parseInt(e.target.value);
-        if (level) {
-          this.generateGradingChecklist(level);
+    // Search button event listeners
+    const searchYoutubeBtn = document.getElementById('search-youtube-btn');
+    const searchChordsBtn = document.getElementById('search-chords-btn');
+    const searchTutorialBtn = document.getElementById('search-tutorial-btn');
+
+    if (searchYoutubeBtn) {
+      searchYoutubeBtn.addEventListener('click', () => {
+        const title = document.getElementById('song-title').value;
+        const artist = document.getElementById('song-artist').value;
+        if (title && artist) {
+          const searchQuery = `${title} ${artist} youtube`;
+          const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
+          window.open(searchUrl, '_blank');
+        } else {
+          this.showToast('Please enter song title and artist first', 'warning');
+        }
+      });
+    }
+
+    if (searchChordsBtn) {
+      searchChordsBtn.addEventListener('click', () => {
+        const title = document.getElementById('song-title').value;
+        const artist = document.getElementById('song-artist').value;
+        if (title && artist) {
+          const searchQuery = `${title} ${artist} chords`;
+          const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
+          window.open(searchUrl, '_blank');
+        } else {
+          this.showToast('Please enter song title and artist first', 'warning');
+        }
+      });
+    }
+
+    if (searchTutorialBtn) {
+      searchTutorialBtn.addEventListener('click', () => {
+        const title = document.getElementById('song-title').value;
+        const artist = document.getElementById('song-artist').value;
+        const instrument = document.getElementById('grading-instrument').value;
+        const instrumentName = this.instruments.find(i => i.id === instrument)?.name || '';
+        if (title && artist) {
+          const searchQuery = `${title} ${artist} ${instrumentName} tutorial`;
+          const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
+          window.open(searchUrl, '_blank');
+        } else {
+          this.showToast('Please enter song title and artist first', 'warning');
         }
       });
     }
@@ -1919,6 +1957,50 @@ class CadenceApp {
     this.updateGradingStep();
   }
 
+  generateComprehensiveChecklist() {
+    const instrumentId = document.getElementById('grading-instrument').value;
+
+    // Get the instrument name for display
+    const instrument = this.instruments.find(i => i.id === instrumentId);
+    const instrumentName = instrument ? instrument.name : 'this instrument';
+
+    // Create a comprehensive questionnaire that works across all levels
+    const comprehensiveQuestions = {
+      "Number of chords": ["1-3", "4-5", "6-7", "8-10", "10+"],
+      "Chord types": ["basic/open chords only", "includes minors", "includes 7ths", "includes barre chords", "extended chords (9ths, 11ths, 13ths)", "altered/substitution chords"],
+      "Strumming/rhythm patterns": ["single simple pattern", "2-3 patterns", "varied patterns", "complex/syncopated patterns"],
+      "Techniques required": ["none/basic only", "some intermediate (hammer-ons, pull-offs, slides)", "advanced (palm muting, percussive, tapping)", "very advanced/multiple techniques"],
+      "Song structure": ["single section/repeating", "verse/chorus (2 sections)", "verse/chorus/bridge (3 sections)", "multiple sections (4+)"],
+      "Hand coordination": ["one hand at a time", "both hands - simple", "both hands - moderate independence", "both hands - high independence", "mastered independence"],
+      "Technical difficulty": ["beginner friendly", "some challenges", "moderately challenging", "quite challenging", "very challenging/advanced"],
+      "Rhythm complexity": ["simple/steady", "some variation", "syncopated/swing", "complex rhythms"],
+      "Dynamics and expression": ["none/not required", "basic (loud/soft)", "moderate expression", "highly expressive/nuanced"],
+      "Reading requirement": ["chord chart only", "simple notation", "standard notation", "complex notation", "can play by ear"],
+      "Improvisation or embellishment": ["none - play as written", "minimal/optional fills", "structured improvisation", "free improvisation sections"]
+    };
+
+    const container = document.getElementById('grading-checklist');
+
+    container.innerHTML = `
+      <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">
+        Answer these questions about the song to help determine its level. Choose the option that best describes the song.
+      </p>
+      ${Object.entries(comprehensiveQuestions).map(([question, options], index) => `
+        <div class="checklist-item">
+          <div class="checklist-question">${question}</div>
+          <div class="checklist-options">
+            ${options.map((option, optIndex) => `
+              <label>
+                <input type="radio" name="question-${index}" value="${option}" required>
+                ${option}
+              </label>
+            `).join('')}
+          </div>
+        </div>
+      `).join('')}
+    `;
+  }
+
   async generateGradingChecklist(levelNumber) {
     const instrumentId = document.getElementById('grading-instrument').value;
     const level = this.levels.find(l =>
@@ -1960,9 +2042,8 @@ class CadenceApp {
       const title = document.getElementById('song-title').value;
       const artist = document.getElementById('song-artist').value;
       const instrument = document.getElementById('grading-instrument').value;
-      const level = document.getElementById('grading-level').value;
 
-      if (!title || !artist || !instrument || !level) {
+      if (!title || !artist || !instrument) {
         this.showToast('Please fill in all required fields', 'warning');
         return;
       }
@@ -1970,13 +2051,28 @@ class CadenceApp {
       this.gradingData.title = title;
       this.gradingData.artist = artist;
       this.gradingData.instrument = instrument;
-      this.gradingData.level = parseInt(level);
       this.gradingData.youtube_url = document.getElementById('song-youtube').value;
       this.gradingData.chords_url = document.getElementById('song-chords').value;
       this.gradingData.tutorial_url = document.getElementById('song-tutorial').value;
+
+      // Generate the comprehensive checklist for step 2
+      this.currentStep++;
+      this.updateGradingStep();
+      this.generateComprehensiveChecklist();
+      return;
     }
 
     if (this.currentStep === 2) {
+      // Validate all questions are answered
+      const allAnswered = Array.from(document.querySelectorAll('#grading-checklist .checklist-item')).every(item => {
+        return item.querySelector('input:checked') !== null;
+      });
+
+      if (!allAnswered) {
+        this.showToast('Please answer all questions', 'warning');
+        return;
+      }
+
       // Collect checklist responses
       const responses = {};
       document.querySelectorAll('#grading-checklist .checklist-item').forEach((item, index) => {
@@ -2014,266 +2110,161 @@ class CadenceApp {
   calculateLevelFromResponses() {
     const responses = this.gradingData.checklistResponses;
     if (!responses || Object.keys(responses).length === 0) {
-      return this.gradingData.level; // Fallback to user's selection
+      return 1; // Default to Level 1 if no responses
     }
 
-    // Get the current level's checklist to understand the question structure
+    // Get the current instrument
     const instrument = this.instruments.find(i => i.id === this.gradingData.instrument);
-    if (!instrument) return this.gradingData.level;
+    if (!instrument) return 1;
 
     // Initialize scores for each level (1-5)
     const levelScores = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     let totalQuestions = 0;
 
-    // Process each response
+    // Process each response with the new comprehensive questions
     Object.entries(responses).forEach(([question, answer]) => {
       totalQuestions++;
-
-      // Analyze each question and map answers to levels
-      const questionLower = question.toLowerCase();
       const answerLower = answer.toLowerCase();
 
-      // Universal patterns across all instruments
+      // Map each answer to level scores based on the comprehensive questionnaire
 
-      // Number of chords pattern
-      if (questionLower.includes('number of chords')) {
-        if (answerLower.includes('2-3')) {
-          levelScores[1] += 3;
-          levelScores[2] += 1;
-        } else if (answerLower.includes('4-5')) {
-          levelScores[1] += 2;
-          levelScores[2] += 3;
-        } else if (answerLower.includes('6-7') || answerLower.includes('6+')) {
-          levelScores[2] += 3;
-          levelScores[3] += 1;
-        } else if (answerLower.includes('8-10') || answerLower.includes('8+')) {
-          levelScores[2] += 1;
-          levelScores[3] += 3;
-        } else if (answerLower.includes('10+')) {
-          levelScores[3] += 3;
-          levelScores[4] += 1;
-        }
+      // Number of chords
+      if (answerLower.includes('1-3')) {
+        levelScores[1] += 5;
+      } else if (answerLower.includes('4-5')) {
+        levelScores[1] += 2; levelScores[2] += 5;
+      } else if (answerLower.includes('6-7')) {
+        levelScores[2] += 2; levelScores[3] += 5;
+      } else if (answerLower.includes('8-10')) {
+        levelScores[3] += 2; levelScores[4] += 5;
+      } else if (answerLower.includes('10+')) {
+        levelScores[4] += 2; levelScores[5] += 5;
       }
 
-      // Chord types/complexity
-      else if (questionLower.includes('chord type') || questionLower.includes('chord complexity') || questionLower.includes('voicing')) {
-        if (answerLower.includes('open') && answerLower.includes('only')) {
-          levelScores[1] += 3;
-          levelScores[2] += 1;
-        } else if (answerLower.includes('basic triad') || answerLower.includes('major/minor')) {
-          levelScores[1] += 2;
-          levelScores[2] += 3;
-        } else if (answerLower.includes('7th') && !answerLower.includes('9th') && !answerLower.includes('extended')) {
-          levelScores[2] += 2;
-          levelScores[3] += 3;
-          levelScores[4] += 1;
-        } else if (answerLower.includes('inversion')) {
-          levelScores[3] += 3;
-          levelScores[4] += 1;
-        } else if (answerLower.includes('extended') || answerLower.includes('9th') || answerLower.includes('11th') || answerLower.includes('13th')) {
-          levelScores[4] += 3;
-          levelScores[5] += 2;
-        } else if (answerLower.includes('alteration') || answerLower.includes('substitution')) {
-          levelScores[5] += 3;
-        } else if (answerLower.includes('barre')) {
-          levelScores[2] += 1;
-          levelScores[3] += 3;
-        }
+      // Chord types
+      else if (answerLower.includes('basic') && answerLower.includes('only')) {
+        levelScores[1] += 5;
+      } else if (answerLower.includes('includes minors')) {
+        levelScores[1] += 2; levelScores[2] += 5;
+      } else if (answerLower.includes('includes 7ths')) {
+        levelScores[2] += 2; levelScores[3] += 5;
+      } else if (answerLower.includes('barre')) {
+        levelScores[3] += 2; levelScores[4] += 5;
+      } else if (answerLower.includes('extended') || answerLower.includes('9th')) {
+        levelScores[4] += 2; levelScores[5] += 5;
+      } else if (answerLower.includes('altered') || answerLower.includes('substitution')) {
+        levelScores[5] += 5;
       }
 
-      // Patterns and techniques
-      else if (questionLower.includes('pattern') || questionLower.includes('technique')) {
-        if (answerLower.includes('single') || answerLower.includes('basic') || answerLower.includes('block chord') && answerLower.includes('only')) {
-          levelScores[1] += 3;
-          levelScores[2] += 1;
-        } else if (answerLower.includes('2') || answerLower.includes('1-2') || answerLower.includes('arpeggio') || answerLower.includes('broken chord')) {
-          levelScores[2] += 3;
-          levelScores[3] += 1;
-        } else if (answerLower.includes('3') || answerLower.includes('varied') || answerLower.includes('mixed')) {
-          levelScores[3] += 3;
-          levelScores[4] += 1;
-        } else if (answerLower.includes('complex') || answerLower.includes('advanced')) {
-          levelScores[4] += 2;
-          levelScores[5] += 3;
-        }
+      // Strumming/rhythm patterns
+      else if (answerLower.includes('single simple')) {
+        levelScores[1] += 5;
+      } else if (answerLower.includes('2-3 patterns')) {
+        levelScores[2] += 5;
+      } else if (answerLower.includes('varied patterns')) {
+        levelScores[3] += 5;
+      } else if (answerLower.includes('complex') || answerLower.includes('syncopated')) {
+        levelScores[4] += 2; levelScores[5] += 5;
       }
 
-      // Hand coordination/independence
-      else if (questionLower.includes('coordination') || questionLower.includes('independence')) {
-        if (answerLower.includes('separate')) {
-          levelScores[1] += 3;
-        } else if (answerLower.includes('basic') || answerLower.includes('simple')) {
-          levelScores[1] += 2;
-          levelScores[2] += 2;
-        } else if (answerLower.includes('moderate') || answerLower.includes('good')) {
-          levelScores[2] += 1;
-          levelScores[3] += 3;
-          levelScores[4] += 1;
-        } else if (answerLower.includes('excellent') || answerLower.includes('very good')) {
-          levelScores[4] += 3;
-          levelScores[5] += 2;
-        } else if (answerLower.includes('mastered')) {
-          levelScores[5] += 3;
-        }
-      }
-
-      // Complexity/technical demands
-      else if (questionLower.includes('complexity') || questionLower.includes('technical demand')) {
-        if (answerLower.includes('straightforward') || answerLower.includes('moderate')) {
-          levelScores[3] += 1;
-          levelScores[4] += 3;
-        } else if (answerLower.includes('high') && !answerLower.includes('very')) {
-          levelScores[4] += 2;
-          levelScores[5] += 3;
-        } else if (answerLower.includes('very high')) {
-          levelScores[5] += 3;
-        }
-      }
-
-      // Rhythm complexity
-      else if (questionLower.includes('rhythm') || questionLower.includes('timing')) {
-        if (answerLower.includes('simple') || answerLower.includes('steady') || answerLower.includes('straight')) {
-          levelScores[1] += 3;
-          levelScores[2] += 1;
-        } else if (answerLower.includes('some') || answerLower.includes('variation')) {
-          levelScores[2] += 2;
-          levelScores[3] += 2;
-        } else if (answerLower.includes('syncopat') || answerLower.includes('complex')) {
-          levelScores[3] += 2;
-          levelScores[4] += 3;
-          levelScores[5] += 1;
-        }
-      }
-
-      // Dynamics and expression
-      else if (questionLower.includes('dynamic') || questionLower.includes('expression')) {
-        if (answerLower.includes('none')) {
-          levelScores[1] += 3;
-        } else if (answerLower.includes('basic')) {
-          levelScores[2] += 3;
-          levelScores[3] += 1;
-        } else if (answerLower.includes('moderate') || answerLower.includes('some')) {
-          levelScores[3] += 3;
-          levelScores[4] += 1;
-        } else if (answerLower.includes('expressive') || answerLower.includes('fully') || answerLower.includes('exceptional')) {
-          levelScores[4] += 2;
-          levelScores[5] += 3;
-        }
+      // Techniques required
+      else if (answerLower.includes('none') && answerLower.includes('basic')) {
+        levelScores[1] += 5;
+      } else if (answerLower.includes('some intermediate')) {
+        levelScores[2] += 2; levelScores[3] += 5;
+      } else if (answerLower.includes('advanced') && !answerLower.includes('very')) {
+        levelScores[3] += 1; levelScores[4] += 5;
+      } else if (answerLower.includes('very advanced')) {
+        levelScores[5] += 5;
       }
 
       // Song structure
-      else if (questionLower.includes('structure') || questionLower.includes('section')) {
-        if (answerLower.includes('single') || answerLower.includes('repeating')) {
-          levelScores[1] += 3;
-          levelScores[2] += 1;
-        } else if (answerLower.includes('verse/chorus') || answerLower.includes('2 section')) {
-          levelScores[2] += 3;
-          levelScores[3] += 1;
-        } else if (answerLower.includes('3 section') || answerLower.includes('bridge')) {
-          levelScores[3] += 3;
-          levelScores[4] += 1;
-        } else if (answerLower.includes('4+') || answerLower.includes('multiple') || answerLower.includes('complex')) {
-          levelScores[4] += 2;
-          levelScores[5] += 2;
-        }
+      else if (answerLower.includes('single') || answerLower.includes('repeating')) {
+        levelScores[1] += 5;
+      } else if (answerLower.includes('2 sections')) {
+        levelScores[2] += 5;
+      } else if (answerLower.includes('3 sections')) {
+        levelScores[3] += 5;
+      } else if (answerLower.includes('4+') || answerLower.includes('multiple')) {
+        levelScores[4] += 2; levelScores[5] += 5;
+      }
+
+      // Hand coordination
+      else if (answerLower.includes('one hand')) {
+        levelScores[1] += 5;
+      } else if (answerLower.includes('simple')) {
+        levelScores[1] += 2; levelScores[2] += 5;
+      } else if (answerLower.includes('moderate independence')) {
+        levelScores[2] += 1; levelScores[3] += 5;
+      } else if (answerLower.includes('high independence')) {
+        levelScores[3] += 1; levelScores[4] += 5;
+      } else if (answerLower.includes('mastered')) {
+        levelScores[5] += 5;
+      }
+
+      // Technical difficulty
+      else if (answerLower.includes('beginner friendly')) {
+        levelScores[1] += 5;
+      } else if (answerLower.includes('some challenges')) {
+        levelScores[2] += 5;
+      } else if (answerLower.includes('moderately challenging')) {
+        levelScores[3] += 5;
+      } else if (answerLower.includes('quite challenging')) {
+        levelScores[4] += 5;
+      } else if (answerLower.includes('very challenging')) {
+        levelScores[5] += 5;
+      }
+
+      // Rhythm complexity
+      else if (answerLower.includes('simple') || answerLower.includes('steady')) {
+        levelScores[1] += 5;
+      } else if (answerLower.includes('some variation')) {
+        levelScores[2] += 5;
+      } else if (answerLower.includes('syncopated') || answerLower.includes('swing')) {
+        levelScores[3] += 2; levelScores[4] += 5;
+      } else if (answerLower.includes('complex rhythms')) {
+        levelScores[4] += 1; levelScores[5] += 5;
+      }
+
+      // Dynamics and expression
+      else if (answerLower.includes('none') || answerLower.includes('not required')) {
+        levelScores[1] += 5;
+      } else if (answerLower.includes('basic')) {
+        levelScores[2] += 5;
+      } else if (answerLower.includes('moderate expression')) {
+        levelScores[3] += 5;
+      } else if (answerLower.includes('highly expressive') || answerLower.includes('nuanced')) {
+        levelScores[4] += 2; levelScores[5] += 5;
+      }
+
+      // Reading requirement
+      else if (answerLower.includes('chord chart only')) {
+        levelScores[1] += 3; levelScores[2] += 3;
+      } else if (answerLower.includes('simple notation')) {
+        levelScores[2] += 3;
+      } else if (answerLower.includes('standard notation')) {
+        levelScores[3] += 3;
+      } else if (answerLower.includes('complex notation')) {
+        levelScores[4] += 3; levelScores[5] += 3;
+      } else if (answerLower.includes('play by ear')) {
+        levelScores[3] += 2; levelScores[4] += 3; levelScores[5] += 3;
       }
 
       // Improvisation
-      else if (questionLower.includes('improvisation')) {
-        if (answerLower.includes('none')) {
-          levelScores[1] += 1;
-          levelScores[2] += 1;
-          levelScores[3] += 1;
-        } else if (answerLower.includes('minimal') || answerLower.includes('structured')) {
-          levelScores[4] += 3;
-          levelScores[5] += 1;
-        } else if (answerLower.includes('free')) {
-          levelScores[5] += 3;
-        }
-      }
-
-      // Style mastery
-      else if (questionLower.includes('style mastery') || questionLower.includes('mastery level')) {
-        if (answerLower.includes('developing')) {
-          levelScores[4] += 3;
-        } else if (answerLower.includes('competent')) {
-          levelScores[4] += 1;
-          levelScores[5] += 2;
-        } else if (answerLower.includes('advanced')) {
-          levelScores[5] += 3;
-        }
-      }
-
-      // Playing approach (for piano)
-      else if (questionLower.includes('playing approach') || questionLower.includes('reading')) {
-        // This doesn't directly indicate level, just approach
-        // Slight bias: notation-only might suggest more traditional/classical training
-        if (answerLower.includes('both')) {
-          // Both is generally more advanced
-          levelScores[3] += 1;
-          levelScores[4] += 1;
-          levelScores[5] += 1;
-        }
-      }
-
-      // Time signature
-      else if (questionLower.includes('time signature')) {
-        if (answerLower.includes('4/4') && answerLower.includes('only')) {
-          levelScores[1] += 3;
-          levelScores[2] += 1;
-        } else if (answerLower.includes('includes other') || answerLower.includes('various')) {
-          levelScores[2] += 1;
-          levelScores[3] += 2;
-          levelScores[4] += 1;
-        }
-      }
-
-      // Barre chords (guitar specific)
-      else if (questionLower.includes('barre')) {
-        if (answerLower.includes('none')) {
-          levelScores[1] += 3;
-          levelScores[2] += 1;
-        } else if (answerLower.includes('1-2') || answerLower.includes('some')) {
-          levelScores[2] += 2;
-          levelScores[3] += 2;
-        } else if (answerLower.includes('several') || answerLower.includes('many')) {
-          levelScores[3] += 2;
-          levelScores[4] += 3;
-        } else if (answerLower.includes('primarily')) {
-          levelScores[4] += 2;
-          levelScores[5] += 2;
-        }
-      }
-
-      // Fingerpicking (guitar/bass specific)
-      else if (questionLower.includes('fingerpick') || questionLower.includes('fingerstyle')) {
-        if (answerLower.includes('none') || answerLower.includes('strumming only')) {
-          levelScores[1] += 2;
-          levelScores[2] += 1;
-        } else if (answerLower.includes('basic')) {
-          levelScores[2] += 2;
-          levelScores[3] += 2;
-        } else if (answerLower.includes('travis') || answerLower.includes('alternating')) {
-          levelScores[3] += 1;
-          levelScores[4] += 3;
-        } else if (answerLower.includes('complex') || answerLower.includes('advanced')) {
-          levelScores[4] += 2;
-          levelScores[5] += 3;
-        }
-      }
-
-      // Primary style (for branching levels 4-5)
-      else if (questionLower.includes('primary style')) {
-        // This helps identify the branch but doesn't heavily weight the level
-        // All branches are level 4 or 5
-        levelScores[4] += 1;
-        levelScores[5] += 1;
+      else if (answerLower.includes('none') && answerLower.includes('written')) {
+        levelScores[1] += 3; levelScores[2] += 3; levelScores[3] += 3;
+      } else if (answerLower.includes('minimal') || answerLower.includes('optional fills')) {
+        levelScores[3] += 2; levelScores[4] += 5;
+      } else if (answerLower.includes('structured improvisation')) {
+        levelScores[4] += 3; levelScores[5] += 5;
+      } else if (answerLower.includes('free improvisation')) {
+        levelScores[5] += 5;
       }
     });
 
-    // Calculate weighted average and find the level with highest score
+    // Find the level with the highest score
     let maxScore = 0;
-    let suggestedLevel = this.gradingData.level;
+    let suggestedLevel = 1;
 
     for (let level = 1; level <= 5; level++) {
       if (levelScores[level] > maxScore) {
@@ -2282,35 +2273,22 @@ class CadenceApp {
       }
     }
 
-    // If scores are very close, favor the user's original assessment
-    const userLevel = this.gradingData.level;
-    if (Math.abs(levelScores[suggestedLevel] - levelScores[userLevel]) <= totalQuestions * 0.3) {
-      suggestedLevel = userLevel;
-    }
-
     return suggestedLevel;
   }
 
   showLevelSuggestion() {
     const suggested = this.calculateLevelFromResponses();
-    const userSelected = this.gradingData.level;
     const container = document.getElementById('level-suggestion');
 
     // Update the grading data with the suggested level
     this.gradingData.level = suggested;
 
-    const differenceNote = suggested !== userSelected
-      ? `<p style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">
-          <em>Note: You initially selected Level ${userSelected}, but based on your responses, Level ${suggested} appears to be a better fit.</em>
-         </p>`
-      : `<p style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--success);">
-          <em>✓ This matches your initial assessment of Level ${userSelected}.</em>
-         </p>`;
-
     container.innerHTML = `
       <div class="suggested-level">Level ${suggested}</div>
       <p><strong>Based on your responses, this song appears to be at Level ${suggested}</strong></p>
-      ${differenceNote}
+      <p style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">
+        <em>This level was calculated from your answers to the questionnaire.</em>
+      </p>
       <div class="form-group" style="margin-top: 1.5rem;">
         <label for="final-level-select">You can adjust this if you think it should be different:</label>
         <select id="final-level-select" class="form-control">
@@ -4156,6 +4134,42 @@ class CadenceApp {
 
     console.log('🚩 Flagged songs:', flagged);
 
+    // Also load new ratings that need teacher review
+    const { data: unreviewedRatings, error: unreviewedError } = await supabase
+      .from('song_ratings')
+      .select(`
+        id,
+        song_id,
+        instrument_id,
+        assessed_level,
+        user_id,
+        date_graded,
+        songs!inner (title, artist),
+        instruments (icon, name)
+      `)
+      .in('user_id', studentIds)
+      .eq('teacher_reviewed', false)
+      .order('date_graded', { ascending: false });
+
+    console.log('🔍 Unreviewed ratings:', unreviewedRatings);
+    console.log('🔍 Unreviewed error:', unreviewedError);
+
+    // Format unreviewed ratings for display
+    const newRatings = (unreviewedRatings || []).map(rating => ({
+      id: rating.id,
+      songId: rating.song_id,
+      song: rating.songs,
+      instrument: rating.instruments,
+      rating: {
+        student: userMap[rating.user_id] || 'Unknown',
+        level: rating.assessed_level,
+        dateGraded: rating.date_graded
+      },
+      isNew: true
+    }));
+
+    console.log('🔍 New ratings for review:', newRatings);
+
     // Also load pending links for teacher approval
     const { data: pendingLinks, error: pendingError } = await supabase
       .from('pending_links')
@@ -4176,6 +4190,7 @@ class CadenceApp {
     console.log('🔗 Pending links error:', pendingError);
 
     this.flaggedRatings = flagged;
+    this.newRatings = newRatings;
     this.pendingLinks = pendingLinks || [];
     this.populateFlaggedFilters();
     this.filterFlaggedRatings();
@@ -4256,8 +4271,8 @@ class CadenceApp {
     const container = document.getElementById('flagged-ratings-list');
     if (!container) return;
 
-    // Update notification badge - count both flagged ratings and pending links
-    const totalCount = flaggedSongs.length + (this.pendingLinks?.length || 0);
+    // Update notification badge - count all items needing review
+    const totalCount = flaggedSongs.length + (this.newRatings?.length || 0) + (this.pendingLinks?.length || 0);
     const badge = document.getElementById('flagged-count-badge');
     if (badge) {
       if (totalCount > 0) {
@@ -4316,12 +4331,58 @@ class CadenceApp {
       `;
     }
 
+    // Build HTML for new ratings section
+    let newRatingsHtml = '';
+    if (this.newRatings && this.newRatings.length > 0) {
+      newRatingsHtml = `
+        <div style="margin-bottom: 2rem;">
+          <h3 style="margin-bottom: 1rem; color: var(--text-primary);">New Song Ratings for Review (${this.newRatings.length})</h3>
+          ${this.newRatings.map((item, index) => {
+            const gradedDate = new Date(item.rating.dateGraded).toLocaleDateString();
+
+            return `
+              <div class="flagged-card" style="border-left: 4px solid #2196f3;">
+                <div class="flagged-header">
+                  <div>
+                    <div class="flagged-song-title">${item.song.title}</div>
+                    <div class="flagged-song-meta">${item.song.artist} • ${item.instrument.icon} ${item.instrument.name}</div>
+                  </div>
+                  <div style="text-align: right; font-size: 0.875rem; color: var(--text-secondary);">
+                    <div>Graded by ${item.rating.student}</div>
+                    <div>${gradedDate}</div>
+                  </div>
+                </div>
+                <div class="flagged-ratings">
+                  <div class="flagged-rating-item">
+                    <div class="flagged-student-name">Quiz Result:</div>
+                    <div class="flagged-level">Level ${item.rating.level}</div>
+                  </div>
+                </div>
+                <div class="flagged-resolve">
+                  <label for="review-level-${index}">Confirm or override level:</label>
+                  <select id="review-level-${index}" class="resolve-level-select">
+                    <option value="${item.rating.level}" selected>Level ${item.rating.level} (Confirm)</option>
+                    <option value="1" ${item.rating.level === 1 ? 'disabled' : ''}>Level 1 - Foundation</option>
+                    <option value="2" ${item.rating.level === 2 ? 'disabled' : ''}>Level 2 - Expanding Vocabulary</option>
+                    <option value="3" ${item.rating.level === 3 ? 'disabled' : ''}>Level 3 - Technical Development</option>
+                    <option value="4" ${item.rating.level === 4 ? 'disabled' : ''}>Level 4 - Style Integration</option>
+                    <option value="5" ${item.rating.level === 5 ? 'disabled' : ''}>Level 5 - Advanced Techniques</option>
+                  </select>
+                  <button class="btn btn-primary" onclick="app.reviewNewRating('${item.id}', 'review-level-${index}')">Confirm</button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
     // Build HTML for flagged ratings section
     let flaggedRatingsHtml = '';
     if (flaggedSongs.length > 0) {
       flaggedRatingsHtml = `
         <div>
-          <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Flagged Rating Discrepancies (${flaggedSongs.length})</h3>
+          <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Rating Discrepancies (${flaggedSongs.length})</h3>
           ${flaggedSongs.map((item, index) => {
       const levels = item.ratings.map(r => r.level);
       const discrepancy = Math.max(...levels) - Math.min(...levels);
@@ -4362,11 +4423,11 @@ class CadenceApp {
       `;
     }
 
-    // Combine both sections
-    if (pendingLinksHtml || flaggedRatingsHtml) {
-      container.innerHTML = pendingLinksHtml + flaggedRatingsHtml;
+    // Combine all sections
+    if (pendingLinksHtml || newRatingsHtml || flaggedRatingsHtml) {
+      container.innerHTML = pendingLinksHtml + newRatingsHtml + flaggedRatingsHtml;
     } else {
-      container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No flagged ratings or pending links found</p>';
+      container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No items need review</p>';
     }
   }
 
@@ -4405,6 +4466,47 @@ class CadenceApp {
     } catch (error) {
       console.error('Exception in resolveFlaggedRating:', error);
       this.showToast('Failed to resolve rating', 'error');
+    }
+  }
+
+  async reviewNewRating(ratingId, selectId) {
+    const selectElement = document.getElementById(selectId);
+    const level = parseInt(selectElement.value);
+
+    if (!level) {
+      this.showToast('Please select a level', 'warning');
+      return;
+    }
+
+    try {
+      // Update the rating level (if overridden) and mark as teacher_reviewed
+      const { error } = await supabase
+        .from('song_ratings')
+        .update({
+          assessed_level: level,
+          teacher_reviewed: true
+        })
+        .eq('id', ratingId);
+
+      if (error) {
+        console.error('Error reviewing rating:', error);
+        this.showToast('Failed to review rating: ' + error.message, 'error');
+        return;
+      }
+
+      this.showToast('Rating reviewed successfully', 'success');
+
+      // Reload flagged ratings to remove the reviewed rating
+      await this.loadFlaggedRatings();
+
+      // Also reload songs to update the song library display
+      await this.loadSongs();
+      if (this.currentView === 'songs') {
+        this.filterSongs();
+      }
+    } catch (error) {
+      console.error('Exception in reviewNewRating:', error);
+      this.showToast('Failed to review rating', 'error');
     }
   }
 
