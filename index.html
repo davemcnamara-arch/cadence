@@ -423,6 +423,12 @@
               <input type="text" id="song-artist" required>
             </div>
             <div class="form-group">
+              <label for="grading-instrument">Instrument *</label>
+              <select id="grading-instrument" required>
+                <!-- Populated by JS -->
+              </select>
+            </div>
+            <div class="form-group">
               <label for="song-youtube">YouTube URL (optional)</label>
               <div style="display: flex; gap: 0.5rem;">
                 <input type="url" id="song-youtube" placeholder="https://youtube.com/watch?v=..." style="flex: 1;">
@@ -442,12 +448,6 @@
                 <input type="url" id="song-tutorial" placeholder="https://youtube.com/watch?v=..." style="flex: 1;">
                 <button type="button" class="btn btn-secondary" id="search-tutorial-btn" title="Search for tutorial">🔍</button>
               </div>
-            </div>
-            <div class="form-group">
-              <label for="grading-instrument">Instrument *</label>
-              <select id="grading-instrument" required>
-                <!-- Populated by JS -->
-              </select>
             </div>
           </div>
 
