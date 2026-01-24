@@ -3,6 +3,10 @@ import { supabase } from './config.js';
 import { auth } from './auth.js';
 
 class CadenceApp {
+  // ============================================
+  // CORE: Initialization & Setup
+  // ============================================
+
   constructor() {
     this.currentInstrument = null;
     this.instruments = [];
@@ -405,6 +409,10 @@ class CadenceApp {
     await this.loadClasses();
   }
 
+  // ============================================
+  // DATA LOADING: Core Data & Real-time Updates
+  // ============================================
+
   async loadInstruments() {
     const { data, error } = await supabase
       .from('instruments')
@@ -562,6 +570,10 @@ class CadenceApp {
     // Store subscription so we can unsubscribe later if needed
     this.songUpdatesSubscription = subscription;
   }
+
+  // ============================================
+  // INSTRUMENTS: Selection & Management
+  // ============================================
 
   showInstrumentSelection() {
     const container = document.getElementById('instrument-selection');
@@ -816,6 +828,10 @@ class CadenceApp {
     }
   }
 
+  // ============================================
+  // STUDENT: Pathway & Progress Visualization
+  // ============================================
+
   renderPathway() {
     const container = document.getElementById('pathway-container');
 
@@ -1012,6 +1028,10 @@ class CadenceApp {
     `;
   }
 
+  // ============================================
+  // VIEW NAVIGATION: Tab Switching & UI State
+  // ============================================
+
   switchView(viewName) {
     // Update nav tabs
     document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -1057,6 +1077,10 @@ class CadenceApp {
       }
     }
   }
+
+  // ============================================
+  // SONG LIBRARY: Display & Filtering
+  // ============================================
 
   async renderSongs() {
     await this.loadSongs();
@@ -1535,6 +1559,10 @@ class CadenceApp {
     await this.loadSongs();
     this.renderSongs();
   }
+
+  // ============================================
+  // SONG GRADING: Rating & Resource Management
+  // ============================================
 
   setupSongGradingForm() {
     const form = document.getElementById('song-grading-form');
@@ -2344,6 +2372,10 @@ class CadenceApp {
     }
   }
 
+  // ============================================
+  // STUDENT: Progress Tracking & Mastery
+  // ============================================
+
   async renderProgress() {
     const user = auth.getCurrentUser();
     let studentSongsWithRatings;
@@ -2731,6 +2763,10 @@ class CadenceApp {
     this.renderProgress();
   }
 
+  // ============================================
+  // STUDENT: Export & AI Reflection
+  // ============================================
+
   showExportModal() {
     document.getElementById('export-modal').classList.remove('hidden');
 
@@ -2904,6 +2940,10 @@ class CadenceApp {
     return reflection;
   }
 
+  // ============================================
+  // UI STATE: Login, Role Selection & App Display
+  // ============================================
+
   showLoading(show) {
     document.getElementById('loading-screen').classList.toggle('hidden', !show);
   }
@@ -2939,7 +2979,9 @@ class CadenceApp {
     document.getElementById('app').classList.remove('hidden');
   }
 
-  /* ========== TEACHER DASHBOARD METHODS ========== */
+  // ============================================
+  // TEACHER: Class Management
+  // ============================================
 
   async loadClasses() {
     const user = auth.getCurrentUser();
@@ -3380,6 +3422,10 @@ class CadenceApp {
     }
   }
 
+  // ============================================
+  // TEACHER: Student Monitoring & Progress Views
+  // ============================================
+
   async loadClassStudents() {
     if (!this.currentClass) return;
 
@@ -3773,6 +3819,10 @@ class CadenceApp {
       if (btn) btn.classList.remove('hidden');
     });
   }
+
+  // ============================================
+  // TEACHER: Submissions & Flagged Ratings Review
+  // ============================================
 
   async loadSubmissions() {
     const user = auth.getCurrentUser();
@@ -4536,6 +4586,10 @@ class CadenceApp {
     this.loadStudentClasses();
   }
 
+  // ============================================
+  // STUDENT: Class Features (Join & View)
+  // ============================================
+
   async loadStudentClasses() {
     const user = auth.getCurrentUser();
     const container = document.getElementById('student-classes-list');
@@ -4779,6 +4833,10 @@ class CadenceApp {
     this.showToast('Class data exported', 'success');
   }
 
+  // ============================================
+  // ADMIN: Dashboard & System Overview
+  // ============================================
+
   getTimeAgo(timestamp) {
     const now = new Date();
     const then = new Date(timestamp);
@@ -4872,6 +4930,10 @@ class CadenceApp {
       }
     }
   }
+
+  // ============================================
+  // ADMIN: Levels & Checklist Management
+  // ============================================
 
   async loadAdminLevels() {
     const { data, error } = await supabase
@@ -5040,6 +5102,10 @@ class CadenceApp {
     this.renderChecklistEditor();
   }
 
+  // ============================================
+  // ADMIN: Instruments Management
+  // ============================================
+
   renderAdminInstruments() {
     const container = document.getElementById('instruments-admin-list');
     if (!container) return;
@@ -5093,6 +5159,10 @@ class CadenceApp {
 
     document.getElementById('instrument-modal').classList.remove('hidden');
   }
+
+  // ============================================
+  // ADMIN: Content Moderation (Songs)
+  // ============================================
 
   async loadContentModeration() {
     const statusFilter = document.getElementById('content-filter-status')?.value || 'all';
@@ -5193,6 +5263,10 @@ class CadenceApp {
     document.getElementById('admin-song-details').innerHTML = details;
     document.getElementById('admin-song-modal').classList.remove('hidden');
   }
+
+  // ============================================
+  // ADMIN: User Management
+  // ============================================
 
   async loadUsersManagement() {
     const roleFilter = document.getElementById('user-filter-role')?.value || '';
@@ -5451,7 +5525,9 @@ class CadenceApp {
     await this.loadContentModeration();
   }
 
-  /* ========== END ADMIN DASHBOARD METHODS ========== */
+  // ============================================
+  // UTILITIES: Helpers & UI Components
+  // ============================================
 
   showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
