@@ -37,22 +37,16 @@ class CadenceApp {
   }
 
   async init() {
-    console.log('🎵 Cadence: Initializing app...');
-
     // Show loading screen
     this.showLoading(true);
-    console.log('🎵 Cadence: Loading screen shown');
 
     // Initialize auth
     auth.onAuthStateChange = async (user) => {
-      console.log('🎵 Cadence: Auth state changed, user:', user ? 'logged in' : 'not logged in');
       if (user) {
-        console.log('🎵 Cadence: Calling onUserSignedIn...');
         try {
           await this.onUserSignedIn(user);
-          console.log('🎵 Cadence: onUserSignedIn completed successfully');
         } catch (error) {
-          console.error('❌ Error in onUserSignedIn:', error);
+          console.error('Error in onUserSignedIn:', error);
         }
       } else {
         this.showLoginScreen();
@@ -61,11 +55,9 @@ class CadenceApp {
 
     // Handle role selection for new users
     auth.onNeedRoleSelection = (authUser) => {
-      console.log('🎵 Cadence: New user needs to select role');
       this.showRoleSelection();
     };
 
-    console.log('🎵 Cadence: Initializing auth...');
     await auth.init();
 
     // Set up event listeners
@@ -96,28 +88,23 @@ class CadenceApp {
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async (e) => {
-        console.log('Logout button clicked');
         e.preventDefault();
         e.stopPropagation();
         try {
           // Unsubscribe from real-time updates with timeout
           if (this.songUpdatesSubscription) {
-            console.log('🔔 Unsubscribing from song updates...');
             try {
               // Add timeout to prevent hanging on unsubscribe
               await Promise.race([
                 this.songUpdatesSubscription.unsubscribe(),
                 new Promise((resolve) => setTimeout(resolve, 1000))
               ]);
-              console.log('🔔 Unsubscribe completed');
             } catch (unsubError) {
-              console.warn('🔔 Unsubscribe error (continuing logout):', unsubError);
+              // Ignore unsubscribe errors during logout
             }
           }
 
-          console.log('🔔 Calling auth.signOut()...');
-          const result = await auth.signOut();
-          console.log('Sign out result:', result);
+          await auth.signOut();
           // Force reload to clear all state and show login screen
           // This ensures logout works even if auth state change listener doesn't fire
           window.location.reload();
@@ -145,10 +132,8 @@ class CadenceApp {
 
     // Add instrument
     const addInstrumentBtn = document.getElementById('add-instrument-btn');
-    console.log('🎵 Add Instrument Button:', addInstrumentBtn);
     if (addInstrumentBtn) {
       addInstrumentBtn.addEventListener('click', () => {
-        console.log('🎵 Add Instrument button clicked!');
         this.showInstrumentSelection();
       });
     }
@@ -354,18 +339,12 @@ class CadenceApp {
   }
 
   async onUserSignedIn(user) {
-    console.log('👤 onUserSignedIn called for user:', user.name, 'role:', user.role);
     // Load user data
-    console.log('👤 About to call loadInstruments...');
     await this.loadInstruments();
-    console.log('👤 loadInstruments completed, about to call loadStudentProgress...');
     await this.loadStudentProgress();
-    console.log('👤 loadStudentProgress completed');
 
     // Initialize instrument dropdown after loading data
-    console.log('👤 About to call updateInstrumentDropdown...');
     this.updateInstrumentDropdown();
-    console.log('👤 updateInstrumentDropdown completed');
 
     // Set up real-time subscription for song updates (approved links)
     this.setupSongUpdatesSubscription();
@@ -427,7 +406,6 @@ class CadenceApp {
   }
 
   async loadInstruments() {
-    console.log('🎸 loadInstruments: Starting...');
     const { data, error } = await supabase
       .from('instruments')
       .select('*')
@@ -440,7 +418,6 @@ class CadenceApp {
     }
 
     this.instruments = data;
-    console.log('🎸 loadInstruments: Loaded', data?.length, 'instruments:', data?.map(i => i.name));
   }
 
   async loadStudentProgress() {
@@ -478,19 +455,13 @@ class CadenceApp {
   }
 
   async loadSongs() {
-    const stackTrace = new Error().stack;
-    console.log('🎵 loadSongs: CALLED FROM:', stackTrace.split('\n')[2]?.trim());
-
     // Prevent concurrent calls
     if (this.loadingSongs) {
-      console.log('⏳ loadSongs already in progress, skipping this call');
       return;
     }
     this.loadingSongs = true;
-    console.log('🎵 loadSongs: Setting loadingSongs flag to true');
 
     try {
-      console.log('🎵 loadSongs: Starting to load songs...');
       const { data, error } = await supabase
         .from('songs')
         .select(`
@@ -503,8 +474,6 @@ class CadenceApp {
         `)
         .eq('approved', true)
         .order('date_added', { ascending: false });
-
-      console.log('🎵 loadSongs: Received', data?.length, 'songs from database');
 
       if (error) {
         console.error('Error loading songs:', error);
@@ -540,47 +509,21 @@ class CadenceApp {
       resource_ratings: ratingsMap[song.id] || { chords: [], tutorial: [] }
     }));
 
-    // Check for duplicates and log them
-    const songIds = this.songs.map(s => s.id);
-    const uniqueIds = [...new Set(songIds)];
-    if (songIds.length !== uniqueIds.length) {
-      console.warn('⚠️ Duplicate songs detected in loadSongs FROM DATABASE!');
-      const duplicates = songIds.filter((id, index) => songIds.indexOf(id) !== index);
-      console.warn('Duplicate IDs:', duplicates);
-      console.warn('Showing all instances of duplicated songs:');
-      duplicates.forEach(dupId => {
-        const instances = this.songs.filter(s => s.id === dupId);
-        console.warn(`Song ID ${dupId}:`, instances.map(s => ({
-          title: s.title,
-          chords_url: s.chords_url,
-          tutorial_url: s.tutorial_url,
-          youtube_url: s.youtube_url,
-          num_ratings: s.song_ratings?.length
-        })));
-      });
-      // Remove duplicates - keep only the first occurrence of each song
-      const seen = new Set();
-      this.songs = this.songs.filter(song => {
-        if (seen.has(song.id)) {
-          console.warn(`Removing duplicate of song: ${song.title}`);
-          return false;
-        }
-        seen.add(song.id);
-        return true;
-      });
-      console.log('✓ Duplicates removed, unique songs:', this.songs.length);
-    } else {
-      console.log('✓ No duplicates in database results, total songs:', this.songs.length);
-    }
+    // Remove duplicate songs if any
+    const seen = new Set();
+    this.songs = this.songs.filter(song => {
+      if (seen.has(song.id)) {
+        return false;
+      }
+      seen.add(song.id);
+      return true;
+    });
     } finally {
       this.loadingSongs = false;
-      console.log('🎵 loadSongs: Clearing loadingSongs flag, final song count:', this.songs.length);
     }
   }
 
   setupSongUpdatesSubscription() {
-    console.log('🔔 Setting up real-time song updates subscription...');
-
     // Subscribe to changes in the songs table
     const subscription = supabase
       .channel('song-updates')
@@ -592,56 +535,41 @@ class CadenceApp {
           table: 'songs'
         },
         (payload) => {
-          console.log('🔔 Song updated in database:', payload.new.title);
-          console.log('🔔 Current view:', this.currentView);
-          console.log('🔔 approvingLink flag:', this.approvingLink);
-
           // Skip if we're already handling this update via approvePendingLink
           if (this.approvingLink) {
-            console.log('🔔 Skipping real-time update - already handled by approval flow');
             return;
           }
 
           // Only reload if user is viewing the songs tab
           if (this.currentView === 'songs') {
-            console.log('🔔 User is viewing songs, reloading...');
             this.loadSongs().then(() => {
               this.filterSongs();
               this.showToast('Song updated with new link!', 'info');
             });
           } else if (this.currentView === 'progress') {
             // Also update progress view if it shows songs
-            console.log('🔔 User is viewing progress, reloading...');
             this.loadSongs().then(() => {
               this.renderProgress();
             });
           } else {
-            console.log('🔔 User not viewing songs, updating in background...');
             // Still update the data in background so it's fresh when they switch views
             this.loadSongs();
           }
         }
       )
-      .subscribe((status) => {
-        console.log('🔔 Subscription status:', status);
-      });
+      .subscribe();
 
     // Store subscription so we can unsubscribe later if needed
     this.songUpdatesSubscription = subscription;
   }
 
   showInstrumentSelection() {
-    console.log('🎵 showInstrumentSelection called');
     const container = document.getElementById('instrument-selection');
     const grid = document.getElementById('instrument-grid');
-    console.log('🎵 Container:', container);
-    console.log('🎵 Grid:', grid);
 
     // Filter out already selected instruments
     const selectedIds = this.studentProgress.map(p => p.instrument_id);
     const availableInstruments = this.instruments.filter(i => !selectedIds.includes(i.id));
-    console.log('🎵 Selected IDs:', selectedIds);
-    console.log('🎵 Available instruments:', availableInstruments);
 
     if (availableInstruments.length === 0) {
       this.showToast('You are already tracking all instruments!', 'info');
@@ -834,11 +762,6 @@ class CadenceApp {
     const gradingDropdown = document.getElementById('grading-instrument');
     const user = auth.getCurrentUser();
 
-    console.log('🎸 updateInstrumentDropdown called');
-    console.log('🎸 this.instruments:', this.instruments?.length, 'instruments');
-    console.log('🎸 this.studentProgress:', this.studentProgress?.length, 'progress entries');
-    console.log('🎸 user.role:', user.role);
-
     // Only build student progress dropdown if there is progress
     let html = '';
     if (this.studentProgress && this.studentProgress.length > 0) {
@@ -858,17 +781,14 @@ class CadenceApp {
       // For teachers/admins, don't show "My Instruments" option
       let allInstrumentsHtml;
       if (user.role === 'teacher' || user.role === 'admin') {
-        console.log('🎸 Building teacher dropdown with', this.instruments?.length, 'instruments');
         allInstrumentsHtml = '<option value="">All Instruments</option>' +
           (this.instruments || []).map(i => `<option value="${i.id}">${i.icon} ${i.name}</option>`).join('');
-        console.log('🎸 Teacher dropdown HTML length:', allInstrumentsHtml.length);
       } else {
         allInstrumentsHtml = '<option value="my-instruments">My Instruments</option>' +
           '<option value="">All Instruments</option>' +
           (this.instruments || []).map(i => `<option value="${i.id}">${i.icon} ${i.name}</option>`).join('');
       }
       filterDropdown.innerHTML = allInstrumentsHtml;
-      console.log('🎸 Filter dropdown updated, option count:', filterDropdown.options.length);
 
       // Restore previous selection if it exists, otherwise use appropriate default
       if (currentSelection && filterDropdown.querySelector(`option[value="${currentSelection}"]`)) {
@@ -1157,11 +1077,9 @@ class CadenceApp {
   }
 
   filterSongs() {
-    console.log('🔍 filterSongs: Starting with', this.songs.length, 'songs');
     const searchTerm = document.getElementById('song-search')?.value.toLowerCase() || '';
     const instrumentFilter = document.getElementById('filter-instrument')?.value || '';
     const levelFilter = document.getElementById('filter-level')?.value || '';
-    console.log('🔍 Filters:', { searchTerm, instrumentFilter, levelFilter });
 
     // Check for duplicates in this.songs before filtering
     const songIds = this.songs.map(s => s.id);
@@ -1212,8 +1130,6 @@ class CadenceApp {
       return;
     }
 
-    console.log('🔍 filterSongs: Rendering', filteredSongs.length, 'songs');
-
     // Check for duplicates by ID
     const filteredIds = filteredSongs.map(s => s.id);
     const uniqueFilteredIds = [...new Set(filteredIds)];
@@ -1263,14 +1179,12 @@ class CadenceApp {
       });
     }
 
-    console.log('🔍 filterSongs: Clearing grid and rendering HTML...');
     const renderedHTML = filteredSongs.map((song, index) => {
       const html = this.renderSongCard(song);
       // Add a comment to track which index each song is from
       return `<!-- Song ${index}: ${song.title} (ID: ${song.id}) -->\n${html}`;
     }).join('\n');
     grid.innerHTML = renderedHTML;
-    console.log('🔍 filterSongs: Grid updated, DOM now has', grid.querySelectorAll('.song-card').length, 'song cards');
 
     // Verify no duplicate data-song-id attributes in DOM
     const domSongIds = Array.from(grid.querySelectorAll('.song-card')).map(card => card.dataset.songId);
@@ -1696,17 +1610,12 @@ class CadenceApp {
   }
 
   setupEditResourceModal() {
-    console.log('🎵 Setting up edit resource modal');
-
     const form = document.getElementById('edit-resource-form');
     const cancelBtn = document.getElementById('cancel-edit-resource');
-
-    console.log('🎵 Form element:', form);
 
     // Cancel button
     if (cancelBtn) {
       cancelBtn.addEventListener('click', () => {
-        console.log('🎵 Cancel clicked');
         document.getElementById('edit-resource-modal').classList.add('hidden');
       });
     }
@@ -1714,12 +1623,10 @@ class CadenceApp {
     // Form submit handler
     if (form) {
       form.addEventListener('submit', async (e) => {
-        console.log('🎵 Form submit event triggered');
         e.preventDefault();
         e.stopPropagation();
         await this.saveResourceUrl();
       });
-      console.log('🎵 Form submit listener added');
     } else {
       console.error('🎵 Edit resource form not found!');
     }
@@ -1846,19 +1753,13 @@ class CadenceApp {
   }
 
   async saveResourceUrl() {
-    console.log('🎵 saveResourceUrl called');
-
     try {
       const url = document.getElementById('resource-url').value.trim();
       const { songId, fieldName } = this.editingResource;
 
-      console.log('🎵 Saving resource:', { songId, fieldName, url });
-
       // Get the current session token from localStorage (Supabase stores it there)
-      console.log('🎵 Getting session from localStorage...');
       const sessionKey = `sb-dgwtihpiqgkhokkkxuzo-auth-token`;
       const sessionData = localStorage.getItem(sessionKey);
-      console.log('🎵 Session data exists:', !!sessionData);
 
       if (!sessionData) {
         throw new Error('Not authenticated - no session found');
@@ -1866,7 +1767,6 @@ class CadenceApp {
 
       const session = JSON.parse(sessionData);
       const accessToken = session.access_token;
-      console.log('🎵 Access token retrieved:', !!accessToken);
 
       if (!accessToken) {
         throw new Error('Not authenticated - no access token');
@@ -1874,11 +1774,9 @@ class CadenceApp {
 
       // Check if user is a student - if so, submit for approval instead
       const isStudent = auth.hasRole('student');
-      console.log('🎵 User is student:', isStudent);
 
       if (isStudent) {
         // Students submit links for teacher approval
-        console.log('🎵 Submitting link for teacher approval...');
 
         const response = await fetch('https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/pending_links', {
           method: 'POST',
@@ -1896,16 +1794,11 @@ class CadenceApp {
           })
         });
 
-        console.log('🎵 Response status:', response.status);
-        console.log('🎵 Response ok:', response.ok);
-
         if (!response.ok) {
           const errorText = await response.text();
           console.error('🎵 Response error:', errorText);
           throw new Error(`Submission failed: ${response.status} ${errorText}`);
         }
-
-        console.log('🎵 Link submitted for approval!');
 
         // Close modal
         document.getElementById('edit-resource-modal').classList.add('hidden');
@@ -1914,8 +1807,6 @@ class CadenceApp {
         this.showToast('Link submitted for teacher approval', 'success');
       } else {
         // Teachers can update links directly
-        console.log('🎵 Teacher updating link directly...');
-
         const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/songs?id=eq.${songId}`, {
           method: 'PATCH',
           headers: {
@@ -1927,22 +1818,16 @@ class CadenceApp {
           body: JSON.stringify({ [fieldName]: url || null })
         });
 
-        console.log('🎵 Response status:', response.status);
-        console.log('🎵 Response ok:', response.ok);
-
         if (!response.ok) {
           const errorText = await response.text();
           console.error('🎵 Response error:', errorText);
           throw new Error(`Update failed: ${response.status} ${errorText}`);
         }
 
-        console.log('🎵 Update successful!');
-
         // Update the local song object immediately so UI reflects the change
         const song = this.songs.find(s => s.id === songId);
         if (song) {
           song[fieldName] = url || null;
-          console.log('🎵 Updated local song object:', song.title, fieldName, '=', url || null);
         }
 
         // Also update the song data within studentSongs for progress view
@@ -1950,7 +1835,6 @@ class CadenceApp {
           this.studentSongs.forEach(studentSong => {
             if (studentSong.songs && studentSong.songs.id === songId) {
               studentSong.songs[fieldName] = url || null;
-              console.log('🎵 Updated studentSongs nested song object');
             }
           });
         }
@@ -2127,8 +2011,6 @@ class CadenceApp {
   }
 
   nextGradingStep() {
-    console.log('🎯 nextGradingStep called, currentStep:', this.currentStep);
-
     if (this.currentStep === 1) {
       // Validate step 1
       const title = document.getElementById('song-title').value;
@@ -2155,13 +2037,10 @@ class CadenceApp {
     }
 
     if (this.currentStep === 2) {
-      console.log('🎯 Processing step 2');
       // Validate all questions are answered
       const allAnswered = Array.from(document.querySelectorAll('#grading-checklist .checklist-item')).every(item => {
         return item.querySelector('input:checked') !== null;
       });
-
-      console.log('🎯 All questions answered?', allAnswered);
 
       if (!allAnswered) {
         this.showToast('Please answer all questions', 'warning');
@@ -2178,14 +2057,12 @@ class CadenceApp {
         }
       });
       this.gradingData.checklistResponses = responses;
-      console.log('🎯 Collected responses:', responses);
 
       // Show suggestion
       this.showLevelSuggestion();
     }
 
     this.currentStep++;
-    console.log('🎯 Advanced to step:', this.currentStep);
     this.updateGradingStep();
   }
 
@@ -2382,14 +2259,11 @@ class CadenceApp {
   }
 
   showLevelSuggestion() {
-    console.log('🎯 showLevelSuggestion called');
     const suggested = this.calculateLevelFromResponses();
-    console.log('🎯 Calculated suggested level:', suggested);
     const container = document.getElementById('level-suggestion');
 
     // Update the grading data with the suggested level
     this.gradingData.level = suggested;
-    console.log('🎯 Set gradingData.level to:', this.gradingData.level);
 
     container.innerHTML = `
       <div class="suggested-level">Level ${suggested}</div>
@@ -2416,9 +2290,6 @@ class CadenceApp {
   }
 
   async submitSongGrading() {
-    console.log('🎯 submitSongGrading called');
-    console.log('🎯 gradingData:', this.gradingData);
-
     const user = auth.getCurrentUser();
     // Use student ID if in preview mode, otherwise use current user
     const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
@@ -2430,26 +2301,11 @@ class CadenceApp {
     }
 
     try {
-      console.log('🎯 About to call grade_song RPC...');
-      console.log('🎯 RPC parameters:', {
-        p_student_id: userId,
-        p_title: this.gradingData.title,
-        p_artist: this.gradingData.artist,
-        p_instrument_id: this.gradingData.instrument,
-        p_assessed_level: this.gradingData.level,
-        p_checklist_responses_json: this.gradingData.checklistResponses,
-        p_youtube_url: this.gradingData.youtube_url || null,
-        p_chords_url: this.gradingData.chords_url || null,
-        p_tutorial_url: this.gradingData.tutorial_url || null,
-        p_add_to_learning: document.getElementById('add-to-learning').checked
-      });
-
       // Add a timeout to detect hangs
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Request timed out after 15 seconds')), 15000)
       );
 
-      console.log('🎯 Calling supabase.rpc...');
       const rpcPromise = supabase.rpc('grade_song', {
         p_student_id: userId,
         p_title: this.gradingData.title,
@@ -2463,11 +2319,7 @@ class CadenceApp {
         p_add_to_learning: document.getElementById('add-to-learning').checked
       });
 
-      console.log('🎯 RPC promise created, waiting for response...');
       const { data, error } = await Promise.race([rpcPromise, timeoutPromise]);
-      console.log('🎯 Promise resolved!');
-
-      console.log('🎯 RPC response:', { data, error });
 
       if (error) throw error;
 
@@ -3053,32 +2905,26 @@ class CadenceApp {
   }
 
   showLoading(show) {
-    console.log('🎵 Cadence: showLoading(' + show + ')');
     document.getElementById('loading-screen').classList.toggle('hidden', !show);
   }
 
   showLoginScreen() {
-    console.log('🎵 Cadence: Showing login screen');
     document.getElementById('login-screen').classList.remove('hidden');
     document.getElementById('role-selection-screen').classList.add('hidden');
     document.getElementById('app').classList.add('hidden');
   }
 
   showRoleSelection() {
-    console.log('🎵 Cadence: Showing role selection screen');
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('role-selection-screen').classList.remove('hidden');
     document.getElementById('app').classList.add('hidden');
   }
 
   async selectRole(role) {
-    console.log('🎵 Cadence: User selected role:', role);
-
     // Complete signup with selected role
     const result = await auth.completeSignupWithRole(role);
 
     if (result.success) {
-      console.log('🎵 Cadence: Signup completed successfully');
       // The onAuthStateChange callback will be triggered automatically
       // which will call onUserSignedIn
     } else {
@@ -3088,7 +2934,6 @@ class CadenceApp {
   }
 
   showApp() {
-    console.log('🎵 Cadence: Showing main app');
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('role-selection-screen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
@@ -3114,8 +2959,6 @@ class CadenceApp {
       return;
     }
 
-    console.log('Loaded classes from RPC:', data);
-
     this.classes = data || [];
     if (this.currentView === 'classes') {
       this.renderClassesList();
@@ -3134,13 +2977,11 @@ class CadenceApp {
   setupCreateClassForm() {
     const form = document.getElementById('create-class-form');
     if (!form) {
-      console.warn('Create class form not found');
       return;
     }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      console.log('Create class form submitted');
 
       const className = document.getElementById('class-name').value;
       const yearLevel = document.getElementById('class-year-level').value;
@@ -3163,8 +3004,6 @@ class CadenceApp {
         this.showToast('You must be logged in to create a class', 'error');
         return;
       }
-
-      console.log('Creating class:', className, yearLevel);
 
       // Generate unique class code using database function
       const { data: codeData, error: codeError } = await supabase
@@ -3224,13 +3063,11 @@ class CadenceApp {
   setupEditClassForm() {
     const form = document.getElementById('edit-class-form');
     if (!form) {
-      console.warn('Edit class form not found');
       return;
     }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      console.log('Edit class form submitted');
 
       const className = document.getElementById('edit-class-name').value;
       const yearLevel = document.getElementById('edit-class-year-level').value;
@@ -3250,8 +3087,6 @@ class CadenceApp {
         this.showToast('No class selected', 'error');
         return;
       }
-
-      console.log('Updating class:', className, yearLevel);
 
       // Update the class
       const { data, error } = await supabase
@@ -3316,7 +3151,6 @@ class CadenceApp {
       }
 
       const className = this.currentClass.name;
-      console.log('Archiving class:', className);
 
       // Update the class to set archived = true
       const { data, error } = await supabase
@@ -3349,8 +3183,6 @@ class CadenceApp {
 
   async unarchiveClass(classId) {
     try {
-      console.log('Unarchiving class:', classId);
-
       // Update the class to set archived = false
       const { data, error } = await supabase
         .from('classes')
@@ -3551,15 +3383,11 @@ class CadenceApp {
   async loadClassStudents() {
     if (!this.currentClass) return;
 
-    console.log('Loading students for class:', this.currentClass.id);
-
     try {
       // Use RPC function to bypass RLS recursion issues
       const { data, error } = await supabase.rpc('get_class_students', {
         p_class_id: this.currentClass.id
       });
-
-      console.log('RPC response - data:', data, 'error:', error);
 
       if (error) {
         console.error('Error loading class students:', error);
@@ -3568,14 +3396,8 @@ class CadenceApp {
         return;
       }
 
-      console.log('Raw class members data:', data);
-      console.log('Type of data:', typeof data);
-
       // Data is already in the right format from the function
       this.classStudents = data || [];
-
-      console.log('Processed class students:', this.classStudents);
-      console.log('Student count:', this.classStudents.length);
 
       // Update student count
       document.getElementById('class-detail-count').textContent =
@@ -3723,8 +3545,6 @@ class CadenceApp {
   }
 
   async viewStudentDetail(studentId) {
-    console.log('viewStudentDetail called with studentId:', studentId);
-
     // Use RPC function to bypass RLS
     const { data, error } = await supabase.rpc('get_student_detail', {
       p_student_id: studentId
@@ -3734,8 +3554,6 @@ class CadenceApp {
       console.error('Error loading student detail:', error);
       return;
     }
-
-    console.log('Student detail data from RPC:', data);
 
     const progressData = data.progress || [];
     const songsData = data.songs || [];
@@ -3864,8 +3682,6 @@ class CadenceApp {
   }
 
   async loadStudentPreviewData(studentId) {
-    console.log('Loading preview data for student:', studentId);
-
     // Use RPC function to bypass RLS
     const { data, error } = await supabase.rpc('get_student_detail', {
       p_student_id: studentId
@@ -3875,8 +3691,6 @@ class CadenceApp {
       console.error('Error loading student preview data:', error);
       return;
     }
-
-    console.log('Student preview data from RPC:', data);
 
     const progressData = data.progress || [];
     const songsData = data.songs || [];
@@ -3897,11 +3711,6 @@ class CadenceApp {
     }
 
     this.studentSongs = songsData || [];
-
-    console.log('Preview mode - studentProgress:', this.studentProgress);
-    console.log('Preview mode - studentSongs:', this.studentSongs);
-    console.log('Preview mode - instruments:', this.instruments);
-    console.log('Preview mode - currentInstrument:', this.currentInstrument);
   }
 
   async exitStudentPreview() {
@@ -3944,14 +3753,11 @@ class CadenceApp {
 
     // Show teacher tabs and hide student tabs AFTER switchView
     const currentUser = auth.getCurrentUser();
-    console.log('Showing teacher tabs, user role:', currentUser?.role);
     const teacherTabs = document.querySelectorAll('.teacher-tab');
-    console.log('Found teacher tabs:', teacherTabs.length);
 
     if (currentUser && (currentUser.role === 'teacher' || currentUser.role === 'admin')) {
       // Show teacher tabs
       teacherTabs.forEach(tab => {
-        console.log('Removing hidden from tab:', tab.getAttribute('data-view'), tab);
         tab.classList.remove('hidden');
       });
       // Hide student tabs
@@ -3966,27 +3772,14 @@ class CadenceApp {
       const btn = document.getElementById(btnId);
       if (btn) btn.classList.remove('hidden');
     });
-
-    console.log('Exit preview complete');
   }
 
   async loadSubmissions() {
     const user = auth.getCurrentUser();
-    console.log('loadSubmissions - current user:', user.id);
-
-    // DEBUG: Check all song_ratings in the database
-    const { data: allRatings } = await supabase
-      .from('song_ratings')
-      .select('id, user_id, assessed_level, date_graded, users(name), songs(title)')
-      .order('date_graded', { ascending: false })
-      .limit(10);
-    console.log('DEBUG - All recent song_ratings:', allRatings);
 
     // Use RPC function to get all students from teacher's classes
     const { data: students, error: studentsError } = await supabase
       .rpc('get_all_teacher_students');
-
-    console.log('loadSubmissions - students from RPC:', { students, studentsError });
 
     if (studentsError) {
       console.error('Error loading students:', studentsError);
@@ -3996,14 +3789,12 @@ class CadenceApp {
     }
 
     if (!students || students.length === 0) {
-      console.log('loadSubmissions - no students found');
       this.submissions = [];
       this.renderSubmissionsFeed();
       return;
     }
 
     const studentIds = students.map(s => s.user_id);
-    console.log('loadSubmissions - studentIds:', studentIds);
 
     // Create a lookup map for student info (since RLS might block the users join)
     const studentMap = {};
@@ -4023,8 +3814,6 @@ class CadenceApp {
       .order('date_graded', { ascending: false })
       .limit(50);
 
-    console.log('loadSubmissions - submissions query result:', { data, error });
-
     if (error) {
       console.error('Error loading submissions:', error);
       return;
@@ -4035,7 +3824,6 @@ class CadenceApp {
       ...submission,
       users: studentMap[submission.user_id] || { name: 'Unknown Student' }
     }));
-    console.log('loadSubmissions - final submissions:', this.submissions);
 
     // Populate filter dropdowns
     this.populateSubmissionsFilters();
@@ -4160,13 +3948,8 @@ class CadenceApp {
   }
 
   async loadFlaggedRatings() {
-    console.log('🚩 Loading flagged ratings...');
-
     // Get all students from all the teacher's classes
     const { data: allStudents, error: studentsError } = await supabase.rpc('get_all_teacher_students');
-
-    console.log('🚩 All students:', allStudents);
-    console.log('🚩 Students error:', studentsError);
 
     if (studentsError) {
       console.error('Error loading teacher students:', studentsError);
@@ -4175,7 +3958,6 @@ class CadenceApp {
     }
 
     if (!allStudents || allStudents.length === 0) {
-      console.log('🚩 No students found');
       this.renderFlaggedRatings([]);
       return;
     }
@@ -4191,16 +3973,12 @@ class CadenceApp {
     userMap[user.id] = user.name || 'Teacher';
 
     const studentIds = allStudents.map(s => s.user_id);
-    console.log('🚩 Student IDs:', studentIds);
-    console.log('🚩 User map:', userMap);
 
     // First, get all song IDs that have been rated by class students
     const { data: studentRatings, error: studentError } = await supabase
       .from('song_ratings')
       .select('song_id')
       .in('user_id', studentIds);
-
-    console.log('🚩 Student ratings:', studentRatings);
 
     if (studentError) {
       console.error('Error loading student ratings:', studentError);
@@ -4209,10 +3987,8 @@ class CadenceApp {
 
     // Get unique song IDs
     const songIds = [...new Set(studentRatings.map(r => r.song_id))];
-    console.log('🚩 Song IDs with ratings:', songIds);
 
     if (songIds.length === 0) {
-      console.log('🚩 No songs with ratings');
       this.renderFlaggedRatings([]);
       return;
     }
@@ -4230,8 +4006,6 @@ class CadenceApp {
         instruments (icon, name)
       `)
       .in('song_id', songIds);
-
-    console.log('🚩 All ratings for songs:', data);
 
     if (error) {
       console.error('Error loading ratings:', error);
@@ -4257,8 +4031,6 @@ class CadenceApp {
       });
     });
 
-    console.log('🚩 Song groups:', songGroups);
-
     // Find songs with 2+ level discrepancies (excluding already resolved songs)
     const flagged = [];
     Object.values(songGroups).forEach(group => {
@@ -4266,14 +4038,11 @@ class CadenceApp {
         const levels = group.ratings.map(r => r.level);
         const min = Math.min(...levels);
         const max = Math.max(...levels);
-        console.log(`🚩 Checking ${group.song.title} - ${group.instrument?.name || 'unknown'}: levels=${levels}, min=${min}, max=${max}, diff=${max-min}, resolved=${group.hasBeenResolved}`);
         if (max - min >= 2) {
           flagged.push(group);
         }
       }
     });
-
-    console.log('🚩 Flagged songs:', flagged);
 
     // Also load new ratings that need teacher review
     const { data: unreviewedRatings, error: unreviewedError } = await supabase
@@ -4292,11 +4061,6 @@ class CadenceApp {
       .eq('teacher_reviewed', false)
       .order('date_graded', { ascending: false });
 
-    console.log('🔍 Unreviewed ratings count:', unreviewedRatings?.length || 0);
-    console.log('🔍 Unreviewed rating IDs:', unreviewedRatings?.map(r => r.id));
-    console.log('🔍 Unreviewed ratings:', unreviewedRatings);
-    console.log('🔍 Unreviewed error:', unreviewedError);
-
     // Format unreviewed ratings for display
     const newRatings = (unreviewedRatings || []).map(rating => ({
       id: rating.id,
@@ -4310,9 +4074,6 @@ class CadenceApp {
       },
       isNew: true
     }));
-
-    console.log('🔍 New ratings for review count:', newRatings.length);
-    console.log('🔍 New ratings for review:', newRatings);
 
     // Also load pending links for teacher approval
     const { data: pendingLinks, error: pendingError } = await supabase
@@ -4330,15 +4091,10 @@ class CadenceApp {
       .eq('status', 'pending')
       .order('submitted_at', { ascending: false });
 
-    console.log('🔗 Pending links:', pendingLinks);
-    console.log('🔗 Pending links error:', pendingError);
-
     this.flaggedRatings = flagged;
     this.newRatings = newRatings;
     this.pendingLinks = pendingLinks || [];
-    console.log('🔍 Set this.newRatings to array with length:', this.newRatings.length);
     this.populateFlaggedFilters();
-    console.log('🔍 About to call filterFlaggedRatings...');
     this.filterFlaggedRatings();
   }
 
@@ -4616,8 +4372,6 @@ class CadenceApp {
   }
 
   async reviewNewRating(ratingId, selectId) {
-    console.log('⭐ Reviewing new rating:', ratingId);
-
     const selectElement = document.getElementById(selectId);
     const level = parseInt(selectElement.value);
 
@@ -4626,11 +4380,8 @@ class CadenceApp {
       return;
     }
 
-    console.log('⭐ Setting level to:', level);
-
     try {
       // Update the rating level (if overridden) and mark as teacher_reviewed
-      console.log('⭐ Calling approve_song_rating RPC...');
       const { data, error } = await supabase.rpc('approve_song_rating', {
         p_rating_id: ratingId,
         p_assessed_level: level
@@ -4642,27 +4393,16 @@ class CadenceApp {
         return;
       }
 
-      console.log('⭐ RPC response:', data);
-      console.log('⭐ Database update successful');
       this.showToast('Rating reviewed successfully', 'success');
 
-      console.log('⭐ Current view is:', this.currentView);
-
       // Reload flagged ratings to remove the reviewed rating
-      console.log('⭐ About to call loadFlaggedRatings...');
       await this.loadFlaggedRatings();
-      console.log('⭐ loadFlaggedRatings completed');
 
       // Also reload songs to update the song library display
-      console.log('⭐ About to call loadSongs...');
       await this.loadSongs();
-      console.log('⭐ loadSongs completed, this.songs.length:', this.songs.length);
 
       if (this.currentView === 'songs') {
-        console.log('⭐ Current view is songs, calling filterSongs...');
         this.filterSongs();
-      } else {
-        console.log('⭐ Current view is NOT songs, skipping filterSongs');
       }
     } catch (error) {
       console.error('Exception in reviewNewRating:', error);
@@ -4671,8 +4411,6 @@ class CadenceApp {
   }
 
   async approvePendingLink(linkId) {
-    console.log('🔗 Approving pending link:', linkId);
-
     try {
       // Set flag to prevent real-time subscription from double-loading
       this.approvingLink = true;
@@ -4691,23 +4429,14 @@ class CadenceApp {
 
       this.showToast('Link approved successfully', 'success');
 
-      console.log('🔗 Link approved, currentView is:', this.currentView);
-
       // Reload flagged ratings to update the pending links list
-      console.log('🔗 About to call loadFlaggedRatings...');
       await this.loadFlaggedRatings();
-      console.log('🔗 loadFlaggedRatings completed');
 
       // Also reload songs to update the song library with the new link
-      console.log('🔗 About to call loadSongs...');
       await this.loadSongs();
-      console.log('🔗 loadSongs completed, this.songs.length:', this.songs.length);
 
       if (this.currentView === 'songs') {
-        console.log('🔗 Current view is songs, calling filterSongs...');
         this.filterSongs();
-      } else {
-        console.log('🔗 Current view is NOT songs, skipping filterSongs');
       }
 
       // Clear flag after a short delay to allow real-time subscription to catch up
@@ -4722,8 +4451,6 @@ class CadenceApp {
   }
 
   async rejectPendingLink(linkId) {
-    console.log('🔗 Rejecting pending link:', linkId);
-
     try {
       // Call the RPC function to reject the link
       const { error } = await supabase.rpc('reject_pending_link', {
@@ -4762,12 +4489,6 @@ class CadenceApp {
       const newLevel = parseInt(document.getElementById('edit-song-level').value);
       const notes = document.getElementById('edit-song-notes').value;
 
-      console.log('Updating song rating:', {
-        ratingId: this.editingRatingId,
-        newLevel: newLevel,
-        notes: notes
-      });
-
       try {
         // Use RPC function to update rating (bypasses RLS)
         const { data, error } = await supabase
@@ -4776,8 +4497,6 @@ class CadenceApp {
             p_assessed_level: newLevel,
             p_notes: notes || null
           });
-
-        console.log('Update result:', { data, error });
 
         if (error) {
           console.error('Update error details:', {
@@ -4924,12 +4643,9 @@ class CadenceApp {
   }
 
   async joinClass() {
-    console.log('joinClass called');
     const codeInput = document.getElementById('class-code-input');
     const joinBtn = document.getElementById('join-class-btn');
     const classCode = codeInput.value.trim().toUpperCase();
-
-    console.log('Class code entered:', classCode);
 
     if (!classCode || classCode.length !== 6) {
       this.showToast('Please enter a valid 6-character class code', 'error');
@@ -4942,8 +4658,6 @@ class CadenceApp {
 
     try {
       const user = auth.getCurrentUser();
-
-      console.log('Calling RPC with:', { userId: user.id, classCode });
 
       // Add timeout to RPC call
       const timeoutPromise = new Promise((_, reject) =>
@@ -4960,8 +4674,6 @@ class CadenceApp {
           console.error('RPC call failed or timed out:', err);
           return { data: null, error: err };
         });
-
-      console.log('Join class RPC result:', { data, error });
 
       if (error) {
         console.error('Database error details:', {
