@@ -4894,6 +4894,7 @@ class CadenceApp {
 
   renderAdminStats(stats) {
     const container = document.getElementById('admin-stats');
+    console.log('renderAdminStats called with:', stats, 'container found:', !!container);
     if (!container) return;
 
     const html = `
