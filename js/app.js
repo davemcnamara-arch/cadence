@@ -2333,12 +2333,25 @@ class CadenceApp {
 
     try {
       console.log('🎯 About to call grade_song RPC...');
+      console.log('🎯 RPC parameters:', {
+        p_student_id: userId,
+        p_title: this.gradingData.title,
+        p_artist: this.gradingData.artist,
+        p_instrument_id: this.gradingData.instrument,
+        p_assessed_level: this.gradingData.level,
+        p_checklist_responses_json: this.gradingData.checklistResponses,
+        p_youtube_url: this.gradingData.youtube_url || null,
+        p_chords_url: this.gradingData.chords_url || null,
+        p_tutorial_url: this.gradingData.tutorial_url || null,
+        p_add_to_learning: document.getElementById('add-to-learning').checked
+      });
 
       // Add a timeout to detect hangs
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Request timed out after 15 seconds')), 15000)
       );
 
+      console.log('🎯 Calling supabase.rpc...');
       const rpcPromise = supabase.rpc('grade_song', {
         p_student_id: userId,
         p_title: this.gradingData.title,
@@ -2352,7 +2365,9 @@ class CadenceApp {
         p_add_to_learning: document.getElementById('add-to-learning').checked
       });
 
+      console.log('🎯 RPC promise created, waiting for response...');
       const { data, error } = await Promise.race([rpcPromise, timeoutPromise]);
+      console.log('🎯 Promise resolved!');
 
       console.log('🎯 RPC response:', { data, error });
 
