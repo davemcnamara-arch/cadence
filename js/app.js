@@ -4868,33 +4868,18 @@ class CadenceApp {
       supabase.from('classes').select('id')
     ]);
 
-    // Debug: log full responses to see what's returned
-    console.log('Admin stats responses:', {
-      users: usersRes.data?.length,
-      songs: songsRes.data?.length,
-      ratings: ratingsRes.data?.length,
-      classes: classesRes.data?.length,
-      errors: {
-        users: usersRes.error,
-        songs: songsRes.error,
-        ratings: ratingsRes.error,
-        classes: classesRes.error
-      }
-    });
-
-    const stats = {
+    this.adminStats = {
       users: usersRes.data?.length ?? 0,
       songs: songsRes.data?.length ?? 0,
       ratings: ratingsRes.data?.length ?? 0,
       classes: classesRes.data?.length ?? 0
     };
 
-    this.renderAdminStats(stats);
+    this.renderAdminStats(this.adminStats);
   }
 
   renderAdminStats(stats) {
     const container = document.getElementById('admin-stats');
-    console.log('renderAdminStats called with:', stats, 'container found:', !!container);
     if (!container) return;
 
     const html = `
