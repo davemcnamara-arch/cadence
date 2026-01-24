@@ -1400,8 +1400,10 @@ class CadenceApp {
       } else {
         actionButton = `<button class="btn btn-primary" onclick="event.stopPropagation(); app.addSongToLearning('${song.id}')">Start Learning</button>`;
       }
+    } else {
+      // Teachers/admins get a delete button
+      actionButton = `<button class="btn btn-danger" onclick="event.stopPropagation(); app.deleteSongFromLibrary('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Delete this song from the library">Delete Song</button>`;
     }
-    // Teachers/admins get no action button
 
     return `
       <div class="song-card" data-song-id="${song.id}">
@@ -1594,6 +1596,30 @@ class CadenceApp {
     } else if (this.currentView === 'progress') {
       this.renderProgress();
     }
+  }
+
+  async deleteSongFromLibrary(songId, title, artist) {
+    // Confirm deletion with song details
+    if (!confirm(`Are you sure you want to delete "${title}" by ${artist} from the library?\n\nThis will permanently remove the song and all associated ratings and student progress. This action cannot be undone.`)) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from('songs')
+      .delete()
+      .eq('id', songId);
+
+    if (error) {
+      console.error('Error deleting song:', error);
+      this.showToast('Failed to delete song', 'error');
+      return;
+    }
+
+    this.showToast('Song deleted successfully', 'success');
+
+    // Reload the song library to reflect the deletion
+    await this.loadSongs();
+    this.renderSongs();
   }
 
   setupSongGradingForm() {
