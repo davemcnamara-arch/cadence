@@ -1,10 +1,15 @@
--- Migration: Fix infinite recursion in users table admin policy
--- The existing "Admins can view all users" policy causes recursion because
--- it queries the users table, triggering RLS, which queries users again.
--- This migration updates it to use the is_admin() function created in 032.
+-- Migration: Fix infinite recursion in admin policies
+-- Several policies use subqueries that query the users table, causing recursion.
+-- This migration updates them to use the is_admin() function created in 032.
 
--- Drop the problematic policy from migration 001
+-- Fix users table policy
 DROP POLICY IF EXISTS "Admins can view all users" ON users;
-
--- Recreate using the is_admin() function to avoid recursion
 CREATE POLICY "Admins can view all users" ON users FOR SELECT USING (is_admin());
+
+-- Fix levels table policy
+DROP POLICY IF EXISTS "Only admins can modify levels" ON levels;
+CREATE POLICY "Only admins can modify levels" ON levels FOR ALL USING (is_admin());
+
+-- Fix instruments table policy
+DROP POLICY IF EXISTS "Only admins can modify instruments" ON instruments;
+CREATE POLICY "Only admins can modify instruments" ON instruments FOR ALL USING (is_admin());
