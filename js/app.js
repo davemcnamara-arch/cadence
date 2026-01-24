@@ -5128,7 +5128,6 @@ class CadenceApp {
 
   renderContentModeration() {
     const container = document.getElementById('content-moderation-list');
-    console.log('renderContentModeration:', { container: !!container, listLength: this.adminContentList?.length });
     if (!container) return;
 
     if (!this.adminContentList || this.adminContentList.length === 0) {
@@ -5225,7 +5224,7 @@ class CadenceApp {
 
     let query = supabase
       .from('users')
-      .select('*, student_progress(instrument_id)')
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (roleFilter) {
@@ -5233,7 +5232,6 @@ class CadenceApp {
     }
 
     const { data, error } = await query.limit(200);
-    console.log('loadUsersManagement:', { data, error });
 
     if (error) {
       console.error('Error loading users:', error);
@@ -5246,7 +5244,6 @@ class CadenceApp {
 
   renderUsersManagement() {
     const container = document.getElementById('users-list');
-    console.log('renderUsersManagement:', { container: !!container, usersLength: this.adminUsersList?.length });
     if (!container) return;
 
     let users = this.adminUsersList || [];
@@ -5266,8 +5263,6 @@ class CadenceApp {
     }
 
     const html = users.map(user => {
-      const instrumentCount = user.student_progress?.length || 0;
-
       return `
         <div class="user-admin-card">
           <div class="user-admin-info">
@@ -5276,7 +5271,6 @@ class CadenceApp {
           </div>
           <div class="user-admin-meta">
             <span class="user-role-badge ${user.role}">${user.role.charAt(0).toUpperCase() + user.role.slice(1)}</span>
-            <span class="user-admin-stats">${instrumentCount} instrument${instrumentCount !== 1 ? 's' : ''}</span>
             <button class="btn btn-secondary btn-sm" onclick="app.editUserRole('${user.id}', '${user.name}', '${user.role}')">Change Role</button>
           </div>
         </div>
