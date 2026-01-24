@@ -4949,7 +4949,11 @@ class CadenceApp {
     }
 
     this.adminLevels = data;
-    this.currentAdminLevelInstrument = this.instruments[0]?.id;
+
+    // Only set default instrument if not already selected
+    if (!this.currentAdminLevelInstrument) {
+      this.currentAdminLevelInstrument = this.instruments[0]?.id;
+    }
 
     // Populate instrument filter
     const select = document.getElementById('admin-level-instrument');
