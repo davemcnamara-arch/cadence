@@ -5771,14 +5771,7 @@ class CadenceApp {
       });
     }
 
-    // Add Tutorial form
-    const addTutorialForm = document.getElementById('add-tutorial-form');
-    if (addTutorialForm) {
-      addTutorialForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await this.submitTutorial();
-      });
-    }
+    // Add Tutorial form - using inline onsubmit handler in HTML instead
   }
 
   async showSongResourcesModal(songId) {
