@@ -6080,18 +6080,15 @@ class CadenceApp {
 
       const isStudent = auth.hasRole('student');
 
-      console.log('Inserting into song_tutorials...');
-      const { error } = await supabase
-        .from('song_tutorials')
-        .insert({
-          song_id: this.currentResourceSong.id,
-          url: url,
-          title: title || null,
-          submitted_by_user_id: auth.getCurrentUser().id,
-          status: isStudent ? 'pending' : 'approved'
-        });
+      console.log('Calling add_song_tutorial RPC...');
+      const { data, error } = await supabase.rpc('add_song_tutorial', {
+        p_song_id: this.currentResourceSong.id,
+        p_url: url,
+        p_title: title || null,
+        p_status: isStudent ? 'pending' : 'approved'
+      });
 
-      console.log('Insert complete, error:', error);
+      console.log('RPC complete:', { data, error });
 
       if (error) {
         console.error('Error saving tutorial:', error);
