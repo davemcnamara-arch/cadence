@@ -6193,7 +6193,51 @@ class CadenceApp {
       const title = document.getElementById('resource-title').value.trim();
       const url = document.getElementById('resource-link').value.trim();
       const description = document.getElementById('resource-description').value.trim();
+      const fileInput = document.getElementById('resource-file');
+      const file = fileInput?.files[0];
       const isStudent = auth.hasRole('student');
+
+      let fileUrl = '';
+      let fileType = 'link';
+
+      // Check if we have a file or URL
+      if (file) {
+        // Check file size (5MB limit)
+        if (file.size > 5 * 1024 * 1024) {
+          this.showToast('File size must be under 5MB', 'error');
+          return;
+        }
+
+        // Determine file type
+        fileType = file.type.startsWith('image/') ? 'image' : 'pdf';
+
+        // Upload to Supabase storage
+        const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const filePath = `${this.currentResourceSong.id}/${fileName}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('student-resources')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          this.showToast('Failed to upload file. Please try again.', 'error');
+          return;
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('student-resources')
+          .getPublicUrl(filePath);
+
+        fileUrl = urlData.publicUrl;
+      } else if (url) {
+        fileUrl = url;
+        fileType = 'link';
+      } else {
+        this.showToast('Please provide a URL or upload a file', 'error');
+        return;
+      }
 
       // Insert resource record using raw fetch (workaround for Supabase JS client bug)
       await this.rawInsert('student_resources', {
@@ -6201,8 +6245,8 @@ class CadenceApp {
         user_id: auth.getCurrentUser().id,
         title: title,
         description: description || null,
-        file_url: url,
-        file_type: 'link',
+        file_url: fileUrl,
+        file_type: fileType,
         status: isStudent ? 'pending' : 'approved'
       });
 
