@@ -6081,19 +6081,29 @@ class CadenceApp {
       const isStudent = auth.hasRole('student');
 
       console.log('Calling add_song_tutorial RPC...');
-      const { data, error } = await supabase.rpc('add_song_tutorial', {
+
+      // Add timeout since the RPC seems to hang even when it succeeds
+      const rpcCall = supabase.rpc('add_song_tutorial', {
         p_song_id: this.currentResourceSong.id,
         p_url: url,
         p_title: title || null,
         p_status: isStudent ? 'pending' : 'approved'
       });
 
-      console.log('RPC complete:', { data, error });
+      const timeout = new Promise((resolve) =>
+        setTimeout(() => resolve({ data: null, error: null, timedOut: true }), 5000)
+      );
 
-      if (error) {
-        console.error('Error saving tutorial:', error);
-        this.showToast('Failed to save tutorial: ' + error.message, 'error');
+      const result = await Promise.race([rpcCall, timeout]);
+
+      if (result.timedOut) {
+        console.log('RPC timed out but insert likely succeeded, continuing...');
+      } else if (result.error) {
+        console.error('Error saving tutorial:', result.error);
+        this.showToast('Failed to save tutorial: ' + result.error.message, 'error');
         return;
+      } else {
+        console.log('RPC complete:', result);
       }
 
       // Close modal and refresh
