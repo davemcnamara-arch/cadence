@@ -6187,6 +6187,10 @@ class CadenceApp {
   }
 
   async submitStudentResource() {
+    // Prevent double submission
+    if (this.isSubmittingResource) return;
+    this.isSubmittingResource = true;
+
     try {
       const title = document.getElementById('resource-title').value.trim();
       const url = document.getElementById('resource-link').value.trim();
@@ -6260,6 +6264,8 @@ class CadenceApp {
     } catch (error) {
       console.error('Error submitting resource:', error);
       this.showToast('An error occurred. Please try again.', 'error');
+    } finally {
+      this.isSubmittingResource = false;
     }
   }
 
@@ -6357,6 +6363,10 @@ class CadenceApp {
   }
 
   async submitTutorial() {
+    // Prevent double submission
+    if (this.isSubmittingTutorial) return;
+    this.isSubmittingTutorial = true;
+
     try {
       const url = document.getElementById('tutorial-url').value.trim();
       const title = document.getElementById('tutorial-title').value.trim();
@@ -6389,6 +6399,8 @@ class CadenceApp {
     } catch (error) {
       console.error('Error submitting tutorial:', error);
       this.showToast('Failed to save tutorial: ' + error.message, 'error');
+    } finally {
+      this.isSubmittingTutorial = false;
     }
   }
 
