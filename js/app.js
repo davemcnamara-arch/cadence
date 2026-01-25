@@ -6055,24 +6055,16 @@ class CadenceApp {
         fileUrl = urlData.publicUrl;
       }
 
-      // Insert resource record
-      const { error } = await supabase
-        .from('student_resources')
-        .insert({
-          song_id: this.currentResourceSong.id,
-          user_id: auth.getCurrentUser().id,
-          title: title,
-          description: description || null,
-          file_url: fileUrl,
-          file_type: resourceType,
-          status: isStudent ? 'pending' : 'approved'
-        });
-
-      if (error) {
-        console.error('Error saving resource:', error);
-        this.showToast('Failed to save resource', 'error');
-        return;
-      }
+      // Insert resource record using raw fetch (workaround for Supabase JS client bug)
+      await this.rawInsert('student_resources', {
+        song_id: this.currentResourceSong.id,
+        user_id: auth.getCurrentUser().id,
+        title: title,
+        description: description || null,
+        file_url: fileUrl,
+        file_type: resourceType,
+        status: isStudent ? 'pending' : 'approved'
+      });
 
       // Close modal and refresh
       document.getElementById('add-resource-modal').classList.add('hidden');
@@ -6089,41 +6081,50 @@ class CadenceApp {
     }
   }
 
+  // Helper for raw fetch inserts (workaround for Supabase JS client bug)
+  async rawInsert(table, data) {
+    const session = JSON.parse(localStorage.getItem('sb-dgwtihpiqgkhokkkxuzo-auth-token'));
+    const token = session?.access_token;
+
+    const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}`, {
+      method: 'POST',
+      headers: {
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Insert failed: ${response.status} ${errorText}`);
+    }
+
+    return { error: null };
+  }
+
   async submitTutorial() {
-    console.log('submitTutorial() called');
     try {
       const url = document.getElementById('tutorial-url').value.trim();
       const title = document.getElementById('tutorial-title').value.trim();
-      console.log('Form values:', { url, title });
 
       if (!this.currentResourceSong) {
-        console.log('No currentResourceSong');
         this.showToast('No song selected', 'error');
         return;
       }
-      console.log('Song:', this.currentResourceSong.id);
 
       const isStudent = auth.hasRole('student');
-      console.log('isStudent:', isStudent);
 
-      // Use direct table insert instead of RPC
-      console.log('About to insert...');
-      const { error } = await supabase
-        .from('song_tutorials')
-        .insert({
-          song_id: this.currentResourceSong.id,
-          url: url,
-          title: title || null,
-          submitted_by_user_id: auth.getCurrentUser().id,
-          status: isStudent ? 'pending' : 'approved'
-        });
-      console.log('Insert done, error:', error);
-
-      if (error) {
-        console.error('Error saving tutorial:', error);
-        this.showToast('Failed to save tutorial: ' + error.message, 'error');
-        return;
-      }
+      // Use raw fetch insert (workaround for Supabase JS client bug with inserts)
+      await this.rawInsert('song_tutorials', {
+        song_id: this.currentResourceSong.id,
+        url: url,
+        title: title || null,
+        submitted_by_user_id: auth.getCurrentUser().id,
+        status: isStudent ? 'pending' : 'approved'
+      });
 
       // Close modal and refresh
       document.getElementById('add-tutorial-modal').classList.add('hidden');
@@ -6131,13 +6132,12 @@ class CadenceApp {
         isStudent ? 'Tutorial submitted for teacher approval' : 'Tutorial added successfully',
         'success'
       );
-      console.log('Success!');
 
       // Refresh the tutorials list
       await this.loadSongTutorials(this.currentResourceSong.id);
     } catch (error) {
       console.error('Error submitting tutorial:', error);
-      this.showToast('An error occurred. Please try again.', 'error');
+      this.showToast('Failed to save tutorial: ' + error.message, 'error');
     }
   }
 
