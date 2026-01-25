@@ -545,10 +545,39 @@ class CadenceApp {
       });
     }
 
-    // Attach resource ratings to songs
+    // Load resource counts (tutorials + student resources)
+    const { data: tutorialCounts } = await supabase
+      .from('song_tutorials')
+      .select('song_id')
+      .eq('status', 'approved');
+
+    const { data: resourceCounts } = await supabase
+      .from('student_resources')
+      .select('song_id')
+      .eq('status', 'approved');
+
+    // Create count maps
+    const tutorialCountMap = {};
+    const resourceCountMap = {};
+
+    if (tutorialCounts) {
+      tutorialCounts.forEach(t => {
+        tutorialCountMap[t.song_id] = (tutorialCountMap[t.song_id] || 0) + 1;
+      });
+    }
+
+    if (resourceCounts) {
+      resourceCounts.forEach(r => {
+        resourceCountMap[r.song_id] = (resourceCountMap[r.song_id] || 0) + 1;
+      });
+    }
+
+    // Attach resource ratings and counts to songs
     this.songs = (data || []).map(song => ({
       ...song,
-      resource_ratings: ratingsMap[song.id] || { chords: [], tutorial: [] }
+      resource_ratings: ratingsMap[song.id] || { chords: [], tutorial: [] },
+      tutorial_count: tutorialCountMap[song.id] || 0,
+      resource_count: resourceCountMap[song.id] || 0
     }));
 
     // Remove duplicate songs if any
@@ -1398,8 +1427,8 @@ class CadenceApp {
           ` : `
             <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add chords link">+ Chords</button>
           `}
-          <button class="btn btn-secondary btn-resources" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}')" title="View tutorials & student resources">
-            Resources
+          <button class="btn btn-secondary btn-resources ${(song.tutorial_count + song.resource_count) > 0 ? 'has-resources' : ''}" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}')" title="View tutorials & student resources">
+            Resources${(song.tutorial_count + song.resource_count) > 0 ? ` <span class="resource-count">${song.tutorial_count + song.resource_count}</span>` : ''}
           </button>
           ${song.youtube_url ? `
             <div class="resource-link-group">
@@ -4441,9 +4470,42 @@ class CadenceApp {
       .eq('status', 'pending')
       .order('submitted_at', { ascending: false });
 
+    // Load pending tutorials for teacher approval
+    const { data: pendingTutorials } = await supabase
+      .from('song_tutorials')
+      .select(`
+        id,
+        song_id,
+        url,
+        title,
+        created_at,
+        submitted_by_user_id,
+        songs!inner (title, artist)
+      `)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    // Load pending student resources for teacher approval
+    const { data: pendingResources } = await supabase
+      .from('student_resources')
+      .select(`
+        id,
+        song_id,
+        title,
+        file_url,
+        file_type,
+        created_at,
+        user_id,
+        songs!inner (title, artist)
+      `)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
     this.flaggedRatings = flagged;
     this.newRatings = newRatings;
     this.pendingLinks = pendingLinks || [];
+    this.pendingTutorials = pendingTutorials || [];
+    this.pendingResources = pendingResources || [];
     this.populateFlaggedFilters();
     this.filterFlaggedRatings();
   }
@@ -4524,7 +4586,7 @@ class CadenceApp {
     if (!container) return;
 
     // Update notification badge - count all items needing review
-    const totalCount = flaggedSongs.length + (this.newRatings?.length || 0) + (this.pendingLinks?.length || 0);
+    const totalCount = flaggedSongs.length + (this.newRatings?.length || 0) + (this.pendingLinks?.length || 0) + (this.pendingTutorials?.length || 0) + (this.pendingResources?.length || 0);
     const badge = document.getElementById('flagged-count-badge');
     if (badge) {
       if (totalCount > 0) {
@@ -4574,6 +4636,91 @@ class CadenceApp {
                   </button>
                   <button class="btn btn-secondary" onclick="app.rejectPendingLink('${link.id}')" style="margin-left: 0.5rem;">
                     <span style="margin-right: 0.5rem;">✗</span> Reject
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    // Build HTML for pending tutorials section
+    let pendingTutorialsHtml = '';
+    if (this.pendingTutorials && this.pendingTutorials.length > 0) {
+      pendingTutorialsHtml = `
+        <div style="margin-bottom: 2rem;">
+          <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Pending Tutorial Approvals (${this.pendingTutorials.length})</h3>
+          ${this.pendingTutorials.map(tutorial => {
+            const submittedDate = new Date(tutorial.created_at).toLocaleDateString();
+
+            return `
+              <div class="flagged-card" style="border-left: 4px solid #9c27b0;">
+                <div class="flagged-header">
+                  <div>
+                    <div class="flagged-song-title">${tutorial.songs.title}</div>
+                    <div class="flagged-song-meta">${tutorial.songs.artist} • Tutorial Video</div>
+                  </div>
+                  <div style="text-align: right; font-size: 0.875rem; color: var(--text-secondary);">
+                    <div>${submittedDate}</div>
+                  </div>
+                </div>
+                <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 4px; margin: 1rem 0;">
+                  ${tutorial.title ? `<div style="font-weight: 500; margin-bottom: 0.5rem; color: var(--text-primary);">${tutorial.title}</div>` : ''}
+                  <a href="${tutorial.url}" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color); word-break: break-all;">${tutorial.url}</a>
+                </div>
+                <div class="flagged-resolve">
+                  <button class="btn btn-primary" onclick="app.approvePendingTutorial('${tutorial.id}', '${tutorial.song_id}')">
+                    <span style="margin-right: 0.5rem;">✓</span> Approve
+                  </button>
+                  <button class="btn btn-danger" onclick="app.deletePendingTutorial('${tutorial.id}')" style="margin-left: 0.5rem;">
+                    <span style="margin-right: 0.5rem;">✗</span> Delete
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    // Build HTML for pending student resources section
+    let pendingResourcesHtml = '';
+    if (this.pendingResources && this.pendingResources.length > 0) {
+      const fileTypeLabels = {
+        'image': 'Image',
+        'pdf': 'PDF Document',
+        'link': 'External Link'
+      };
+
+      pendingResourcesHtml = `
+        <div style="margin-bottom: 2rem;">
+          <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Pending Student Resource Approvals (${this.pendingResources.length})</h3>
+          ${this.pendingResources.map(resource => {
+            const submittedDate = new Date(resource.created_at).toLocaleDateString();
+            const typeLabel = fileTypeLabels[resource.file_type] || resource.file_type;
+
+            return `
+              <div class="flagged-card" style="border-left: 4px solid #ff9800;">
+                <div class="flagged-header">
+                  <div>
+                    <div class="flagged-song-title">${resource.songs.title}</div>
+                    <div class="flagged-song-meta">${resource.songs.artist} • ${typeLabel}</div>
+                  </div>
+                  <div style="text-align: right; font-size: 0.875rem; color: var(--text-secondary);">
+                    <div>${submittedDate}</div>
+                  </div>
+                </div>
+                <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 4px; margin: 1rem 0;">
+                  <div style="font-weight: 500; margin-bottom: 0.5rem; color: var(--text-primary);">${resource.title}</div>
+                  <a href="${resource.file_url}" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color); word-break: break-all;">${resource.file_url}</a>
+                </div>
+                <div class="flagged-resolve">
+                  <button class="btn btn-primary" onclick="app.approvePendingResource('${resource.id}', '${resource.song_id}')">
+                    <span style="margin-right: 0.5rem;">✓</span> Approve
+                  </button>
+                  <button class="btn btn-danger" onclick="app.deletePendingResource('${resource.id}')" style="margin-left: 0.5rem;">
+                    <span style="margin-right: 0.5rem;">✗</span> Delete
                   </button>
                 </div>
               </div>
@@ -4676,8 +4823,8 @@ class CadenceApp {
     }
 
     // Combine all sections
-    if (pendingLinksHtml || newRatingsHtml || flaggedRatingsHtml) {
-      container.innerHTML = pendingLinksHtml + newRatingsHtml + flaggedRatingsHtml;
+    if (pendingLinksHtml || pendingTutorialsHtml || pendingResourcesHtml || newRatingsHtml || flaggedRatingsHtml) {
+      container.innerHTML = pendingLinksHtml + pendingTutorialsHtml + pendingResourcesHtml + newRatingsHtml + flaggedRatingsHtml;
     } else {
       container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No items need review</p>';
     }
@@ -4820,6 +4967,80 @@ class CadenceApp {
     } catch (error) {
       console.error('Exception in rejectPendingLink:', error);
       this.showToast('Failed to reject link', 'error');
+    }
+  }
+
+  async approvePendingTutorial(tutorialId, songId) {
+    try {
+      await this.rawUpdate('song_tutorials', tutorialId, {
+        status: 'approved',
+        reviewed_by_user_id: auth.getCurrentUser().id,
+        reviewed_at: new Date().toISOString()
+      });
+
+      // Update local song count
+      const song = this.songs.find(s => s.id === songId);
+      if (song) {
+        song.tutorial_count = (song.tutorial_count || 0) + 1;
+      }
+
+      this.showToast('Tutorial approved', 'success');
+      await this.loadFlaggedRatings();
+      await this.loadSongs();
+      if (this.currentView === 'songs') {
+        this.filterSongs();
+      }
+    } catch (error) {
+      console.error('Error approving tutorial:', error);
+      this.showToast('Failed to approve tutorial', 'error');
+    }
+  }
+
+  async deletePendingTutorial(tutorialId) {
+    try {
+      await this.rawDelete('song_tutorials', tutorialId);
+      this.showToast('Tutorial deleted', 'success');
+      await this.loadFlaggedRatings();
+    } catch (error) {
+      console.error('Error deleting tutorial:', error);
+      this.showToast('Failed to delete tutorial', 'error');
+    }
+  }
+
+  async approvePendingResource(resourceId, songId) {
+    try {
+      await this.rawUpdate('student_resources', resourceId, {
+        status: 'approved',
+        reviewed_by_user_id: auth.getCurrentUser().id,
+        reviewed_at: new Date().toISOString()
+      });
+
+      // Update local song count
+      const song = this.songs.find(s => s.id === songId);
+      if (song) {
+        song.resource_count = (song.resource_count || 0) + 1;
+      }
+
+      this.showToast('Resource approved', 'success');
+      await this.loadFlaggedRatings();
+      await this.loadSongs();
+      if (this.currentView === 'songs') {
+        this.filterSongs();
+      }
+    } catch (error) {
+      console.error('Error approving resource:', error);
+      this.showToast('Failed to approve resource', 'error');
+    }
+  }
+
+  async deletePendingResource(resourceId) {
+    try {
+      await this.rawDelete('student_resources', resourceId);
+      this.showToast('Resource deleted', 'success');
+      await this.loadFlaggedRatings();
+    } catch (error) {
+      console.error('Error deleting resource:', error);
+      this.showToast('Failed to delete resource', 'error');
     }
   }
 
@@ -6193,6 +6414,13 @@ class CadenceApp {
         reviewed_at: new Date().toISOString()
       });
 
+      // Update local song count and re-render
+      const song = this.songs.find(s => s.id === this.currentResourceSong.id);
+      if (song) {
+        song.tutorial_count = (song.tutorial_count || 0) + 1;
+        this.filterSongs(); // Re-render song cards
+      }
+
       this.showToast('Tutorial approved', 'success');
       await this.loadSongTutorials(this.currentResourceSong.id);
     } catch (error) {
@@ -6240,6 +6468,13 @@ class CadenceApp {
         reviewed_by_user_id: auth.getCurrentUser().id,
         reviewed_at: new Date().toISOString()
       });
+
+      // Update local song count and re-render
+      const song = this.songs.find(s => s.id === this.currentResourceSong.id);
+      if (song) {
+        song.resource_count = (song.resource_count || 0) + 1;
+        this.filterSongs(); // Re-render song cards
+      }
 
       this.showToast('Resource approved', 'success');
       await this.loadStudentResources(this.currentResourceSong.id);

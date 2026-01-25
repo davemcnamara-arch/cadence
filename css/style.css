@@ -2637,6 +2637,23 @@ body {
   font-weight: 600;
 }
 
+/* Highlight Resources button when resources exist */
+.btn-resources.has-resources {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.btn-resources.has-resources:hover {
+  background-color: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
+.btn-resources.has-resources .resource-count {
+  background-color: white;
+  color: var(--primary-color);
+}
+
 /* Small button variant */
 .btn-sm {
   padding: 0.375rem 0.75rem;
