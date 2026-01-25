@@ -6074,9 +6074,17 @@ class CadenceApp {
   }
 
   async submitTutorial() {
+    console.log('submitTutorial called');
     try {
       const url = document.getElementById('tutorial-url').value.trim();
       const title = document.getElementById('tutorial-title').value.trim();
+      console.log('Submitting tutorial:', { url, title, songId: this.currentResourceSong?.id });
+
+      if (!this.currentResourceSong) {
+        this.showToast('No song selected', 'error');
+        return;
+      }
+
       const isStudent = auth.hasRole('student');
 
       const { error } = await supabase
