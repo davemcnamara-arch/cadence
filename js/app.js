@@ -545,10 +545,39 @@ class CadenceApp {
       });
     }
 
-    // Attach resource ratings to songs
+    // Load resource counts (tutorials + student resources)
+    const { data: tutorialCounts } = await supabase
+      .from('song_tutorials')
+      .select('song_id')
+      .eq('status', 'approved');
+
+    const { data: resourceCounts } = await supabase
+      .from('student_resources')
+      .select('song_id')
+      .eq('status', 'approved');
+
+    // Create count maps
+    const tutorialCountMap = {};
+    const resourceCountMap = {};
+
+    if (tutorialCounts) {
+      tutorialCounts.forEach(t => {
+        tutorialCountMap[t.song_id] = (tutorialCountMap[t.song_id] || 0) + 1;
+      });
+    }
+
+    if (resourceCounts) {
+      resourceCounts.forEach(r => {
+        resourceCountMap[r.song_id] = (resourceCountMap[r.song_id] || 0) + 1;
+      });
+    }
+
+    // Attach resource ratings and counts to songs
     this.songs = (data || []).map(song => ({
       ...song,
-      resource_ratings: ratingsMap[song.id] || { chords: [], tutorial: [] }
+      resource_ratings: ratingsMap[song.id] || { chords: [], tutorial: [] },
+      tutorial_count: tutorialCountMap[song.id] || 0,
+      resource_count: resourceCountMap[song.id] || 0
     }));
 
     // Remove duplicate songs if any
@@ -1398,8 +1427,8 @@ class CadenceApp {
           ` : `
             <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add chords link">+ Chords</button>
           `}
-          <button class="btn btn-secondary btn-resources" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}')" title="View tutorials & student resources">
-            Resources
+          <button class="btn btn-secondary btn-resources ${(song.tutorial_count + song.resource_count) > 0 ? 'has-resources' : ''}" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}')" title="View tutorials & student resources">
+            Resources${(song.tutorial_count + song.resource_count) > 0 ? ` <span class="resource-count">${song.tutorial_count + song.resource_count}</span>` : ''}
           </button>
           ${song.youtube_url ? `
             <div class="resource-link-group">
@@ -6193,6 +6222,13 @@ class CadenceApp {
         reviewed_at: new Date().toISOString()
       });
 
+      // Update local song count and re-render
+      const song = this.songs.find(s => s.id === this.currentResourceSong.id);
+      if (song) {
+        song.tutorial_count = (song.tutorial_count || 0) + 1;
+        this.filterSongs(); // Re-render song cards
+      }
+
       this.showToast('Tutorial approved', 'success');
       await this.loadSongTutorials(this.currentResourceSong.id);
     } catch (error) {
@@ -6240,6 +6276,13 @@ class CadenceApp {
         reviewed_by_user_id: auth.getCurrentUser().id,
         reviewed_at: new Date().toISOString()
       });
+
+      // Update local song count and re-render
+      const song = this.songs.find(s => s.id === this.currentResourceSong.id);
+      if (song) {
+        song.resource_count = (song.resource_count || 0) + 1;
+        this.filterSongs(); // Re-render song cards
+      }
 
       this.showToast('Resource approved', 'success');
       await this.loadStudentResources(this.currentResourceSong.id);
