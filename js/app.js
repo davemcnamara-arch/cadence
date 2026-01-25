@@ -3314,14 +3314,27 @@ class CadenceApp {
         return;
       }
 
-      const html = data.map(enrollment => `
-        <div class="pending-enrollment-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid var(--border-color);">
-          <span style="font-size: 0.875rem;">${this.escapeHtml(enrollment.email)}</span>
-          <button class="btn-text" style="color: var(--error-color); font-size: 0.75rem;" onclick="window.app.removePendingEnrollment('${enrollment.id}')">Remove</button>
-        </div>
-      `).join('');
+      // Clear container and build elements safely
+      container.innerHTML = '';
+      data.forEach(enrollment => {
+        const item = document.createElement('div');
+        item.className = 'pending-enrollment-item';
+        item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid var(--border-color);';
 
-      container.innerHTML = html;
+        const emailSpan = document.createElement('span');
+        emailSpan.style.fontSize = '0.875rem';
+        emailSpan.textContent = enrollment.email;
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'btn-text';
+        removeBtn.style.cssText = 'color: var(--error-color); font-size: 0.75rem;';
+        removeBtn.textContent = 'Remove';
+        removeBtn.onclick = () => this.removePendingEnrollment(enrollment.id);
+
+        item.appendChild(emailSpan);
+        item.appendChild(removeBtn);
+        container.appendChild(item);
+      });
     } catch (error) {
       console.error('Unexpected error loading pending enrollments:', error);
       container.innerHTML = '<p style="color: var(--error-color);">An error occurred</p>';
