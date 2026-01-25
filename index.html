@@ -231,6 +231,7 @@
               </div>
             </div>
             <div style="display: flex; gap: 0.5rem;">
+              <button id="bulk-add-students-btn" class="btn btn-primary">Bulk Add Students</button>
               <button id="edit-class-btn" class="btn btn-secondary">Edit Class</button>
               <button id="export-class-data-btn" class="btn btn-secondary">Export Class Data</button>
               <button id="archive-class-btn" class="btn btn-secondary" style="color: var(--warning-color);">Archive Class</button>
@@ -621,6 +622,41 @@
             <button type="submit" class="btn btn-primary">Save Changes</button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Bulk Add Students -->
+  <div id="bulk-add-students-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Bulk Add Students</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+          Add student email addresses below. When students sign up or log in with these emails,
+          they will be automatically enrolled in this class.
+        </p>
+        <div class="form-group">
+          <label for="bulk-emails">Student Email Addresses</label>
+          <textarea id="bulk-emails" rows="8" placeholder="Enter email addresses, one per line or separated by commas:&#10;&#10;student1@school.edu&#10;student2@school.edu&#10;student3@school.edu" style="width: 100%; font-family: inherit; resize: vertical;"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button id="submit-bulk-emails-btn" class="btn btn-primary">Add Students</button>
+        </div>
+
+        <!-- Pending enrollments list -->
+        <div id="pending-enrollments-section" style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+          <h3 style="margin-bottom: 0.75rem; font-size: 1rem;">Pending Enrollments</h3>
+          <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+            Students with these emails will be auto-enrolled when they log in.
+          </p>
+          <div id="pending-enrollments-list" style="max-height: 200px; overflow-y: auto;">
+            <!-- Populated by JS -->
+          </div>
+        </div>
       </div>
     </div>
   </div>
