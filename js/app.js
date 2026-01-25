@@ -5970,31 +5970,6 @@ class CadenceApp {
       });
     }
 
-    // Resource type change handler
-    const resourceType = document.getElementById('resource-type');
-    if (resourceType) {
-      resourceType.addEventListener('change', (e) => {
-        const type = e.target.value;
-        const fileGroup = document.getElementById('resource-file-group');
-        const linkGroup = document.getElementById('resource-link-group');
-
-        if (type === 'link') {
-          fileGroup.classList.add('hidden');
-          linkGroup.classList.remove('hidden');
-          document.getElementById('resource-file').removeAttribute('required');
-          document.getElementById('resource-link').setAttribute('required', '');
-        } else if (type === 'image' || type === 'pdf') {
-          fileGroup.classList.remove('hidden');
-          linkGroup.classList.add('hidden');
-          document.getElementById('resource-file').setAttribute('required', '');
-          document.getElementById('resource-link').removeAttribute('required');
-        } else {
-          fileGroup.classList.add('hidden');
-          linkGroup.classList.add('hidden');
-        }
-      });
-    }
-
     // Add Tutorial form - using inline onsubmit handler in HTML instead
   }
 
@@ -6216,29 +6191,25 @@ class CadenceApp {
   async submitStudentResource() {
     try {
       const title = document.getElementById('resource-title').value.trim();
-      const resourceType = document.getElementById('resource-type').value;
+      const url = document.getElementById('resource-link').value.trim();
       const description = document.getElementById('resource-description').value.trim();
+      const fileInput = document.getElementById('resource-file');
+      const file = fileInput?.files[0];
       const isStudent = auth.hasRole('student');
 
       let fileUrl = '';
+      let fileType = 'link';
 
-      if (resourceType === 'link') {
-        fileUrl = document.getElementById('resource-link').value.trim();
-      } else {
-        // File upload
-        const fileInput = document.getElementById('resource-file');
-        const file = fileInput.files[0];
-
-        if (!file) {
-          this.showToast('Please select a file to upload', 'error');
-          return;
-        }
-
+      // Check if we have a file or URL
+      if (file) {
         // Check file size (5MB limit)
         if (file.size > 5 * 1024 * 1024) {
           this.showToast('File size must be under 5MB', 'error');
           return;
         }
+
+        // Determine file type
+        fileType = file.type.startsWith('image/') ? 'image' : 'pdf';
 
         // Upload to Supabase storage
         const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
@@ -6260,6 +6231,12 @@ class CadenceApp {
           .getPublicUrl(filePath);
 
         fileUrl = urlData.publicUrl;
+      } else if (url) {
+        fileUrl = url;
+        fileType = 'link';
+      } else {
+        this.showToast('Please provide a URL or upload a file', 'error');
+        return;
       }
 
       // Insert resource record using raw fetch (workaround for Supabase JS client bug)
@@ -6269,7 +6246,7 @@ class CadenceApp {
         title: title,
         description: description || null,
         file_url: fileUrl,
-        file_type: resourceType,
+        file_type: fileType,
         status: isStudent ? 'pending' : 'approved'
       });
 
