@@ -858,7 +858,7 @@
         <div id="resource-pending-notice" class="hidden" style="margin-bottom: 1rem; padding: 12px; background-color: #fff3cd; border-left: 4px solid #ffc107; color: #856404; border-radius: 4px;">
           <strong>Note:</strong> Your resource will be submitted for teacher approval before other students can see it.
         </div>
-        <form id="add-resource-form">
+        <form id="add-resource-form" onsubmit="event.preventDefault(); app.submitStudentResource();">
           <div class="form-group">
             <label for="resource-title">Title *</label>
             <input type="text" id="resource-title" required placeholder="e.g., Chord fingering diagram, Practice tips">
@@ -906,7 +906,7 @@
         <div id="tutorial-pending-notice" class="hidden" style="margin-bottom: 1rem; padding: 12px; background-color: #fff3cd; border-left: 4px solid #ffc107; color: #856404; border-radius: 4px;">
           <strong>Note:</strong> Your tutorial will be submitted for teacher approval before other students can see it.
         </div>
-        <form id="add-tutorial-form">
+        <form id="add-tutorial-form" onsubmit="event.preventDefault(); app.submitTutorial();">
           <div class="form-group">
             <label for="tutorial-url">Tutorial URL *</label>
             <input type="url" id="tutorial-url" required placeholder="https://youtube.com/...">
