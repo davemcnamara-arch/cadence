@@ -5828,25 +5828,25 @@ class CadenceApp {
       }
 
       container.innerHTML = data.map(tutorial => {
-        const statusBadge = tutorial.status === 'pending'
+        const statusBadge = tutorial.tutorial_status === 'pending'
           ? '<span class="resource-badge pending">Pending Approval</span>'
           : '';
 
-        const approveButtons = isTeacher && tutorial.status === 'pending'
-          ? `<button class="btn btn-sm btn-primary" onclick="app.approveTutorial('${tutorial.id}')">Approve</button>
-             <button class="btn btn-sm btn-secondary" onclick="app.rejectTutorial('${tutorial.id}')">Reject</button>`
+        const approveButtons = isTeacher && tutorial.tutorial_status === 'pending'
+          ? `<button class="btn btn-sm btn-primary" onclick="app.approveTutorial('${tutorial.tutorial_id}')">Approve</button>
+             <button class="btn btn-sm btn-secondary" onclick="app.rejectTutorial('${tutorial.tutorial_id}')">Reject</button>`
           : '';
 
         const deleteButton = isTeacher
-          ? `<button class="btn btn-sm btn-danger" onclick="app.deleteTutorial('${tutorial.id}')" title="Delete tutorial">Delete</button>`
+          ? `<button class="btn btn-sm btn-danger" onclick="app.deleteTutorial('${tutorial.tutorial_id}')" title="Delete tutorial">Delete</button>`
           : '';
 
         return `
-          <div class="tutorial-item ${tutorial.status === 'pending' ? 'pending' : ''}">
+          <div class="tutorial-item ${tutorial.tutorial_status === 'pending' ? 'pending' : ''}">
             <span class="tutorial-icon">🎬</span>
             <div class="tutorial-content">
               <div class="tutorial-title">
-                <a href="${tutorial.url}" target="_blank">${tutorial.title || 'Tutorial Video'}</a>
+                <a href="${tutorial.tutorial_url}" target="_blank">${tutorial.tutorial_title || 'Tutorial Video'}</a>
                 ${statusBadge}
               </div>
               <div class="tutorial-meta">Added by ${tutorial.contributor_name}</div>
@@ -5887,32 +5887,32 @@ class CadenceApp {
       }
 
       container.innerHTML = data.map(resource => {
-        const icon = resource.file_type === 'image' ? '🖼️'
-          : resource.file_type === 'pdf' ? '📄'
+        const icon = resource.resource_file_type === 'image' ? '🖼️'
+          : resource.resource_file_type === 'pdf' ? '📄'
           : '🔗';
 
-        const statusBadge = resource.status === 'pending'
+        const statusBadge = resource.resource_status === 'pending'
           ? '<span class="resource-badge pending">Pending Approval</span>'
           : '';
 
-        const approveButtons = isTeacher && resource.status === 'pending'
-          ? `<button class="btn btn-sm btn-primary" onclick="app.approveResource('${resource.id}')">Approve</button>
-             <button class="btn btn-sm btn-secondary" onclick="app.rejectResource('${resource.id}')">Reject</button>`
+        const approveButtons = isTeacher && resource.resource_status === 'pending'
+          ? `<button class="btn btn-sm btn-primary" onclick="app.approveResource('${resource.resource_id}')">Approve</button>
+             <button class="btn btn-sm btn-secondary" onclick="app.rejectResource('${resource.resource_id}')">Reject</button>`
           : '';
 
         const deleteButton = isTeacher
-          ? `<button class="btn btn-sm btn-danger" onclick="app.deleteResource('${resource.id}')" title="Delete resource">Delete</button>`
+          ? `<button class="btn btn-sm btn-danger" onclick="app.deleteResource('${resource.resource_id}')" title="Delete resource">Delete</button>`
           : '';
 
         return `
-          <div class="resource-item ${resource.status === 'pending' ? 'pending' : ''}">
+          <div class="resource-item ${resource.resource_status === 'pending' ? 'pending' : ''}">
             <div class="resource-icon">${icon}</div>
             <div class="resource-content">
               <div class="resource-title">
-                <a href="${resource.file_url}" target="_blank">${resource.title}</a>
+                <a href="${resource.resource_file_url}" target="_blank">${resource.resource_title}</a>
                 ${statusBadge}
               </div>
-              ${resource.description ? `<div class="resource-description">${resource.description}</div>` : ''}
+              ${resource.resource_description ? `<div class="resource-description">${resource.resource_description}</div>` : ''}
               <div class="resource-meta">Shared by ${resource.contributor_name}</div>
             </div>
             <div class="resource-actions">
