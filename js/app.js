@@ -6148,8 +6148,6 @@ class CadenceApp {
 
     // Reset form
     document.getElementById('add-resource-form').reset();
-    document.getElementById('resource-file-group').classList.add('hidden');
-    document.getElementById('resource-link-group').classList.add('hidden');
 
     document.getElementById('add-resource-modal').classList.remove('hidden');
   }
