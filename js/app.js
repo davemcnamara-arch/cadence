@@ -286,9 +286,16 @@ class CadenceApp {
     // Setup teacher forms
     this.setupCreateClassForm();
     this.setupEditClassForm();
+    this.setupEditStudentForm();
     this.setupEditSongLevelForm();
     this.setupSubmissionsFilters();
     this.setupFlaggedFilters();
+
+    // Teacher: Confirm remove student
+    const confirmRemoveStudentBtn = document.getElementById('confirm-remove-student-btn');
+    if (confirmRemoveStudentBtn) {
+      confirmRemoveStudentBtn.addEventListener('click', () => this.removeStudentFromClass());
+    }
 
     // Admin: Section tabs
     document.querySelectorAll('.admin-section-tab').forEach(tab => {
@@ -3421,6 +3428,117 @@ class CadenceApp {
     }
   }
 
+  // ============================================
+  // TEACHER: Student Management (Edit/Remove)
+  // ============================================
+
+  showEditStudentModal(studentId, studentName) {
+    document.getElementById('edit-student-id').value = studentId;
+    document.getElementById('edit-student-name-input').value = studentName;
+    document.getElementById('edit-student-modal').classList.remove('hidden');
+  }
+
+  setupEditStudentForm() {
+    const form = document.getElementById('edit-student-form');
+    if (!form) return;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await this.updateStudentName();
+    });
+  }
+
+  async updateStudentName() {
+    const studentId = document.getElementById('edit-student-id').value;
+    const newName = document.getElementById('edit-student-name-input').value.trim();
+
+    if (!studentId || !newName) {
+      this.showToast('Please enter a valid name', 'error');
+      return;
+    }
+
+    if (!this.currentClass) {
+      this.showToast('No class selected', 'error');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('update_student_name', {
+        p_class_id: this.currentClass.id,
+        p_student_id: studentId,
+        p_new_name: newName
+      });
+
+      if (error) {
+        console.error('Error updating student name:', error);
+        this.showToast('Failed to update student name', 'error');
+        return;
+      }
+
+      if (data.success) {
+        document.getElementById('edit-student-modal').classList.add('hidden');
+        this.showToast('Student name updated', 'success');
+        // Reload the roster
+        await this.loadClassStudents();
+        this.renderClassRoster();
+      } else {
+        this.showToast(data.message || 'Failed to update student name', 'error');
+      }
+    } catch (error) {
+      console.error('Unexpected error updating student name:', error);
+      this.showToast('An unexpected error occurred', 'error');
+    }
+  }
+
+  showRemoveStudentModal(studentId, studentName) {
+    document.getElementById('remove-student-id').value = studentId;
+    document.getElementById('remove-student-name').textContent = studentName;
+    document.getElementById('remove-student-modal').classList.remove('hidden');
+  }
+
+  async removeStudentFromClass() {
+    const studentId = document.getElementById('remove-student-id').value;
+
+    if (!studentId) {
+      this.showToast('No student selected', 'error');
+      return;
+    }
+
+    if (!this.currentClass) {
+      this.showToast('No class selected', 'error');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('remove_student_from_class', {
+        p_class_id: this.currentClass.id,
+        p_student_id: studentId
+      });
+
+      if (error) {
+        console.error('Error removing student:', error);
+        this.showToast('Failed to remove student', 'error');
+        return;
+      }
+
+      if (data.success) {
+        document.getElementById('remove-student-modal').classList.add('hidden');
+        this.showToast(data.message, 'success');
+        // Reload the roster
+        await this.loadClassStudents();
+        this.renderClassRoster();
+        // Update the student count in the header
+        document.getElementById('class-detail-count').textContent =
+          `${this.classStudents.length} student${this.classStudents.length !== 1 ? 's' : ''}`;
+      } else {
+        this.showToast(data.message || 'Failed to remove student', 'error');
+      }
+    } catch (error) {
+      console.error('Unexpected error removing student:', error);
+      this.showToast('An unexpected error occurred', 'error');
+    }
+  }
+
   filterClasses() {
     const searchTerm = document.getElementById('class-search')?.value.toLowerCase() || '';
 
@@ -3652,8 +3770,8 @@ class CadenceApp {
       }).join(' ');
 
       return `
-        <div class="roster-item" onclick="app.viewStudentDetail('${student.id}')">
-          <div class="roster-student-info">
+        <div class="roster-item">
+          <div class="roster-student-info" onclick="app.viewStudentDetail('${student.id}')" style="cursor: pointer; flex: 1;">
             <div class="roster-student-name">${student.name}</div>
             <div class="roster-student-meta">
               ${progress.length} instrument${progress.length !== 1 ? 's' : ''}
@@ -3661,6 +3779,10 @@ class CadenceApp {
             </div>
           </div>
           <div class="roster-student-instruments">${instruments}</div>
+          <div class="roster-actions" style="display: flex; gap: 0.5rem; margin-left: 1rem;">
+            <button class="btn-text" style="font-size: 0.75rem;" onclick="event.stopPropagation(); app.showEditStudentModal('${student.id}', '${student.name.replace(/'/g, "\\'")}')">Edit</button>
+            <button class="btn-text" style="font-size: 0.75rem; color: var(--error-color);" onclick="event.stopPropagation(); app.showRemoveStudentModal('${student.id}', '${student.name.replace(/'/g, "\\'")}')">Remove</button>
+          </div>
         </div>
       `;
     }).join('');

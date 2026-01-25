@@ -681,6 +681,50 @@
     </div>
   </div>
 
+  <!-- Modal for Edit Student -->
+  <div id="edit-student-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>Edit Student</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="edit-student-form">
+          <input type="hidden" id="edit-student-id">
+          <div class="form-group">
+            <label for="edit-student-name-input">Student Name</label>
+            <input type="text" id="edit-student-name-input" required placeholder="Enter student name">
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Remove Student Confirmation -->
+  <div id="remove-student-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>Remove Student</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="remove-student-id">
+        <p style="margin-bottom: 1rem;">Are you sure you want to remove "<span id="remove-student-name"></span>" from this class?</p>
+        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1.5rem;">
+          The student will no longer have access to this class. Their progress data will be preserved and they can rejoin using the class code.
+        </p>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button id="confirm-remove-student-btn" class="btn btn-primary" style="background-color: var(--error-color);">Remove Student</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal for Student Detail -->
   <div id="student-detail-modal" class="modal hidden">
     <div class="modal-content modal-large">
