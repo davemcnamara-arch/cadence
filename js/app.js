@@ -171,6 +171,9 @@ class CadenceApp {
     // Rate resources modal
     this.setupRateResourcesModal();
 
+    // Student resources and tutorials modals
+    this.setupResourceModals();
+
     // Export
     const exportBtn = document.getElementById('export-progress-btn');
     if (exportBtn) {
@@ -1342,9 +1345,8 @@ class CadenceApp {
     // Get current instrument name for search queries
     const instrumentName = this.instruments.find(i => i.id === this.currentInstrument)?.name || '';
 
-    // Get resource ratings
+    // Get resource ratings for chords
     const chordsRating = this.formatResourceRating(song.resource_ratings?.chords);
-    const tutorialRating = this.formatResourceRating(song.resource_ratings?.tutorial);
 
     // Check user role - show "Start Learning" button for students or in preview mode
     const user = auth.getCurrentUser();
@@ -1393,15 +1395,9 @@ class CadenceApp {
           ` : `
             <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add chords link">+ Chords</button>
           `}
-          ${song.tutorial_url ? `
-            <div class="resource-link-group">
-              <a href="${song.tutorial_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">Tutorial</a>
-              ${tutorialRating}
-              <button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'tutorial_url', '${song.tutorial_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit tutorial link">✎</button>
-            </div>
-          ` : `
-            <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'tutorial_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add tutorial link">+ Tutorial</button>
-          `}
+          <button class="btn btn-secondary btn-resources" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}')" title="View tutorials & student resources">
+            Resources
+          </button>
           ${song.youtube_url ? `
             <div class="resource-link-group">
               <a href="${song.youtube_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">YouTube</a>
@@ -5734,6 +5730,514 @@ class CadenceApp {
     document.getElementById('admin-song-modal').classList.add('hidden');
     this.showToast('Song deleted successfully', 'success');
     await this.loadContentModeration();
+  }
+
+  // ============================================
+  // STUDENT RESOURCES & MULTIPLE TUTORIALS
+  // ============================================
+
+  setupResourceModals() {
+    // Add Resource form
+    const addResourceForm = document.getElementById('add-resource-form');
+    if (addResourceForm) {
+      addResourceForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.submitStudentResource();
+      });
+    }
+
+    // Resource type change handler
+    const resourceType = document.getElementById('resource-type');
+    if (resourceType) {
+      resourceType.addEventListener('change', (e) => {
+        const type = e.target.value;
+        const fileGroup = document.getElementById('resource-file-group');
+        const linkGroup = document.getElementById('resource-link-group');
+
+        if (type === 'link') {
+          fileGroup.classList.add('hidden');
+          linkGroup.classList.remove('hidden');
+          document.getElementById('resource-file').removeAttribute('required');
+          document.getElementById('resource-link').setAttribute('required', '');
+        } else if (type === 'image' || type === 'pdf') {
+          fileGroup.classList.remove('hidden');
+          linkGroup.classList.add('hidden');
+          document.getElementById('resource-file').setAttribute('required', '');
+          document.getElementById('resource-link').removeAttribute('required');
+        } else {
+          fileGroup.classList.add('hidden');
+          linkGroup.classList.add('hidden');
+        }
+      });
+    }
+
+    // Add Tutorial form
+    const addTutorialForm = document.getElementById('add-tutorial-form');
+    if (addTutorialForm) {
+      addTutorialForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.submitTutorial();
+      });
+    }
+  }
+
+  async showSongResourcesModal(songId) {
+    const song = this.songs.find(s => s.id === songId);
+    if (!song) {
+      console.error('Song not found:', songId);
+      return;
+    }
+
+    // Store current song for adding resources
+    this.currentResourceSong = song;
+
+    // Update modal info
+    document.getElementById('song-resources-title').textContent = `Resources for ${song.title}`;
+    document.getElementById('song-resources-info').textContent = `${song.title} - ${song.artist}`;
+
+    // Load tutorials and resources
+    await Promise.all([
+      this.loadSongTutorials(songId),
+      this.loadStudentResources(songId)
+    ]);
+
+    // Show modal
+    document.getElementById('song-resources-modal').classList.remove('hidden');
+  }
+
+  async loadSongTutorials(songId) {
+    const container = document.getElementById('song-tutorials-list');
+    container.innerHTML = '<p style="color: var(--text-secondary);">Loading tutorials...</p>';
+
+    try {
+      const { data, error } = await supabase.rpc('get_song_tutorials', {
+        p_song_id: songId
+      });
+
+      if (error) {
+        console.error('Error loading tutorials:', error);
+        container.innerHTML = '<p class="empty-resources">Failed to load tutorials</p>';
+        return;
+      }
+
+      const isTeacher = auth.hasRole('teacher') || auth.hasRole('admin');
+
+      if (!data || data.length === 0) {
+        container.innerHTML = '<p class="empty-resources">No tutorial videos yet. Be the first to add one!</p>';
+        return;
+      }
+
+      container.innerHTML = data.map(tutorial => {
+        const statusBadge = tutorial.status === 'pending'
+          ? '<span class="resource-badge pending">Pending Approval</span>'
+          : '';
+
+        const approveButtons = isTeacher && tutorial.status === 'pending'
+          ? `<button class="btn btn-sm btn-primary" onclick="app.approveTutorial('${tutorial.id}')">Approve</button>
+             <button class="btn btn-sm btn-secondary" onclick="app.rejectTutorial('${tutorial.id}')">Reject</button>`
+          : '';
+
+        const deleteButton = isTeacher
+          ? `<button class="btn btn-sm btn-danger" onclick="app.deleteTutorial('${tutorial.id}')" title="Delete tutorial">Delete</button>`
+          : '';
+
+        return `
+          <div class="tutorial-item ${tutorial.status === 'pending' ? 'pending' : ''}">
+            <span class="tutorial-icon">🎬</span>
+            <div class="tutorial-content">
+              <div class="tutorial-title">
+                <a href="${tutorial.url}" target="_blank">${tutorial.title || 'Tutorial Video'}</a>
+                ${statusBadge}
+              </div>
+              <div class="tutorial-meta">Added by ${tutorial.contributor_name}</div>
+            </div>
+            <div class="resource-actions">
+              ${approveButtons}
+              ${deleteButton}
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (error) {
+      console.error('Error loading tutorials:', error);
+      container.innerHTML = '<p class="empty-resources">An error occurred</p>';
+    }
+  }
+
+  async loadStudentResources(songId) {
+    const container = document.getElementById('student-resources-list');
+    container.innerHTML = '<p style="color: var(--text-secondary);">Loading resources...</p>';
+
+    try {
+      const { data, error } = await supabase.rpc('get_song_resources', {
+        p_song_id: songId
+      });
+
+      if (error) {
+        console.error('Error loading resources:', error);
+        container.innerHTML = '<p class="empty-resources">Failed to load resources</p>';
+        return;
+      }
+
+      const isTeacher = auth.hasRole('teacher') || auth.hasRole('admin');
+
+      if (!data || data.length === 0) {
+        container.innerHTML = '<p class="empty-resources">No student resources shared yet. Share your drawings, notes, or helpful links!</p>';
+        return;
+      }
+
+      container.innerHTML = data.map(resource => {
+        const icon = resource.file_type === 'image' ? '🖼️'
+          : resource.file_type === 'pdf' ? '📄'
+          : '🔗';
+
+        const statusBadge = resource.status === 'pending'
+          ? '<span class="resource-badge pending">Pending Approval</span>'
+          : '';
+
+        const approveButtons = isTeacher && resource.status === 'pending'
+          ? `<button class="btn btn-sm btn-primary" onclick="app.approveResource('${resource.id}')">Approve</button>
+             <button class="btn btn-sm btn-secondary" onclick="app.rejectResource('${resource.id}')">Reject</button>`
+          : '';
+
+        const deleteButton = isTeacher
+          ? `<button class="btn btn-sm btn-danger" onclick="app.deleteResource('${resource.id}')" title="Delete resource">Delete</button>`
+          : '';
+
+        return `
+          <div class="resource-item ${resource.status === 'pending' ? 'pending' : ''}">
+            <div class="resource-icon">${icon}</div>
+            <div class="resource-content">
+              <div class="resource-title">
+                <a href="${resource.file_url}" target="_blank">${resource.title}</a>
+                ${statusBadge}
+              </div>
+              ${resource.description ? `<div class="resource-description">${resource.description}</div>` : ''}
+              <div class="resource-meta">Shared by ${resource.contributor_name}</div>
+            </div>
+            <div class="resource-actions">
+              ${approveButtons}
+              ${deleteButton}
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (error) {
+      console.error('Error loading resources:', error);
+      container.innerHTML = '<p class="empty-resources">An error occurred</p>';
+    }
+  }
+
+  showAddResourceModal() {
+    if (!this.currentResourceSong) {
+      this.showToast('Please select a song first', 'error');
+      return;
+    }
+
+    document.getElementById('add-resource-song-info').textContent =
+      `${this.currentResourceSong.title} - ${this.currentResourceSong.artist}`;
+
+    // Show pending notice for students
+    const isStudent = auth.hasRole('student');
+    const pendingNotice = document.getElementById('resource-pending-notice');
+    if (pendingNotice) {
+      if (isStudent) {
+        pendingNotice.classList.remove('hidden');
+      } else {
+        pendingNotice.classList.add('hidden');
+      }
+    }
+
+    // Reset form
+    document.getElementById('add-resource-form').reset();
+    document.getElementById('resource-file-group').classList.add('hidden');
+    document.getElementById('resource-link-group').classList.add('hidden');
+
+    document.getElementById('add-resource-modal').classList.remove('hidden');
+  }
+
+  showAddTutorialModal() {
+    if (!this.currentResourceSong) {
+      this.showToast('Please select a song first', 'error');
+      return;
+    }
+
+    document.getElementById('add-tutorial-song-info').textContent =
+      `${this.currentResourceSong.title} - ${this.currentResourceSong.artist}`;
+
+    // Show pending notice for students
+    const isStudent = auth.hasRole('student');
+    const pendingNotice = document.getElementById('tutorial-pending-notice');
+    if (pendingNotice) {
+      if (isStudent) {
+        pendingNotice.classList.remove('hidden');
+      } else {
+        pendingNotice.classList.add('hidden');
+      }
+    }
+
+    // Reset form
+    document.getElementById('add-tutorial-form').reset();
+
+    // Open search to help user find tutorials
+    const instrumentName = this.instruments.find(i => i.id === this.currentInstrument)?.name || '';
+    const searchQuery = instrumentName
+      ? `${this.currentResourceSong.title} ${instrumentName} tutorial`
+      : `${this.currentResourceSong.title} tutorial`;
+    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
+    window.open(searchUrl, '_blank');
+
+    document.getElementById('add-tutorial-modal').classList.remove('hidden');
+  }
+
+  async submitStudentResource() {
+    try {
+      const title = document.getElementById('resource-title').value.trim();
+      const resourceType = document.getElementById('resource-type').value;
+      const description = document.getElementById('resource-description').value.trim();
+      const isStudent = auth.hasRole('student');
+
+      let fileUrl = '';
+
+      if (resourceType === 'link') {
+        fileUrl = document.getElementById('resource-link').value.trim();
+      } else {
+        // File upload
+        const fileInput = document.getElementById('resource-file');
+        const file = fileInput.files[0];
+
+        if (!file) {
+          this.showToast('Please select a file to upload', 'error');
+          return;
+        }
+
+        // Check file size (5MB limit)
+        if (file.size > 5 * 1024 * 1024) {
+          this.showToast('File size must be under 5MB', 'error');
+          return;
+        }
+
+        // Upload to Supabase storage
+        const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const filePath = `${this.currentResourceSong.id}/${fileName}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('student-resources')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          this.showToast('Failed to upload file. Please try again.', 'error');
+          return;
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('student-resources')
+          .getPublicUrl(filePath);
+
+        fileUrl = urlData.publicUrl;
+      }
+
+      // Insert resource record
+      const { error } = await supabase
+        .from('student_resources')
+        .insert({
+          song_id: this.currentResourceSong.id,
+          user_id: auth.getCurrentUser().id,
+          title: title,
+          description: description || null,
+          file_url: fileUrl,
+          file_type: resourceType,
+          status: isStudent ? 'pending' : 'approved'
+        });
+
+      if (error) {
+        console.error('Error saving resource:', error);
+        this.showToast('Failed to save resource', 'error');
+        return;
+      }
+
+      // Close modal and refresh
+      document.getElementById('add-resource-modal').classList.add('hidden');
+      this.showToast(
+        isStudent ? 'Resource submitted for teacher approval' : 'Resource added successfully',
+        'success'
+      );
+
+      // Refresh the resources list
+      await this.loadStudentResources(this.currentResourceSong.id);
+    } catch (error) {
+      console.error('Error submitting resource:', error);
+      this.showToast('An error occurred. Please try again.', 'error');
+    }
+  }
+
+  async submitTutorial() {
+    try {
+      const url = document.getElementById('tutorial-url').value.trim();
+      const title = document.getElementById('tutorial-title').value.trim();
+      const isStudent = auth.hasRole('student');
+
+      const { error } = await supabase
+        .from('song_tutorials')
+        .insert({
+          song_id: this.currentResourceSong.id,
+          url: url,
+          title: title || null,
+          submitted_by_user_id: auth.getCurrentUser().id,
+          status: isStudent ? 'pending' : 'approved'
+        });
+
+      if (error) {
+        console.error('Error saving tutorial:', error);
+        this.showToast('Failed to save tutorial', 'error');
+        return;
+      }
+
+      // Close modal and refresh
+      document.getElementById('add-tutorial-modal').classList.add('hidden');
+      this.showToast(
+        isStudent ? 'Tutorial submitted for teacher approval' : 'Tutorial added successfully',
+        'success'
+      );
+
+      // Refresh the tutorials list
+      await this.loadSongTutorials(this.currentResourceSong.id);
+    } catch (error) {
+      console.error('Error submitting tutorial:', error);
+      this.showToast('An error occurred. Please try again.', 'error');
+    }
+  }
+
+  async approveTutorial(tutorialId) {
+    try {
+      const { error } = await supabase.rpc('approve_song_tutorial', {
+        p_tutorial_id: tutorialId
+      });
+
+      if (error) {
+        console.error('Error approving tutorial:', error);
+        this.showToast('Failed to approve tutorial', 'error');
+        return;
+      }
+
+      this.showToast('Tutorial approved', 'success');
+      await this.loadSongTutorials(this.currentResourceSong.id);
+    } catch (error) {
+      console.error('Error approving tutorial:', error);
+      this.showToast('An error occurred', 'error');
+    }
+  }
+
+  async rejectTutorial(tutorialId) {
+    try {
+      const { error } = await supabase.rpc('reject_song_tutorial', {
+        p_tutorial_id: tutorialId
+      });
+
+      if (error) {
+        console.error('Error rejecting tutorial:', error);
+        this.showToast('Failed to reject tutorial', 'error');
+        return;
+      }
+
+      this.showToast('Tutorial rejected', 'success');
+      await this.loadSongTutorials(this.currentResourceSong.id);
+    } catch (error) {
+      console.error('Error rejecting tutorial:', error);
+      this.showToast('An error occurred', 'error');
+    }
+  }
+
+  async deleteTutorial(tutorialId) {
+    if (!confirm('Are you sure you want to delete this tutorial?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('song_tutorials')
+        .delete()
+        .eq('id', tutorialId);
+
+      if (error) {
+        console.error('Error deleting tutorial:', error);
+        this.showToast('Failed to delete tutorial', 'error');
+        return;
+      }
+
+      this.showToast('Tutorial deleted', 'success');
+      await this.loadSongTutorials(this.currentResourceSong.id);
+    } catch (error) {
+      console.error('Error deleting tutorial:', error);
+      this.showToast('An error occurred', 'error');
+    }
+  }
+
+  async approveResource(resourceId) {
+    try {
+      const { error } = await supabase.rpc('approve_student_resource', {
+        p_resource_id: resourceId
+      });
+
+      if (error) {
+        console.error('Error approving resource:', error);
+        this.showToast('Failed to approve resource', 'error');
+        return;
+      }
+
+      this.showToast('Resource approved', 'success');
+      await this.loadStudentResources(this.currentResourceSong.id);
+    } catch (error) {
+      console.error('Error approving resource:', error);
+      this.showToast('An error occurred', 'error');
+    }
+  }
+
+  async rejectResource(resourceId) {
+    try {
+      const { error } = await supabase.rpc('reject_student_resource', {
+        p_resource_id: resourceId
+      });
+
+      if (error) {
+        console.error('Error rejecting resource:', error);
+        this.showToast('Failed to reject resource', 'error');
+        return;
+      }
+
+      this.showToast('Resource rejected', 'success');
+      await this.loadStudentResources(this.currentResourceSong.id);
+    } catch (error) {
+      console.error('Error rejecting resource:', error);
+      this.showToast('An error occurred', 'error');
+    }
+  }
+
+  async deleteResource(resourceId) {
+    if (!confirm('Are you sure you want to delete this resource?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('student_resources')
+        .delete()
+        .eq('id', resourceId);
+
+      if (error) {
+        console.error('Error deleting resource:', error);
+        this.showToast('Failed to delete resource', 'error');
+        return;
+      }
+
+      this.showToast('Resource deleted', 'success');
+      await this.loadStudentResources(this.currentResourceSong.id);
+    } catch (error) {
+      console.error('Error deleting resource:', error);
+      this.showToast('An error occurred', 'error');
+    }
   }
 
   // ============================================
