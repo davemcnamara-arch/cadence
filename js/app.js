@@ -6087,7 +6087,8 @@ class CadenceApp {
 
       const isStudent = auth.hasRole('student');
 
-      const { error } = await supabase
+      console.log('Inserting into song_tutorials...');
+      const { data, error } = await supabase
         .from('song_tutorials')
         .insert({
           song_id: this.currentResourceSong.id,
@@ -6095,11 +6096,14 @@ class CadenceApp {
           title: title || null,
           submitted_by_user_id: auth.getCurrentUser().id,
           status: isStudent ? 'pending' : 'approved'
-        });
+        })
+        .select();
+
+      console.log('Insert result:', { data, error });
 
       if (error) {
         console.error('Error saving tutorial:', error);
-        this.showToast('Failed to save tutorial', 'error');
+        this.showToast('Failed to save tutorial: ' + error.message, 'error');
         return;
       }
 
