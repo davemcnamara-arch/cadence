@@ -5838,9 +5838,8 @@ class CadenceApp {
           ? '<span class="resource-badge pending">Pending Approval</span>'
           : '';
 
-        const approveButtons = isTeacher && tutorial.status === 'pending'
-          ? `<button class="btn btn-sm btn-primary" onclick="app.approveTutorial('${tutorial.id}')">Approve</button>
-             <button class="btn btn-sm btn-secondary" onclick="app.rejectTutorial('${tutorial.id}')">Reject</button>`
+        const approveButton = isTeacher && tutorial.status === 'pending'
+          ? `<button class="btn btn-sm btn-primary" onclick="app.approveTutorial('${tutorial.id}')">Approve</button>`
           : '';
 
         const deleteButton = isTeacher
@@ -5858,7 +5857,7 @@ class CadenceApp {
               <div class="tutorial-meta">Shared by a student</div>
             </div>
             <div class="resource-actions">
-              ${approveButtons}
+              ${approveButton}
               ${deleteButton}
             </div>
           </div>
@@ -5911,9 +5910,8 @@ class CadenceApp {
           ? '<span class="resource-badge pending">Pending Approval</span>'
           : '';
 
-        const approveButtons = isTeacher && resource.status === 'pending'
-          ? `<button class="btn btn-sm btn-primary" onclick="app.approveResource('${resource.id}')">Approve</button>
-             <button class="btn btn-sm btn-secondary" onclick="app.rejectResource('${resource.id}')">Reject</button>`
+        const approveButton = isTeacher && resource.status === 'pending'
+          ? `<button class="btn btn-sm btn-primary" onclick="app.approveResource('${resource.id}')">Approve</button>`
           : '';
 
         const deleteButton = isTeacher
@@ -5932,7 +5930,7 @@ class CadenceApp {
               <div class="resource-meta">Shared by a student</div>
             </div>
             <div class="resource-actions">
-              ${approveButtons}
+              ${approveButton}
               ${deleteButton}
             </div>
           </div>
