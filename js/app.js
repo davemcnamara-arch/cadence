@@ -6090,18 +6090,24 @@ class CadenceApp {
   }
 
   async submitTutorial() {
+    console.log('submitTutorial() called');
     try {
       const url = document.getElementById('tutorial-url').value.trim();
       const title = document.getElementById('tutorial-title').value.trim();
+      console.log('Form values:', { url, title });
 
       if (!this.currentResourceSong) {
+        console.log('No currentResourceSong');
         this.showToast('No song selected', 'error');
         return;
       }
+      console.log('Song:', this.currentResourceSong.id);
 
       const isStudent = auth.hasRole('student');
+      console.log('isStudent:', isStudent);
 
       // Use direct table insert instead of RPC
+      console.log('About to insert...');
       const { error } = await supabase
         .from('song_tutorials')
         .insert({
@@ -6111,6 +6117,7 @@ class CadenceApp {
           submitted_by_user_id: auth.getCurrentUser().id,
           status: isStudent ? 'pending' : 'approved'
         });
+      console.log('Insert done, error:', error);
 
       if (error) {
         console.error('Error saving tutorial:', error);
@@ -6124,6 +6131,7 @@ class CadenceApp {
         isStudent ? 'Tutorial submitted for teacher approval' : 'Tutorial added successfully',
         'success'
       );
+      console.log('Success!');
 
       // Refresh the tutorials list
       await this.loadSongTutorials(this.currentResourceSong.id);
