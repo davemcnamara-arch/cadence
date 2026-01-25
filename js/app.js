@@ -2,6 +2,9 @@
 import { supabase } from './config.js';
 import { auth } from './auth.js';
 
+// Expose for debugging
+window.supabase = supabase;
+
 class CadenceApp {
   // ============================================
   // CORE: Initialization & Setup
