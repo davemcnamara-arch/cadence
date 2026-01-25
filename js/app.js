@@ -6029,14 +6029,13 @@ class CadenceApp {
     try {
       const isTeacher = auth.hasRole('teacher') || auth.hasRole('admin');
 
-      // Use direct table query instead of RPC to avoid hanging
+      // Use raw fetch to avoid Supabase JS client issues after inserts
       // RLS policy already filters: students see approved tutorials or their own submissions
       // Teachers see all tutorials
-      const { data, error } = await supabase
-        .from('song_tutorials')
-        .select('id, url, title, status, submitted_by_user_id, created_at')
-        .eq('song_id', songId)
-        .order('created_at', { ascending: true });
+      const { data, error } = await this.rawSelect(
+        'song_tutorials',
+        `select=id,url,title,status,submitted_by_user_id,created_at&song_id=eq.${songId}&order=created_at.asc`
+      );
 
       if (error) {
         console.error('Error loading tutorials:', error);
@@ -6092,14 +6091,13 @@ class CadenceApp {
     try {
       const isTeacher = auth.hasRole('teacher') || auth.hasRole('admin');
 
-      // Use direct table query instead of RPC to avoid hanging
+      // Use raw fetch to avoid Supabase JS client issues after inserts
       // RLS policy already filters: students see approved resources or their own submissions
       // Teachers see all resources
-      const { data, error } = await supabase
-        .from('student_resources')
-        .select('id, title, description, file_url, file_type, status, user_id, created_at')
-        .eq('song_id', songId)
-        .order('created_at', { ascending: false });
+      const { data, error } = await this.rawSelect(
+        'student_resources',
+        `select=id,title,description,file_url,file_type,status,user_id,created_at&song_id=eq.${songId}&order=created_at.desc`
+      );
 
       if (error) {
         console.error('Error loading resources:', error);
@@ -6358,6 +6356,29 @@ class CadenceApp {
     }
 
     return { error: null };
+  }
+
+  // Helper for raw fetch selects (workaround for Supabase JS client issues after raw inserts)
+  async rawSelect(table, query = '') {
+    const session = JSON.parse(localStorage.getItem('sb-dgwtihpiqgkhokkkxuzo-auth-token'));
+    const token = session?.access_token;
+
+    const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}?${query}`, {
+      method: 'GET',
+      headers: {
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Select failed: ${response.status} ${errorText}`);
+    }
+
+    const data = await response.json();
+    return { data, error: null };
   }
 
   async submitTutorial() {
