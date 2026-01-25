@@ -249,6 +249,18 @@ class CadenceApp {
       archiveClassBtn.addEventListener('click', () => this.showArchiveClassModal());
     }
 
+    // Teacher: Bulk add students
+    const bulkAddStudentsBtn = document.getElementById('bulk-add-students-btn');
+    if (bulkAddStudentsBtn) {
+      bulkAddStudentsBtn.addEventListener('click', () => this.showBulkAddStudentsModal());
+    }
+
+    // Teacher: Submit bulk emails
+    const submitBulkEmailsBtn = document.getElementById('submit-bulk-emails-btn');
+    if (submitBulkEmailsBtn) {
+      submitBulkEmailsBtn.addEventListener('click', () => this.submitBulkEmails());
+    }
+
     // Teacher: Confirm archive
     const confirmArchiveBtn = document.getElementById('confirm-archive-btn');
     if (confirmArchiveBtn) {
@@ -356,6 +368,14 @@ class CadenceApp {
     // Update UI
     document.getElementById('user-name').textContent = user.name;
     this.showApp();
+
+    // Check if user was auto-enrolled in classes (from pending enrollments)
+    if (auth.lastEnrollmentResult && auth.lastEnrollmentResult.enrolled_count > 0) {
+      const result = auth.lastEnrollmentResult;
+      const classNames = result.class_names.join(', ');
+      this.showToast(`Welcome! You've been added to: ${classNames}`, 'success');
+      auth.lastEnrollmentResult = null; // Clear after showing
+    }
 
     // Show/hide tabs and features based on role
     if (user.role === 'student') {
@@ -3249,6 +3269,142 @@ class CadenceApp {
     } catch (error) {
       console.error('Unexpected error unarchiving class:', error);
       this.showToast('An unexpected error occurred. Please try again.', 'error');
+    }
+  }
+
+  // ============================================
+  // TEACHER: Bulk Student Enrollment
+  // ============================================
+
+  showBulkAddStudentsModal() {
+    if (!this.currentClass) {
+      this.showToast('No class selected', 'error');
+      return;
+    }
+
+    // Clear previous input
+    document.getElementById('bulk-emails').value = '';
+
+    // Load existing pending enrollments
+    this.loadPendingEnrollments();
+
+    // Show modal
+    document.getElementById('bulk-add-students-modal').classList.remove('hidden');
+  }
+
+  async loadPendingEnrollments() {
+    const container = document.getElementById('pending-enrollments-list');
+    if (!container || !this.currentClass) return;
+
+    container.innerHTML = '<p style="color: var(--text-secondary);">Loading...</p>';
+
+    try {
+      const { data, error } = await supabase.rpc('get_pending_enrollments', {
+        p_class_id: this.currentClass.id
+      });
+
+      if (error) {
+        console.error('Error loading pending enrollments:', error);
+        container.innerHTML = '<p style="color: var(--error-color);">Failed to load pending enrollments</p>';
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-secondary); font-style: italic;">No pending enrollments</p>';
+        return;
+      }
+
+      const html = data.map(enrollment => `
+        <div class="pending-enrollment-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid var(--border-color);">
+          <span style="font-size: 0.875rem;">${this.escapeHtml(enrollment.email)}</span>
+          <button class="btn-text" style="color: var(--error-color); font-size: 0.75rem;" onclick="window.app.removePendingEnrollment('${enrollment.id}')">Remove</button>
+        </div>
+      `).join('');
+
+      container.innerHTML = html;
+    } catch (error) {
+      console.error('Unexpected error loading pending enrollments:', error);
+      container.innerHTML = '<p style="color: var(--error-color);">An error occurred</p>';
+    }
+  }
+
+  async submitBulkEmails() {
+    if (!this.currentClass) {
+      this.showToast('No class selected', 'error');
+      return;
+    }
+
+    const textarea = document.getElementById('bulk-emails');
+    const rawInput = textarea.value.trim();
+
+    if (!rawInput) {
+      this.showToast('Please enter at least one email address', 'error');
+      return;
+    }
+
+    // Parse emails - split by newlines, commas, semicolons, or spaces
+    const emails = rawInput
+      .split(/[\n,;\s]+/)
+      .map(email => email.trim().toLowerCase())
+      .filter(email => email && email.includes('@'));
+
+    if (emails.length === 0) {
+      this.showToast('No valid email addresses found', 'error');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('add_pending_enrollments', {
+        p_class_id: this.currentClass.id,
+        p_emails: emails
+      });
+
+      if (error) {
+        console.error('Error adding pending enrollments:', error);
+        this.showToast('Failed to add students', 'error');
+        return;
+      }
+
+      if (data.success) {
+        // Clear the textarea
+        textarea.value = '';
+
+        // Reload pending enrollments list
+        this.loadPendingEnrollments();
+
+        // Show success message
+        this.showToast(data.message, 'success');
+      } else {
+        this.showToast(data.message || 'Failed to add students', 'error');
+      }
+    } catch (error) {
+      console.error('Unexpected error adding pending enrollments:', error);
+      this.showToast('An unexpected error occurred. Please try again.', 'error');
+    }
+  }
+
+  async removePendingEnrollment(enrollmentId) {
+    try {
+      const { data, error } = await supabase.rpc('remove_pending_enrollment', {
+        p_enrollment_id: enrollmentId
+      });
+
+      if (error) {
+        console.error('Error removing pending enrollment:', error);
+        this.showToast('Failed to remove enrollment', 'error');
+        return;
+      }
+
+      if (data.success) {
+        // Reload the list
+        this.loadPendingEnrollments();
+        this.showToast('Email removed', 'success');
+      } else {
+        this.showToast(data.message || 'Failed to remove enrollment', 'error');
+      }
+    } catch (error) {
+      console.error('Unexpected error removing pending enrollment:', error);
+      this.showToast('An unexpected error occurred', 'error');
     }
   }
 

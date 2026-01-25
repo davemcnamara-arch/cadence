@@ -94,6 +94,9 @@ export class AuthManager {
     // Existing user - proceed normally
     this.currentUser = existingUser;
 
+    // Process any pending enrollments for this user
+    await this.processPendingEnrollments(existingUser.id);
+
     // Notify listeners
     if (this.onAuthStateChange) {
       this.onAuthStateChange(this.currentUser);
@@ -131,6 +134,9 @@ export class AuthManager {
       this.currentUser = newUser;
       this.pendingAuthUser = null;
 
+      // Process any pending enrollments for this new user
+      await this.processPendingEnrollments(newUser.id);
+
       // Notify listeners
       if (this.onAuthStateChange) {
         this.onAuthStateChange(this.currentUser);
@@ -140,6 +146,29 @@ export class AuthManager {
     } catch (error) {
       console.error('Error completing signup:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  // Process pending enrollments for a user (called on login/signup)
+  async processPendingEnrollments(userId) {
+    try {
+      const { data, error } = await supabase.rpc('process_pending_enrollments', {
+        p_user_id: userId
+      });
+
+      if (error) {
+        console.error('Error processing pending enrollments:', error);
+        return;
+      }
+
+      // If user was auto-enrolled in classes, we might want to notify them
+      // The app.js will handle showing toasts if needed
+      if (data && data.enrolled_count > 0) {
+        // Store the enrollment result so the app can display it
+        this.lastEnrollmentResult = data;
+      }
+    } catch (error) {
+      console.error('Unexpected error processing pending enrollments:', error);
     }
   }
 
