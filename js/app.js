@@ -2926,44 +2926,53 @@ class CadenceApp {
 
     let reflection = `Music Skill Progression Reflection\n\n`;
 
+    // Summary section with relevant details
+    reflection += `MY PROGRESS SUMMARY\n`;
+    reflection += `-------------------\n`;
+
     if (instrumentNames.length > 0) {
-      reflection += `I am currently developing my skills on ${instrumentNames.join(', ')}. `;
+      reflection += `Instrument(s): ${instrumentNames.join(', ')}\n`;
     }
 
-    reflection += `Throughout this term, I have been working on ${learning.length + mastered.length} songs total.\n\n`;
+    reflection += `Total songs this term: ${learning.length + mastered.length}\n`;
 
     if (mastered.length > 0) {
-      reflection += `I have successfully mastered ${mastered.length} song${mastered.length !== 1 ? 's' : ''}, including:\n`;
+      reflection += `\nSongs I have mastered (${mastered.length}):\n`;
       mastered.forEach(ss => {
         const instrumentName = instrumentMap[ss.instrument_id] || 'Unknown';
-        reflection += `- "${ss.songs.title}" by ${ss.songs.artist} on ${instrumentName}\n`;
+        reflection += `  • "${ss.songs.title}" by ${ss.songs.artist} (${instrumentName})\n`;
       });
-      reflection += '\n';
     }
 
     if (learning.length > 0) {
-      reflection += `I am currently learning ${learning.length} song${learning.length !== 1 ? 's' : ''}:\n`;
+      reflection += `\nSongs I am currently learning (${learning.length}):\n`;
       learning.forEach(ss => {
         const instrumentName = instrumentMap[ss.instrument_id] || 'Unknown';
-        reflection += `- "${ss.songs.title}" by ${ss.songs.artist} on ${instrumentName}\n`;
+        reflection += `  • "${ss.songs.title}" by ${ss.songs.artist} (${instrumentName})\n`;
       });
-      reflection += '\n';
     }
 
     if (this.studentProgress && this.studentProgress.length > 0) {
+      reflection += `\nMy current level(s):\n`;
       this.studentProgress.forEach(progress => {
         const inst = this.instruments.find(i => i.id === progress.instrument_id);
         if (inst) {
-          reflection += `On ${inst.name}, I am working at Level ${progress.current_level}`;
+          let levelText = `  • ${inst.name}: Level ${progress.current_level}`;
           if (progress.current_branch) {
-            reflection += ` (${progress.current_branch})`;
+            levelText += ` (${progress.current_branch})`;
           }
-          reflection += '.\n';
+          reflection += levelText + '\n';
         }
       });
     }
 
-    reflection += `\nI am committed to continuing my musical development and look forward to progressing to higher levels.`;
+    // Reflection prompts section
+    reflection += `\n\nMY REFLECTION\n`;
+    reflection += `-------------\n\n`;
+    reflection += `One thing I did well was...\n\n\n`;
+    reflection += `One thing I struggled with was...\n\n\n`;
+    reflection += `Next time, I'll try...\n\n\n`;
+    reflection += `My teacher can help me best by...\n\n`;
 
     return reflection;
   }
