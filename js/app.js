@@ -6105,6 +6105,52 @@ class CadenceApp {
     return { error: null };
   }
 
+  // Helper for raw fetch updates (workaround for Supabase JS client bug)
+  async rawUpdate(table, id, data) {
+    const session = JSON.parse(localStorage.getItem('sb-dgwtihpiqgkhokkkxuzo-auth-token'));
+    const token = session?.access_token;
+
+    const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Update failed: ${response.status} ${errorText}`);
+    }
+
+    return { error: null };
+  }
+
+  // Helper for raw fetch deletes (workaround for Supabase JS client bug)
+  async rawDelete(table, id) {
+    const session = JSON.parse(localStorage.getItem('sb-dgwtihpiqgkhokkkxuzo-auth-token'));
+    const token = session?.access_token;
+
+    const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+        'Authorization': `Bearer ${token}`,
+        'Prefer': 'return=minimal'
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Delete failed: ${response.status} ${errorText}`);
+    }
+
+    return { error: null };
+  }
+
   async submitTutorial() {
     try {
       const url = document.getElementById('tutorial-url').value.trim();
@@ -6143,41 +6189,33 @@ class CadenceApp {
 
   async approveTutorial(tutorialId) {
     try {
-      const { error } = await supabase.rpc('approve_song_tutorial', {
-        p_tutorial_id: tutorialId
+      await this.rawUpdate('song_tutorials', tutorialId, {
+        status: 'approved',
+        reviewed_by_user_id: auth.getCurrentUser().id,
+        reviewed_at: new Date().toISOString()
       });
-
-      if (error) {
-        console.error('Error approving tutorial:', error);
-        this.showToast('Failed to approve tutorial', 'error');
-        return;
-      }
 
       this.showToast('Tutorial approved', 'success');
       await this.loadSongTutorials(this.currentResourceSong.id);
     } catch (error) {
       console.error('Error approving tutorial:', error);
-      this.showToast('An error occurred', 'error');
+      this.showToast('Failed to approve tutorial', 'error');
     }
   }
 
   async rejectTutorial(tutorialId) {
     try {
-      const { error } = await supabase.rpc('reject_song_tutorial', {
-        p_tutorial_id: tutorialId
+      await this.rawUpdate('song_tutorials', tutorialId, {
+        status: 'rejected',
+        reviewed_by_user_id: auth.getCurrentUser().id,
+        reviewed_at: new Date().toISOString()
       });
-
-      if (error) {
-        console.error('Error rejecting tutorial:', error);
-        this.showToast('Failed to reject tutorial', 'error');
-        return;
-      }
 
       this.showToast('Tutorial rejected', 'success');
       await this.loadSongTutorials(this.currentResourceSong.id);
     } catch (error) {
       console.error('Error rejecting tutorial:', error);
-      this.showToast('An error occurred', 'error');
+      this.showToast('Failed to reject tutorial', 'error');
     }
   }
 
@@ -6187,62 +6225,45 @@ class CadenceApp {
     }
 
     try {
-      const { error } = await supabase
-        .from('song_tutorials')
-        .delete()
-        .eq('id', tutorialId);
-
-      if (error) {
-        console.error('Error deleting tutorial:', error);
-        this.showToast('Failed to delete tutorial', 'error');
-        return;
-      }
+      await this.rawDelete('song_tutorials', tutorialId);
 
       this.showToast('Tutorial deleted', 'success');
       await this.loadSongTutorials(this.currentResourceSong.id);
     } catch (error) {
       console.error('Error deleting tutorial:', error);
-      this.showToast('An error occurred', 'error');
+      this.showToast('Failed to delete tutorial', 'error');
     }
   }
 
   async approveResource(resourceId) {
     try {
-      const { error } = await supabase.rpc('approve_student_resource', {
-        p_resource_id: resourceId
+      await this.rawUpdate('student_resources', resourceId, {
+        status: 'approved',
+        reviewed_by_user_id: auth.getCurrentUser().id,
+        reviewed_at: new Date().toISOString()
       });
-
-      if (error) {
-        console.error('Error approving resource:', error);
-        this.showToast('Failed to approve resource', 'error');
-        return;
-      }
 
       this.showToast('Resource approved', 'success');
       await this.loadStudentResources(this.currentResourceSong.id);
     } catch (error) {
       console.error('Error approving resource:', error);
-      this.showToast('An error occurred', 'error');
+      this.showToast('Failed to approve resource', 'error');
     }
   }
 
   async rejectResource(resourceId) {
     try {
-      const { error } = await supabase.rpc('reject_student_resource', {
-        p_resource_id: resourceId
+      await this.rawUpdate('student_resources', resourceId, {
+        status: 'rejected',
+        reviewed_by_user_id: auth.getCurrentUser().id,
+        reviewed_at: new Date().toISOString()
       });
-
-      if (error) {
-        console.error('Error rejecting resource:', error);
-        this.showToast('Failed to reject resource', 'error');
-        return;
-      }
 
       this.showToast('Resource rejected', 'success');
       await this.loadStudentResources(this.currentResourceSong.id);
     } catch (error) {
       console.error('Error rejecting resource:', error);
-      this.showToast('An error occurred', 'error');
+      this.showToast('Failed to reject resource', 'error');
     }
   }
 
@@ -6252,22 +6273,13 @@ class CadenceApp {
     }
 
     try {
-      const { error } = await supabase
-        .from('student_resources')
-        .delete()
-        .eq('id', resourceId);
-
-      if (error) {
-        console.error('Error deleting resource:', error);
-        this.showToast('Failed to delete resource', 'error');
-        return;
-      }
+      await this.rawDelete('student_resources', resourceId);
 
       this.showToast('Resource deleted', 'success');
       await this.loadStudentResources(this.currentResourceSong.id);
     } catch (error) {
       console.error('Error deleting resource:', error);
-      this.showToast('An error occurred', 'error');
+      this.showToast('Failed to delete resource', 'error');
     }
   }
 
