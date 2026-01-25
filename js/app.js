@@ -5803,9 +5803,21 @@ class CadenceApp {
     container.innerHTML = '<p style="color: var(--text-secondary);">Loading tutorials...</p>';
 
     try {
-      const { data, error } = await supabase.rpc('get_song_tutorials', {
-        p_song_id: songId
-      });
+      const isTeacher = auth.hasRole('teacher') || auth.hasRole('admin');
+
+      // Use direct table query instead of RPC to avoid hanging
+      let query = supabase
+        .from('song_tutorials')
+        .select('id, url, title, status, submitted_by_user_id, created_at')
+        .eq('song_id', songId)
+        .order('created_at', { ascending: true });
+
+      // Filter by status for non-teachers
+      if (!isTeacher) {
+        query = query.or(`status.eq.approved,submitted_by_user_id.eq.${auth.getCurrentUser().id}`);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error loading tutorials:', error);
@@ -5813,36 +5825,34 @@ class CadenceApp {
         return;
       }
 
-      const isTeacher = auth.hasRole('teacher') || auth.hasRole('admin');
-
       if (!data || data.length === 0) {
         container.innerHTML = '<p class="empty-resources">No tutorial videos yet. Be the first to add one!</p>';
         return;
       }
 
       container.innerHTML = data.map(tutorial => {
-        const statusBadge = tutorial.tutorial_status === 'pending'
+        const statusBadge = tutorial.status === 'pending'
           ? '<span class="resource-badge pending">Pending Approval</span>'
           : '';
 
-        const approveButtons = isTeacher && tutorial.tutorial_status === 'pending'
-          ? `<button class="btn btn-sm btn-primary" onclick="app.approveTutorial('${tutorial.tutorial_id}')">Approve</button>
-             <button class="btn btn-sm btn-secondary" onclick="app.rejectTutorial('${tutorial.tutorial_id}')">Reject</button>`
+        const approveButtons = isTeacher && tutorial.status === 'pending'
+          ? `<button class="btn btn-sm btn-primary" onclick="app.approveTutorial('${tutorial.id}')">Approve</button>
+             <button class="btn btn-sm btn-secondary" onclick="app.rejectTutorial('${tutorial.id}')">Reject</button>`
           : '';
 
         const deleteButton = isTeacher
-          ? `<button class="btn btn-sm btn-danger" onclick="app.deleteTutorial('${tutorial.tutorial_id}')" title="Delete tutorial">Delete</button>`
+          ? `<button class="btn btn-sm btn-danger" onclick="app.deleteTutorial('${tutorial.id}')" title="Delete tutorial">Delete</button>`
           : '';
 
         return `
-          <div class="tutorial-item ${tutorial.tutorial_status === 'pending' ? 'pending' : ''}">
+          <div class="tutorial-item ${tutorial.status === 'pending' ? 'pending' : ''}">
             <span class="tutorial-icon">🎬</span>
             <div class="tutorial-content">
               <div class="tutorial-title">
-                <a href="${tutorial.tutorial_url}" target="_blank">${tutorial.tutorial_title || 'Tutorial Video'}</a>
+                <a href="${tutorial.url}" target="_blank">${tutorial.title || 'Tutorial Video'}</a>
                 ${statusBadge}
               </div>
-              <div class="tutorial-meta">Added by ${tutorial.contributor_name}</div>
+              <div class="tutorial-meta">Shared by a student</div>
             </div>
             <div class="resource-actions">
               ${approveButtons}
@@ -5862,9 +5872,21 @@ class CadenceApp {
     container.innerHTML = '<p style="color: var(--text-secondary);">Loading resources...</p>';
 
     try {
-      const { data, error } = await supabase.rpc('get_song_resources', {
-        p_song_id: songId
-      });
+      const isTeacher = auth.hasRole('teacher') || auth.hasRole('admin');
+
+      // Use direct table query instead of RPC to avoid hanging
+      let query = supabase
+        .from('student_resources')
+        .select('id, title, description, file_url, file_type, status, user_id, created_at')
+        .eq('song_id', songId)
+        .order('created_at', { ascending: false });
+
+      // Filter by status for non-teachers
+      if (!isTeacher) {
+        query = query.or(`status.eq.approved,user_id.eq.${auth.getCurrentUser().id}`);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error loading resources:', error);
@@ -5872,41 +5894,39 @@ class CadenceApp {
         return;
       }
 
-      const isTeacher = auth.hasRole('teacher') || auth.hasRole('admin');
-
       if (!data || data.length === 0) {
         container.innerHTML = '<p class="empty-resources">No student resources shared yet. Share your drawings, notes, or helpful links!</p>';
         return;
       }
 
       container.innerHTML = data.map(resource => {
-        const icon = resource.resource_file_type === 'image' ? '🖼️'
-          : resource.resource_file_type === 'pdf' ? '📄'
+        const icon = resource.file_type === 'image' ? '🖼️'
+          : resource.file_type === 'pdf' ? '📄'
           : '🔗';
 
-        const statusBadge = resource.resource_status === 'pending'
+        const statusBadge = resource.status === 'pending'
           ? '<span class="resource-badge pending">Pending Approval</span>'
           : '';
 
-        const approveButtons = isTeacher && resource.resource_status === 'pending'
-          ? `<button class="btn btn-sm btn-primary" onclick="app.approveResource('${resource.resource_id}')">Approve</button>
-             <button class="btn btn-sm btn-secondary" onclick="app.rejectResource('${resource.resource_id}')">Reject</button>`
+        const approveButtons = isTeacher && resource.status === 'pending'
+          ? `<button class="btn btn-sm btn-primary" onclick="app.approveResource('${resource.id}')">Approve</button>
+             <button class="btn btn-sm btn-secondary" onclick="app.rejectResource('${resource.id}')">Reject</button>`
           : '';
 
         const deleteButton = isTeacher
-          ? `<button class="btn btn-sm btn-danger" onclick="app.deleteResource('${resource.resource_id}')" title="Delete resource">Delete</button>`
+          ? `<button class="btn btn-sm btn-danger" onclick="app.deleteResource('${resource.id}')" title="Delete resource">Delete</button>`
           : '';
 
         return `
-          <div class="resource-item ${resource.resource_status === 'pending' ? 'pending' : ''}">
+          <div class="resource-item ${resource.status === 'pending' ? 'pending' : ''}">
             <div class="resource-icon">${icon}</div>
             <div class="resource-content">
               <div class="resource-title">
-                <a href="${resource.resource_file_url}" target="_blank">${resource.resource_title}</a>
+                <a href="${resource.file_url}" target="_blank">${resource.title}</a>
                 ${statusBadge}
               </div>
-              ${resource.resource_description ? `<div class="resource-description">${resource.resource_description}</div>` : ''}
-              <div class="resource-meta">Shared by ${resource.contributor_name}</div>
+              ${resource.description ? `<div class="resource-description">${resource.description}</div>` : ''}
+              <div class="resource-meta">Shared by a student</div>
             </div>
             <div class="resource-actions">
               ${approveButtons}
@@ -6067,11 +6087,9 @@ class CadenceApp {
   }
 
   async submitTutorial() {
-    console.log('submitTutorial called');
     try {
       const url = document.getElementById('tutorial-url').value.trim();
       const title = document.getElementById('tutorial-title').value.trim();
-      console.log('Submitting tutorial:', { url, title, songId: this.currentResourceSong?.id });
 
       if (!this.currentResourceSong) {
         this.showToast('No song selected', 'error');
@@ -6080,30 +6098,21 @@ class CadenceApp {
 
       const isStudent = auth.hasRole('student');
 
-      console.log('Calling add_song_tutorial RPC...');
+      // Use direct table insert instead of RPC
+      const { error } = await supabase
+        .from('song_tutorials')
+        .insert({
+          song_id: this.currentResourceSong.id,
+          url: url,
+          title: title || null,
+          submitted_by_user_id: auth.getCurrentUser().id,
+          status: isStudent ? 'pending' : 'approved'
+        });
 
-      // Add timeout since the RPC seems to hang even when it succeeds
-      const rpcCall = supabase.rpc('add_song_tutorial', {
-        p_song_id: this.currentResourceSong.id,
-        p_url: url,
-        p_title: title || null,
-        p_status: isStudent ? 'pending' : 'approved'
-      });
-
-      const timeout = new Promise((resolve) =>
-        setTimeout(() => resolve({ data: null, error: null, timedOut: true }), 5000)
-      );
-
-      const result = await Promise.race([rpcCall, timeout]);
-
-      if (result.timedOut) {
-        console.log('RPC timed out but insert likely succeeded, continuing...');
-      } else if (result.error) {
-        console.error('Error saving tutorial:', result.error);
-        this.showToast('Failed to save tutorial: ' + result.error.message, 'error');
+      if (error) {
+        console.error('Error saving tutorial:', error);
+        this.showToast('Failed to save tutorial: ' + error.message, 'error');
         return;
-      } else {
-        console.log('RPC complete:', result);
       }
 
       // Close modal and refresh
