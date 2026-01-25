@@ -906,10 +906,10 @@
         <div id="tutorial-pending-notice" class="hidden" style="margin-bottom: 1rem; padding: 12px; background-color: #fff3cd; border-left: 4px solid #ffc107; color: #856404; border-radius: 4px;">
           <strong>Note:</strong> Your tutorial will be submitted for teacher approval before other students can see it.
         </div>
-        <form id="add-tutorial-form" onsubmit="event.preventDefault(); app.submitTutorial();">
+        <form id="add-tutorial-form" onsubmit="event.preventDefault(); console.log('Tutorial form submit'); app.submitTutorial(); return false;">
           <div class="form-group">
             <label for="tutorial-url">Tutorial URL *</label>
-            <input type="url" id="tutorial-url" required placeholder="https://youtube.com/...">
+            <input type="text" id="tutorial-url" required placeholder="https://youtube.com/...">
           </div>
           <div class="form-group">
             <label for="tutorial-title">Title (optional)</label>
@@ -917,7 +917,7 @@
           </div>
           <div class="form-actions">
             <button type="button" class="btn btn-secondary modal-close">Cancel</button>
-            <button type="submit" class="btn btn-primary">Submit Tutorial</button>
+            <button type="submit" class="btn btn-primary" onclick="console.log('Submit button clicked')">Submit Tutorial</button>
           </div>
         </form>
       </div>
