@@ -6030,18 +6030,13 @@ class CadenceApp {
       const isTeacher = auth.hasRole('teacher') || auth.hasRole('admin');
 
       // Use direct table query instead of RPC to avoid hanging
-      let query = supabase
+      // RLS policy already filters: students see approved tutorials or their own submissions
+      // Teachers see all tutorials
+      const { data, error } = await supabase
         .from('song_tutorials')
         .select('id, url, title, status, submitted_by_user_id, created_at')
         .eq('song_id', songId)
         .order('created_at', { ascending: true });
-
-      // Filter by status for non-teachers
-      if (!isTeacher) {
-        query = query.or(`status.eq.approved,submitted_by_user_id.eq.${auth.getCurrentUser().id}`);
-      }
-
-      const { data, error } = await query;
 
       if (error) {
         console.error('Error loading tutorials:', error);
@@ -6098,18 +6093,13 @@ class CadenceApp {
       const isTeacher = auth.hasRole('teacher') || auth.hasRole('admin');
 
       // Use direct table query instead of RPC to avoid hanging
-      let query = supabase
+      // RLS policy already filters: students see approved resources or their own submissions
+      // Teachers see all resources
+      const { data, error } = await supabase
         .from('student_resources')
         .select('id, title, description, file_url, file_type, status, user_id, created_at')
         .eq('song_id', songId)
         .order('created_at', { ascending: false });
-
-      // Filter by status for non-teachers
-      if (!isTeacher) {
-        query = query.or(`status.eq.approved,user_id.eq.${auth.getCurrentUser().id}`);
-      }
-
-      const { data, error } = await query;
 
       if (error) {
         console.error('Error loading resources:', error);
