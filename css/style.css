@@ -2637,21 +2637,10 @@ body {
   font-weight: 600;
 }
 
-/* Highlight Resources button when resources exist */
+/* Underline Resources button when resources exist */
 .btn-resources.has-resources {
-  background-color: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
-}
-
-.btn-resources.has-resources:hover {
-  background-color: var(--primary-dark);
-  border-color: var(--primary-dark);
-}
-
-.btn-resources.has-resources .resource-count {
-  background-color: white;
-  color: var(--primary-color);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* Small button variant */
