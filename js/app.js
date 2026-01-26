@@ -31,9 +31,6 @@ class CadenceApp {
     // Guard against double initialization
     this.initializing = false;
 
-    // Back button: view navigation history stack
-    this.viewHistory = [];
-
     // Preview mode state
     this.previewMode = {
       active: false,
@@ -1127,9 +1124,9 @@ class CadenceApp {
   // ============================================
 
   switchView(viewName, { addToHistory = true } = {}) {
-    // Track view history for back button navigation
+    // Push a browser history entry so the back button can return here
     if (addToHistory && this.currentView && this.currentView !== viewName) {
-      this.viewHistory.push(this.currentView);
+      history.pushState({ cadenceView: viewName }, '', window.location.pathname + window.location.search);
     }
 
     // Update nav tabs
@@ -3062,7 +3059,6 @@ class CadenceApp {
     this.classStudents = [];
     this.submissions = [];
     this.flaggedRatings = [];
-    this.viewHistory = [];
     this.loadingSongs = false;
     this.initializing = false;
     this.previewMode = {
@@ -6585,60 +6581,42 @@ class CadenceApp {
   // ============================================
 
   setupBackButtonHandler() {
-    // Use clean URL (no OAuth hash) for all history entries
+    // Tag the initial history entry with the current view so back always has a target
     const cleanUrl = window.location.pathname + window.location.search;
-    history.replaceState({ cadenceApp: true }, '', cleanUrl);
-    history.pushState({ cadenceGuard: true }, '', cleanUrl);
+    history.replaceState({ cadenceView: this.currentView || 'pathway' }, '', cleanUrl);
 
     window.addEventListener('popstate', (e) => {
-      const handled = this.handleBackNavigation();
+      // Close any overlays that are open (modals, class detail, preview, etc.)
+      this.closeOverlays();
 
-      if (handled) {
-        // Re-push guard entry for the next back press
-        const url = window.location.pathname + window.location.search;
-        history.pushState({ cadenceGuard: true }, '', url);
+      // Navigate to the view stored in the history entry we landed on
+      const state = e.state;
+      if (state && state.cadenceView) {
+        this.switchView(state.cadenceView, { addToHistory: false });
       }
-      // If not handled, the browser navigates away naturally
     });
   }
 
-  handleBackNavigation() {
-    // Priority 1: Close any open modal
-    const openModal = document.querySelector('.modal:not(.hidden)');
-    if (openModal) {
-      openModal.classList.add('hidden');
-      return true;
-    }
+  closeOverlays() {
+    // Close any open modals
+    document.querySelectorAll('.modal:not(.hidden)').forEach(m => m.classList.add('hidden'));
 
-    // Priority 2: If instrument selection overlay is showing, hide it
+    // Hide instrument selection overlay
     const instrumentSelection = document.getElementById('instrument-selection');
-    if (instrumentSelection && !instrumentSelection.classList.contains('hidden')) {
-      instrumentSelection.classList.add('hidden');
-      return true;
-    }
+    if (instrumentSelection) instrumentSelection.classList.add('hidden');
 
-    // Priority 3: If in preview mode, exit preview
+    // Exit preview mode
     if (this.previewMode.active) {
       this.exitStudentPreview();
-      return true;
     }
 
-    // Priority 4: If viewing class detail, go back to classes list
+    // Close class detail back to classes list
     const classDetailView = document.getElementById('class-detail-view');
     if (classDetailView && !classDetailView.classList.contains('hidden')) {
-      this.showClassesList();
-      return true;
+      classDetailView.classList.add('hidden');
+      const classesList = document.getElementById('classes-list');
+      if (classesList) classesList.classList.remove('hidden');
     }
-
-    // Priority 5: Navigate to previous view from history
-    if (this.viewHistory.length > 0) {
-      const prevView = this.viewHistory.pop();
-      this.switchView(prevView, { addToHistory: false });
-      return true;
-    }
-
-    // Nothing to go back from - let browser handle naturally
-    return false;
   }
 
   // ============================================
