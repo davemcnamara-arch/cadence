@@ -91,6 +91,8 @@
           <button class="nav-tab teacher-tab hidden" data-view="classes">My Classes</button>
           <button class="nav-tab teacher-tab hidden" data-view="submissions">Submissions</button>
           <button class="nav-tab teacher-tab hidden" data-view="flagged">Flagged Ratings <span id="flagged-count-badge" class="tab-notification-badge hidden"></span></button>
+          <!-- Account management tab (shown to teachers and admins) -->
+          <button class="nav-tab teacher-tab admin-tab hidden" data-view="accounts">Accounts</button>
           <!-- Admin tabs (shown only to admins) -->
           <button class="nav-tab admin-tab hidden" data-view="admin">Admin</button>
         </nav>
@@ -312,6 +314,39 @@
 
         <div id="flagged-ratings-list" class="flagged-ratings-list">
           <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Account Management View (Teachers & Admins) -->
+      <div id="accounts-view" class="view hidden">
+        <div class="view-header">
+          <h2>Account Management</h2>
+          <button id="create-teacher-btn" class="btn btn-primary">+ Create Teacher Account</button>
+        </div>
+
+        <!-- Pre-registered accounts (pending sign-in) -->
+        <div id="pending-accounts-section" class="accounts-section">
+          <h3>Pending Teacher Accounts</h3>
+          <p class="section-description">These accounts have been created but the user hasn't signed in yet.</p>
+          <div id="pending-accounts-list" class="accounts-list">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Existing user accounts -->
+        <div class="accounts-section">
+          <h3 id="accounts-list-title">Manage Accounts</h3>
+          <div class="accounts-filters">
+            <input type="text" id="accounts-search" placeholder="Search by name or email..." class="search-input">
+            <select id="accounts-role-filter" class="filter-select">
+              <option value="">All Roles</option>
+              <option value="student">Students</option>
+              <option value="teacher">Teachers</option>
+            </select>
+          </div>
+          <div id="accounts-list" class="accounts-list">
+            <!-- Populated by JS -->
+          </div>
         </div>
       </div>
 
@@ -1025,6 +1060,55 @@
           <button type="button" id="approve-song-btn" class="btn btn-primary">Approve Song</button>
           <button type="button" id="unapprove-song-btn" class="btn btn-secondary">Unapprove</button>
           <button type="button" id="delete-song-btn" class="btn btn-danger">Delete Song</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Creating Teacher Account -->
+  <div id="create-teacher-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>Create Teacher Account</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 1rem; color: var(--text-secondary);">Enter the email address for the new teacher. When they sign in with Google using this email, they will automatically be assigned the teacher role.</p>
+        <form id="create-teacher-form">
+          <div class="form-group">
+            <label for="new-teacher-email">Email Address *</label>
+            <input type="email" id="new-teacher-email" required placeholder="teacher@school.edu">
+          </div>
+          <div class="form-group">
+            <label for="new-teacher-name">Name (optional)</label>
+            <input type="text" id="new-teacher-name" placeholder="Teacher's full name">
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+            <button type="submit" class="btn btn-primary">Create Account</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Deleting User Account -->
+  <div id="delete-account-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>Delete Account</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="delete-warning">
+          <p><strong>Are you sure you want to delete this account?</strong></p>
+          <p id="delete-account-info" style="margin: 0.75rem 0;"></p>
+          <p style="color: var(--error-color); font-size: 0.875rem;">This action cannot be undone. All of this user's data (progress, ratings, class memberships, and classes they own) will be permanently deleted.</p>
+        </div>
+        <input type="hidden" id="delete-account-id">
+        <div class="form-actions" style="margin-top: 1.5rem;">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="button" id="confirm-delete-account-btn" class="btn btn-danger">Delete Account</button>
         </div>
       </div>
     </div>
