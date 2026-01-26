@@ -13,6 +13,14 @@ export class AuthManager {
   async init() {
     const { data: { session } } = await supabase.auth.getSession();
 
+    // Clean up OAuth hash fragment from URL after Supabase has read it.
+    // Without this, the #access_token=... URL stays in browser history
+    // and the device back button navigates to it instead of going back in-app.
+    if (window.location.hash && window.location.hash.includes('access_token')) {
+      const cleanUrl = window.location.pathname + window.location.search;
+      history.replaceState(null, '', cleanUrl);
+    }
+
     let handledSession = false;
     if (session) {
       await this.handleAuthSuccess(session.user);
