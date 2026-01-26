@@ -372,6 +372,38 @@ class CadenceApp {
 
     // Setup admin forms
     this.setupAdminForms();
+
+    // Account Management: Create teacher button
+    const createTeacherBtn = document.getElementById('create-teacher-btn');
+    if (createTeacherBtn) {
+      createTeacherBtn.addEventListener('click', () => this.showCreateTeacherModal());
+    }
+
+    // Account Management: Create teacher form
+    const createTeacherForm = document.getElementById('create-teacher-form');
+    if (createTeacherForm) {
+      createTeacherForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.createTeacherAccount();
+      });
+    }
+
+    // Account Management: Delete account confirmation
+    const confirmDeleteBtn = document.getElementById('confirm-delete-account-btn');
+    if (confirmDeleteBtn) {
+      confirmDeleteBtn.addEventListener('click', () => this.deleteUserAccount());
+    }
+
+    // Account Management: Search and filter
+    const accountsSearch = document.getElementById('accounts-search');
+    if (accountsSearch) {
+      accountsSearch.addEventListener('input', () => this.renderAccountsList());
+    }
+
+    const accountsRoleFilter = document.getElementById('accounts-role-filter');
+    if (accountsRoleFilter) {
+      accountsRoleFilter.addEventListener('change', () => this.renderAccountsList());
+    }
   }
 
   async onUserSignedIn(user) {
@@ -1166,6 +1198,8 @@ class CadenceApp {
         if (this.classes.length > 0) {
           this.loadFlaggedRatings();
         }
+      } else if (viewName === 'accounts') {
+        this.loadAccountsData();
       } else if (viewName === 'admin') {
         // Load admin data
         this.renderAdminStats(this.adminStats || {students: 0, teachers: 0, songs: 0, classes: 0});
@@ -5977,6 +6011,239 @@ class CadenceApp {
         this.showToast('User role updated successfully', 'success');
         await this.loadUsersManagement();
       });
+    }
+  }
+
+  // ============================================
+  // ACCOUNT MANAGEMENT (Teachers & Admins)
+  // ============================================
+
+  async loadAccountsData() {
+    await Promise.all([
+      this.loadManageableUsers(),
+      this.loadPendingTeacherAccounts()
+    ]);
+  }
+
+  async loadManageableUsers() {
+    const { data, error } = await supabase.rpc('get_manageable_users');
+
+    if (error) {
+      console.error('Error loading manageable users:', error);
+      this.manageableUsers = [];
+      return;
+    }
+
+    this.manageableUsers = data || [];
+    this.renderAccountsList();
+  }
+
+  async loadPendingTeacherAccounts() {
+    const { data, error } = await supabase
+      .from('pre_registered_accounts')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error loading pending accounts:', error);
+      this.pendingTeacherAccounts = [];
+      return;
+    }
+
+    this.pendingTeacherAccounts = data || [];
+    this.renderPendingAccounts();
+  }
+
+  renderPendingAccounts() {
+    const container = document.getElementById('pending-accounts-list');
+    if (!container) return;
+
+    const section = document.getElementById('pending-accounts-section');
+
+    if (!this.pendingTeacherAccounts || this.pendingTeacherAccounts.length === 0) {
+      if (section) section.classList.add('hidden');
+      return;
+    }
+
+    if (section) section.classList.remove('hidden');
+
+    const html = this.pendingTeacherAccounts.map(account => `
+      <div class="account-card">
+        <div class="account-info">
+          <div class="account-name">${account.name || 'Not specified'}</div>
+          <div class="account-email">${account.email}</div>
+        </div>
+        <div class="account-meta">
+          <span class="user-role-badge teacher">Teacher (Pending)</span>
+          <button class="btn btn-text btn-sm" style="color: var(--error-color);" onclick="app.removePendingTeacherAccount('${account.id}')">Remove</button>
+        </div>
+      </div>
+    `).join('');
+
+    container.innerHTML = html;
+  }
+
+  renderAccountsList() {
+    const container = document.getElementById('accounts-list');
+    if (!container) return;
+
+    let users = this.manageableUsers || [];
+    const currentUserRole = auth.getCurrentUser()?.role;
+
+    // Apply search filter
+    const searchTerm = document.getElementById('accounts-search')?.value?.toLowerCase();
+    if (searchTerm) {
+      users = users.filter(u =>
+        u.name.toLowerCase().includes(searchTerm) ||
+        u.email.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    // Apply role filter
+    const roleFilter = document.getElementById('accounts-role-filter')?.value;
+    if (roleFilter) {
+      users = users.filter(u => u.role === roleFilter);
+    }
+
+    // Update title based on role
+    const title = document.getElementById('accounts-list-title');
+    if (title) {
+      title.textContent = currentUserRole === 'admin' ? 'All Accounts' : 'Student Accounts';
+    }
+
+    // Show/hide role filter based on whether there are multiple roles
+    const roleFilterEl = document.getElementById('accounts-role-filter');
+    if (roleFilterEl) {
+      roleFilterEl.classList.toggle('hidden', currentUserRole !== 'admin');
+    }
+
+    if (users.length === 0) {
+      container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No accounts found</p>';
+      return;
+    }
+
+    const html = users.map(user => {
+      // Determine if current user can delete this account
+      const canDelete = (user.role === 'student' && (currentUserRole === 'teacher' || currentUserRole === 'admin'))
+        || (user.role === 'teacher' && currentUserRole === 'admin');
+
+      return `
+        <div class="account-card">
+          <div class="account-info">
+            <div class="account-name">${user.name}</div>
+            <div class="account-email">${user.email}</div>
+          </div>
+          <div class="account-meta">
+            <span class="user-role-badge ${user.role}">${user.role.charAt(0).toUpperCase() + user.role.slice(1)}</span>
+            ${canDelete ? `<button class="btn btn-danger btn-sm" onclick="app.confirmDeleteAccount('${user.id}', '${user.name.replace(/'/g, "\\'")}', '${user.role}')">Delete</button>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+  }
+
+  showCreateTeacherModal() {
+    document.getElementById('new-teacher-email').value = '';
+    document.getElementById('new-teacher-name').value = '';
+    document.getElementById('create-teacher-modal').classList.remove('hidden');
+  }
+
+  async createTeacherAccount() {
+    const email = document.getElementById('new-teacher-email').value.trim().toLowerCase();
+    const name = document.getElementById('new-teacher-name').value.trim();
+
+    if (!email) {
+      this.showToast('Please enter an email address', 'error');
+      return;
+    }
+
+    // Check if user already exists
+    const existingUser = this.manageableUsers?.find(u => u.email.toLowerCase() === email);
+    if (existingUser) {
+      this.showToast('A user with this email already exists', 'error');
+      return;
+    }
+
+    // Check if already pre-registered
+    const existingPending = this.pendingTeacherAccounts?.find(a => a.email.toLowerCase() === email);
+    if (existingPending) {
+      this.showToast('This email has already been pre-registered', 'error');
+      return;
+    }
+
+    const { error } = await supabase
+      .from('pre_registered_accounts')
+      .insert([{
+        email: email,
+        role: 'teacher',
+        name: name || null,
+        created_by: auth.getCurrentUser().id
+      }]);
+
+    if (error) {
+      console.error('Error creating teacher account:', error);
+      if (error.code === '23505') {
+        this.showToast('This email has already been pre-registered', 'error');
+      } else {
+        this.showToast('Failed to create teacher account', 'error');
+      }
+      return;
+    }
+
+    document.getElementById('create-teacher-modal').classList.add('hidden');
+    this.showToast('Teacher account created. They will be assigned the teacher role when they sign in.', 'success');
+    await this.loadPendingTeacherAccounts();
+  }
+
+  async removePendingTeacherAccount(accountId) {
+    const { error } = await supabase
+      .from('pre_registered_accounts')
+      .delete()
+      .eq('id', accountId);
+
+    if (error) {
+      console.error('Error removing pending account:', error);
+      this.showToast('Failed to remove pending account', 'error');
+      return;
+    }
+
+    this.showToast('Pending account removed', 'success');
+    await this.loadPendingTeacherAccounts();
+  }
+
+  confirmDeleteAccount(userId, userName, userRole) {
+    document.getElementById('delete-account-id').value = userId;
+    document.getElementById('delete-account-info').innerHTML =
+      `<strong>${userName}</strong> (${userRole.charAt(0).toUpperCase() + userRole.slice(1)})`;
+    document.getElementById('delete-account-modal').classList.remove('hidden');
+  }
+
+  async deleteUserAccount() {
+    const userId = document.getElementById('delete-account-id').value;
+
+    if (!userId) {
+      this.showToast('No user selected', 'error');
+      return;
+    }
+
+    const { data, error } = await supabase.rpc('delete_user_account', {
+      p_user_id: userId
+    });
+
+    if (error) {
+      console.error('Error deleting user account:', error);
+      this.showToast('Failed to delete account', 'error');
+      return;
+    }
+
+    if (data && data.success) {
+      document.getElementById('delete-account-modal').classList.add('hidden');
+      this.showToast(`Account for ${data.name} deleted successfully`, 'success');
+      await this.loadManageableUsers();
+    } else {
+      this.showToast(data?.message || 'Failed to delete account', 'error');
     }
   }
 
