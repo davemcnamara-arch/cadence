@@ -28,6 +28,9 @@ class CadenceApp {
     this.submissions = [];
     this.flaggedRatings = [];
 
+    // Guard against double initialization
+    this.initializing = false;
+
     // Preview mode state
     this.previewMode = {
       active: false,
@@ -101,7 +104,6 @@ class CadenceApp {
           // Unsubscribe from real-time updates with timeout
           if (this.songUpdatesSubscription) {
             try {
-              // Add timeout to prevent hanging on unsubscribe
               await Promise.race([
                 this.songUpdatesSubscription.unsubscribe(),
                 new Promise((resolve) => setTimeout(resolve, 1000))
@@ -112,14 +114,12 @@ class CadenceApp {
           }
 
           await auth.signOut();
-          // Force reload to clear all state and show login screen
-          // This ensures logout works even if auth state change listener doesn't fire
-          window.location.reload();
         } catch (error) {
           console.error('Error during sign out:', error);
-          // Still reload on error to ensure user sees login screen
-          window.location.reload();
         }
+        // Always reset app state and show login screen directly
+        this.resetAppState();
+        this.showLoginScreen();
       });
     }
 
@@ -368,6 +368,13 @@ class CadenceApp {
   }
 
   async onUserSignedIn(user) {
+    // Prevent concurrent initialization (Supabase can fire SIGNED_IN twice)
+    if (this.initializing) {
+      return;
+    }
+    this.initializing = true;
+
+    try {
     // Load user data
     await this.loadInstruments();
     await this.loadStudentProgress();
@@ -436,6 +443,9 @@ class CadenceApp {
         this.updateInstrumentDropdown();
       }
     }
+    } finally {
+      this.initializing = false;
+    }
   }
 
   async loadTeacherData() {
@@ -467,17 +477,24 @@ class CadenceApp {
     // Use student ID if in preview mode, otherwise use current user
     const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
-    const { data, error } = await supabase
-      .from('student_progress')
-      .select('*')
-      .eq('user_id', userId);
+    // Retry once on failure - a transient error here causes the app to think
+    // the student has no instruments, skipping all song loading
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const { data, error } = await supabase
+        .from('student_progress')
+        .select('*')
+        .eq('user_id', userId);
 
-    if (error) {
-      console.error('Error loading progress:', error);
-      return;
+      if (!error) {
+        this.studentProgress = data || [];
+        return;
+      }
+
+      console.error(`Error loading progress (attempt ${attempt + 1}):`, error);
+      if (attempt === 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
     }
-
-    this.studentProgress = data || [];
   }
 
   async loadLevels(instrumentId) {
@@ -497,11 +514,16 @@ class CadenceApp {
   }
 
   async loadSongs() {
-    // Prevent concurrent calls
+    // Prevent concurrent calls, but allow retry if stuck for >30s
     if (this.loadingSongs) {
-      return;
+      if (this.loadingSongsStarted && Date.now() - this.loadingSongsStarted > 30000) {
+        console.warn('loadSongs appears stuck, allowing retry');
+      } else {
+        return;
+      }
     }
     this.loadingSongs = true;
+    this.loadingSongsStarted = Date.now();
 
     try {
       const { data, error } = await supabase
@@ -519,7 +541,6 @@ class CadenceApp {
 
       if (error) {
         console.error('Error loading songs:', error);
-        this.loadingSongs = false;
         return;
       }
 
@@ -3011,6 +3032,35 @@ class CadenceApp {
 
   showLoading(show) {
     document.getElementById('loading-screen').classList.toggle('hidden', !show);
+  }
+
+  resetAppState() {
+    this.currentInstrument = null;
+    this.instruments = [];
+    this.levels = [];
+    this.songs = [];
+    this.studentProgress = [];
+    this.studentSongs = [];
+    this.currentView = 'pathway';
+    this.classes = [];
+    this.currentClass = null;
+    this.classStudents = [];
+    this.submissions = [];
+    this.flaggedRatings = [];
+    this.loadingSongs = false;
+    this.initializing = false;
+    this.previewMode = {
+      active: false,
+      studentId: null,
+      studentName: null,
+      originalUser: null,
+      originalView: null,
+      originalStudentProgress: null,
+      originalInstruments: null,
+      originalCurrentInstrument: null,
+      originalStudentSongs: null,
+      originalLevels: null
+    };
   }
 
   showLoginScreen() {

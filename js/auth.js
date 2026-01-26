@@ -13,8 +13,10 @@ export class AuthManager {
   async init() {
     const { data: { session } } = await supabase.auth.getSession();
 
+    let handledSession = false;
     if (session) {
       await this.handleAuthSuccess(session.user);
+      handledSession = true;
     } else {
       // No session - trigger callback to show login screen
       if (this.onAuthStateChange) {
@@ -25,6 +27,11 @@ export class AuthManager {
     // Listen for auth state changes
     supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
+        // Skip if we already handled this session during init
+        if (handledSession) {
+          handledSession = false;
+          return;
+        }
         await this.handleAuthSuccess(session.user);
       } else if (event === 'SIGNED_OUT') {
         this.handleSignOut();
