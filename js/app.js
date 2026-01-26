@@ -31,6 +31,9 @@ class CadenceApp {
     // Guard against double initialization
     this.initializing = false;
 
+    // Back button: view navigation history stack
+    this.viewHistory = [];
+
     // Preview mode state
     this.previewMode = {
       active: false,
@@ -1123,7 +1126,12 @@ class CadenceApp {
   // VIEW NAVIGATION: Tab Switching & UI State
   // ============================================
 
-  switchView(viewName) {
+  switchView(viewName, { addToHistory = true } = {}) {
+    // Track view history for back button navigation
+    if (addToHistory && this.currentView && this.currentView !== viewName) {
+      this.viewHistory.push(this.currentView);
+    }
+
     // Update nav tabs
     document.querySelectorAll('.nav-tab').forEach(tab => {
       tab.classList.toggle('active', tab.dataset.view === viewName);
@@ -3054,6 +3062,7 @@ class CadenceApp {
     this.classStudents = [];
     this.submissions = [];
     this.flaggedRatings = [];
+    this.viewHistory = [];
     this.loadingSongs = false;
     this.initializing = false;
     this.previewMode = {
@@ -6618,6 +6627,13 @@ class CadenceApp {
     const classDetailView = document.getElementById('class-detail-view');
     if (classDetailView && !classDetailView.classList.contains('hidden')) {
       this.showClassesList();
+      return true;
+    }
+
+    // Priority 5: Navigate to previous view from history
+    if (this.viewHistory.length > 0) {
+      const prevView = this.viewHistory.pop();
+      this.switchView(prevView, { addToHistory: false });
       return true;
     }
 
