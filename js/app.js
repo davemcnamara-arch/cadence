@@ -460,9 +460,14 @@ class CadenceApp {
       document.getElementById('join-class-toggle-btn')?.classList.add('hidden');
       document.getElementById('export-progress-btn')?.classList.add('hidden');
 
-      // Show admin tabs only (not teacher tabs)
+      // Show admin tabs (includes Classes tab for managing all teachers' classes)
       document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('hidden'));
+
+      // Hide teacher-only controls that don't apply to admins
+      document.getElementById('create-class-btn')?.classList.add('hidden');
+
       await this.loadAdminData();
+      await this.loadClasses();
 
       // Switch to admin view as default for admins
       this.switchView('admin');
@@ -3681,7 +3686,8 @@ class CadenceApp {
       filteredClasses = filteredClasses.filter(cls =>
         cls.name.toLowerCase().includes(searchTerm) ||
         cls.class_code.toLowerCase().includes(searchTerm) ||
-        (cls.year_level && cls.year_level.toLowerCase().includes(searchTerm))
+        (cls.year_level && cls.year_level.toLowerCase().includes(searchTerm)) ||
+        (cls.teacher_name && cls.teacher_name.toLowerCase().includes(searchTerm))
       );
     }
 
@@ -3693,12 +3699,13 @@ class CadenceApp {
     if (!container) return;
 
     const classes = classesToRender || this.classes;
+    const isAdmin = auth.getCurrentUser()?.role === 'admin';
 
     if (this.classes.length === 0) {
       container.innerHTML = `
         <div style="text-align: center; padding: 4rem; color: var(--text-secondary);">
           <p style="font-size: 1.125rem; margin-bottom: 1rem;">No classes yet</p>
-          <p>Create your first class to get started</p>
+          <p>${isAdmin ? 'No classes have been created by any teachers' : 'Create your first class to get started'}</p>
         </div>
       `;
       return;
@@ -3722,6 +3729,7 @@ class CadenceApp {
     const html = sortedClasses.map(cls => {
       const memberCount = cls.student_count || 0;
       const isArchived = cls.archived;
+      const teacherLabel = isAdmin && cls.teacher_name ? `<p style="color: var(--text-secondary); font-size: 0.8125rem;">Teacher: ${cls.teacher_name}</p>` : '';
 
       if (isArchived) {
         // Archived class card with unarchive button
@@ -3731,6 +3739,7 @@ class CadenceApp {
               <div>
                 <h3>${cls.name} <span style="background-color: var(--text-secondary); color: white; padding: 0.125rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: normal;">ARCHIVED</span></h3>
                 ${cls.year_level ? `<p style="color: var(--text-secondary); font-size: 0.875rem;">${cls.year_level}</p>` : ''}
+                ${teacherLabel}
               </div>
               <span class="class-code-badge">${cls.class_code}</span>
             </div>
@@ -3751,6 +3760,7 @@ class CadenceApp {
               <div>
                 <h3>${cls.name}</h3>
                 ${cls.year_level ? `<p style="color: var(--text-secondary); font-size: 0.875rem;">${cls.year_level}</p>` : ''}
+                ${teacherLabel}
               </div>
               <span class="class-code-badge">${cls.class_code}</span>
             </div>
@@ -3790,12 +3800,23 @@ class CadenceApp {
     document.getElementById('class-detail-view').classList.remove('hidden');
 
     // Update header
+    const currentUser = auth.getCurrentUser();
+    const isAdmin = currentUser?.role === 'admin';
+    const isOwnClass = this.currentClass.teacher_id === currentUser?.id;
+
     document.getElementById('class-detail-name').textContent = this.currentClass.name;
     const yearLevelEl = document.getElementById('class-detail-year-level');
     if (yearLevelEl) {
-      yearLevelEl.textContent = this.currentClass.year_level || '';
+      const teacherInfo = isAdmin && this.currentClass.teacher_name ? ` — Teacher: ${this.currentClass.teacher_name}` : '';
+      yearLevelEl.textContent = (this.currentClass.year_level || '') + teacherInfo;
     }
     document.getElementById('class-detail-code').textContent = this.currentClass.class_code;
+
+    // Show/hide class management buttons based on ownership
+    // Admins can bulk add to any class but shouldn't edit/archive other teachers' classes
+    document.getElementById('edit-class-btn')?.classList.toggle('hidden', isAdmin && !isOwnClass);
+    document.getElementById('archive-class-btn')?.classList.toggle('hidden', isAdmin && !isOwnClass);
+    document.getElementById('export-class-data-btn')?.classList.toggle('hidden', isAdmin && !isOwnClass);
 
     // Load class data
     await this.loadClassStudents();
