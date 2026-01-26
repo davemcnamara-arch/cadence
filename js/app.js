@@ -365,9 +365,6 @@ class CadenceApp {
 
     // Setup admin forms
     this.setupAdminForms();
-
-    // Setup device/browser back button handling
-    this.setupBackButtonHandler();
   }
 
   async onUserSignedIn(user) {
@@ -6568,92 +6565,6 @@ class CadenceApp {
   }
 
   // ============================================
-  // BACK BUTTON: Browser/Device Back Navigation
-  // ============================================
-
-  setupBackButtonHandler() {
-    // Push a guard entry so back button triggers popstate instead of leaving the page
-    history.replaceState({ cadenceApp: true }, '');
-    history.pushState({ cadenceGuard: true }, '');
-
-    window.addEventListener('popstate', (e) => {
-      const handled = this.handleBackNavigation();
-
-      if (handled) {
-        // Re-push guard entry for the next back press
-        history.pushState({ cadenceGuard: true }, '');
-      }
-      // If not handled (nothing to go back from), the browser navigates away naturally
-    });
-  }
-
-  handleBackNavigation() {
-    // Priority 1: Close any open modal
-    const openModal = this.findTopOpenModal();
-    if (openModal) {
-      openModal.classList.add('hidden');
-      return true;
-    }
-
-    // Priority 2: If instrument selection overlay is showing, hide it
-    const instrumentSelection = document.getElementById('instrument-selection');
-    if (instrumentSelection && !instrumentSelection.classList.contains('hidden')) {
-      instrumentSelection.classList.add('hidden');
-      return true;
-    }
-
-    // Priority 3: If in preview mode, exit preview
-    if (this.previewMode.active) {
-      this.exitStudentPreview();
-      return true;
-    }
-
-    // Priority 4: If viewing class detail, go back to classes list
-    const classDetailView = document.getElementById('class-detail-view');
-    if (classDetailView && !classDetailView.classList.contains('hidden')) {
-      this.showClassesList();
-      return true;
-    }
-
-    // Nothing to go back from - let browser handle naturally
-    return false;
-  }
-
-  findTopOpenModal() {
-    const modalIds = [
-      'song-grading-modal',
-      'export-modal',
-      'edit-resource-modal',
-      'rate-resources-modal',
-      'create-class-modal',
-      'edit-class-modal',
-      'bulk-add-students-modal',
-      'archive-class-modal',
-      'edit-student-modal',
-      'remove-student-modal',
-      'student-detail-modal',
-      'join-class-modal',
-      'edit-song-level-modal',
-      'song-details-modal',
-      'song-resources-modal',
-      'add-resource-modal',
-      'add-tutorial-modal',
-      'edit-level-modal',
-      'instrument-modal',
-      'edit-user-role-modal',
-      'admin-song-modal'
-    ];
-
-    for (const id of modalIds) {
-      const modal = document.getElementById(id);
-      if (modal && !modal.classList.contains('hidden')) {
-        return modal;
-      }
-    }
-    return null;
-  }
-
-  // ============================================
   // UTILITIES: Helpers & UI Components
   // ============================================
 
@@ -6675,3 +6586,56 @@ class CadenceApp {
 const app = new CadenceApp();
 window.app = app; // Make available globally for inline event handlers
 app.init();
+
+// ============================================
+// BACK BUTTON: Browser/Device Back Navigation
+// Set up at module level so it runs immediately,
+// independent of auth or other async initialization.
+// ============================================
+(function setupBackButton() {
+  // Push a guard entry so back button triggers popstate instead of leaving the page
+  history.replaceState({ cadenceApp: true }, '');
+  history.pushState({ cadenceGuard: true }, '');
+
+  window.addEventListener('popstate', (e) => {
+    const handled = handleBackNavigation();
+
+    if (handled) {
+      // Re-push guard entry for the next back press
+      history.pushState({ cadenceGuard: true }, '');
+    }
+    // If not handled, the browser navigates away naturally
+  });
+
+  function handleBackNavigation() {
+    // Priority 1: Close any open modal (query all .modal elements dynamically)
+    const openModal = document.querySelector('.modal:not(.hidden)');
+    if (openModal) {
+      openModal.classList.add('hidden');
+      return true;
+    }
+
+    // Priority 2: If instrument selection overlay is showing, hide it
+    const instrumentSelection = document.getElementById('instrument-selection');
+    if (instrumentSelection && !instrumentSelection.classList.contains('hidden')) {
+      instrumentSelection.classList.add('hidden');
+      return true;
+    }
+
+    // Priority 3: If in preview mode, exit preview
+    if (app.previewMode && app.previewMode.active) {
+      app.exitStudentPreview();
+      return true;
+    }
+
+    // Priority 4: If viewing class detail, go back to classes list
+    const classDetailView = document.getElementById('class-detail-view');
+    if (classDetailView && !classDetailView.classList.contains('hidden')) {
+      app.showClassesList();
+      return true;
+    }
+
+    // Nothing to go back from - let browser handle naturally
+    return false;
+  }
+})();
