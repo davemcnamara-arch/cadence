@@ -13,8 +13,18 @@ export class AuthManager {
   async init() {
     const { data: { session } } = await supabase.auth.getSession();
 
+    // Clean up OAuth hash fragment from URL after Supabase has read it.
+    // Without this, the #access_token=... URL stays in browser history
+    // and the device back button navigates to it instead of going back in-app.
+    if (window.location.hash && window.location.hash.includes('access_token')) {
+      const cleanUrl = window.location.pathname + window.location.search;
+      history.replaceState(null, '', cleanUrl);
+    }
+
+    let handledSession = false;
     if (session) {
       await this.handleAuthSuccess(session.user);
+      handledSession = true;
     } else {
       // No session - trigger callback to show login screen
       if (this.onAuthStateChange) {
@@ -25,6 +35,11 @@ export class AuthManager {
     // Listen for auth state changes
     supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
+        // Skip if we already handled this session during init
+        if (handledSession) {
+          handledSession = false;
+          return;
+        }
         await this.handleAuthSuccess(session.user);
       } else if (event === 'SIGNED_OUT') {
         this.handleSignOut();
@@ -82,8 +97,28 @@ export class AuthManager {
       return;
     }
 
-    // If user doesn't exist, trigger role selection flow
+    // If user doesn't exist, check for pre-registration before showing role selection
     if (!existingUser) {
+      try {
+        const { data: preReg, error: preRegError } = await supabase.rpc('check_pre_registration', {
+          p_email: authUser.email
+        });
+
+        if (!preRegError && preReg && preReg.found) {
+          // Auto-create account with pre-registered role
+          const result = await this.completeSignupWithRole(
+            preReg.role,
+            authUser,
+            preReg.name || authUser.user_metadata?.full_name || authUser.email.split('@')[0]
+          );
+          if (result.success) return;
+          // If auto-creation failed, fall through to manual role selection
+        }
+      } catch (preRegCheckError) {
+        console.error('Error checking pre-registration:', preRegCheckError);
+        // Fall through to manual role selection
+      }
+
       this.pendingAuthUser = authUser;
       if (this.onNeedRoleSelection) {
         this.onNeedRoleSelection(authUser);
@@ -104,13 +139,13 @@ export class AuthManager {
   }
 
   // Complete signup with selected role
-  async completeSignupWithRole(role) {
-    if (!this.pendingAuthUser) {
+  // authUserOverride and nameOverride are used by pre-registration flow
+  async completeSignupWithRole(role, authUserOverride, nameOverride) {
+    const authUser = authUserOverride || this.pendingAuthUser;
+    if (!authUser) {
       console.error('No pending auth user');
       return { success: false, error: 'No pending authentication' };
     }
-
-    const authUser = this.pendingAuthUser;
 
     try {
       // Create user with selected role
@@ -119,7 +154,7 @@ export class AuthManager {
         .insert([{
           id: authUser.id,
           email: authUser.email,
-          name: authUser.user_metadata?.full_name || authUser.email.split('@')[0],
+          name: nameOverride || authUser.user_metadata?.full_name || authUser.email.split('@')[0],
           google_id: authUser.user_metadata?.sub,
           role: role
         }])

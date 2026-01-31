@@ -2,6 +2,9 @@
 import { supabase } from './config.js';
 import { auth } from './auth.js';
 
+// Expose for debugging
+window.supabase = supabase;
+
 class CadenceApp {
   // ============================================
   // CORE: Initialization & Setup
@@ -24,6 +27,9 @@ class CadenceApp {
     this.classStudents = [];
     this.submissions = [];
     this.flaggedRatings = [];
+
+    // Guard against double initialization
+    this.initializing = false;
 
     // Preview mode state
     this.previewMode = {
@@ -62,10 +68,17 @@ class CadenceApp {
       this.showRoleSelection();
     };
 
-    await auth.init();
+    try {
+      await auth.init();
+    } catch (error) {
+      console.error('Auth init error:', error);
+    }
 
     // Set up event listeners
     this.setupEventListeners();
+
+    // Set up back button after auth (URL hash is now cleaned)
+    this.setupBackButtonHandler();
 
     this.showLoading(false);
   }
@@ -98,7 +111,6 @@ class CadenceApp {
           // Unsubscribe from real-time updates with timeout
           if (this.songUpdatesSubscription) {
             try {
-              // Add timeout to prevent hanging on unsubscribe
               await Promise.race([
                 this.songUpdatesSubscription.unsubscribe(),
                 new Promise((resolve) => setTimeout(resolve, 1000))
@@ -109,14 +121,12 @@ class CadenceApp {
           }
 
           await auth.signOut();
-          // Force reload to clear all state and show login screen
-          // This ensures logout works even if auth state change listener doesn't fire
-          window.location.reload();
         } catch (error) {
           console.error('Error during sign out:', error);
-          // Still reload on error to ensure user sees login screen
-          window.location.reload();
         }
+        // Always reset app state and show login screen directly
+        this.resetAppState();
+        this.showLoginScreen();
       });
     }
 
@@ -170,6 +180,9 @@ class CadenceApp {
 
     // Rate resources modal
     this.setupRateResourcesModal();
+
+    // Student resources and tutorials modals
+    this.setupResourceModals();
 
     // Export
     const exportBtn = document.getElementById('export-progress-btn');
@@ -359,9 +372,48 @@ class CadenceApp {
 
     // Setup admin forms
     this.setupAdminForms();
+
+    // Account Management: Create teacher button
+    const createTeacherBtn = document.getElementById('create-teacher-btn');
+    if (createTeacherBtn) {
+      createTeacherBtn.addEventListener('click', () => this.showCreateTeacherModal());
+    }
+
+    // Account Management: Create teacher form
+    const createTeacherForm = document.getElementById('create-teacher-form');
+    if (createTeacherForm) {
+      createTeacherForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.createTeacherAccount();
+      });
+    }
+
+    // Account Management: Delete account confirmation
+    const confirmDeleteBtn = document.getElementById('confirm-delete-account-btn');
+    if (confirmDeleteBtn) {
+      confirmDeleteBtn.addEventListener('click', () => this.deleteUserAccount());
+    }
+
+    // Account Management: Search and filter
+    const accountsSearch = document.getElementById('accounts-search');
+    if (accountsSearch) {
+      accountsSearch.addEventListener('input', () => this.renderAccountsList());
+    }
+
+    const accountsRoleFilter = document.getElementById('accounts-role-filter');
+    if (accountsRoleFilter) {
+      accountsRoleFilter.addEventListener('change', () => this.renderAccountsList());
+    }
   }
 
   async onUserSignedIn(user) {
+    // Prevent concurrent initialization (Supabase can fire SIGNED_IN twice)
+    if (this.initializing) {
+      return;
+    }
+    this.initializing = true;
+
+    try {
     // Load user data
     await this.loadInstruments();
     await this.loadStudentProgress();
@@ -408,9 +460,14 @@ class CadenceApp {
       document.getElementById('join-class-toggle-btn')?.classList.add('hidden');
       document.getElementById('export-progress-btn')?.classList.add('hidden');
 
-      // Show admin tabs only (not teacher tabs)
+      // Show admin tabs (includes Classes tab for managing all teachers' classes)
       document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('hidden'));
+
+      // Hide teacher-only controls that don't apply to admins
+      document.getElementById('create-class-btn')?.classList.add('hidden');
+
       await this.loadAdminData();
+      await this.loadClasses();
 
       // Switch to admin view as default for admins
       this.switchView('admin');
@@ -429,6 +486,9 @@ class CadenceApp {
         this.renderPathway();
         this.updateInstrumentDropdown();
       }
+    }
+    } finally {
+      this.initializing = false;
     }
   }
 
@@ -461,17 +521,24 @@ class CadenceApp {
     // Use student ID if in preview mode, otherwise use current user
     const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
-    const { data, error } = await supabase
-      .from('student_progress')
-      .select('*')
-      .eq('user_id', userId);
+    // Retry once on failure - a transient error here causes the app to think
+    // the student has no instruments, skipping all song loading
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const { data, error } = await supabase
+        .from('student_progress')
+        .select('*')
+        .eq('user_id', userId);
 
-    if (error) {
-      console.error('Error loading progress:', error);
-      return;
+      if (!error) {
+        this.studentProgress = data || [];
+        return;
+      }
+
+      console.error(`Error loading progress (attempt ${attempt + 1}):`, error);
+      if (attempt === 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
     }
-
-    this.studentProgress = data || [];
   }
 
   async loadLevels(instrumentId) {
@@ -491,11 +558,16 @@ class CadenceApp {
   }
 
   async loadSongs() {
-    // Prevent concurrent calls
+    // Prevent concurrent calls, but allow retry if stuck for >30s
     if (this.loadingSongs) {
-      return;
+      if (this.loadingSongsStarted && Date.now() - this.loadingSongsStarted > 30000) {
+        console.warn('loadSongs appears stuck, allowing retry');
+      } else {
+        return;
+      }
     }
     this.loadingSongs = true;
+    this.loadingSongsStarted = Date.now();
 
     try {
       const { data, error } = await supabase
@@ -513,7 +585,6 @@ class CadenceApp {
 
       if (error) {
         console.error('Error loading songs:', error);
-        this.loadingSongs = false;
         return;
       }
 
@@ -539,10 +610,39 @@ class CadenceApp {
       });
     }
 
-    // Attach resource ratings to songs
+    // Load resource counts (tutorials + student resources)
+    const { data: tutorialCounts } = await supabase
+      .from('song_tutorials')
+      .select('song_id')
+      .eq('status', 'approved');
+
+    const { data: resourceCounts } = await supabase
+      .from('student_resources')
+      .select('song_id')
+      .eq('status', 'approved');
+
+    // Create count maps
+    const tutorialCountMap = {};
+    const resourceCountMap = {};
+
+    if (tutorialCounts) {
+      tutorialCounts.forEach(t => {
+        tutorialCountMap[t.song_id] = (tutorialCountMap[t.song_id] || 0) + 1;
+      });
+    }
+
+    if (resourceCounts) {
+      resourceCounts.forEach(r => {
+        resourceCountMap[r.song_id] = (resourceCountMap[r.song_id] || 0) + 1;
+      });
+    }
+
+    // Attach resource ratings and counts to songs
     this.songs = (data || []).map(song => ({
       ...song,
-      resource_ratings: ratingsMap[song.id] || { chords: [], tutorial: [] }
+      resource_ratings: ratingsMap[song.id] || { chords: [], tutorial: [] },
+      tutorial_count: tutorialCountMap[song.id] || 0,
+      resource_count: resourceCountMap[song.id] || 0
     }));
 
     // Remove duplicate songs if any
@@ -1060,7 +1160,12 @@ class CadenceApp {
   // VIEW NAVIGATION: Tab Switching & UI State
   // ============================================
 
-  switchView(viewName) {
+  switchView(viewName, { addToHistory = true } = {}) {
+    // Push a browser history entry so the back button can return here
+    if (addToHistory && this.currentView && this.currentView !== viewName) {
+      history.pushState({ cadenceView: viewName }, '', window.location.pathname + window.location.search);
+    }
+
     // Update nav tabs
     document.querySelectorAll('.nav-tab').forEach(tab => {
       tab.classList.toggle('active', tab.dataset.view === viewName);
@@ -1098,6 +1203,8 @@ class CadenceApp {
         if (this.classes.length > 0) {
           this.loadFlaggedRatings();
         }
+      } else if (viewName === 'accounts') {
+        this.loadAccountsData();
       } else if (viewName === 'admin') {
         // Load admin data
         this.renderAdminStats(this.adminStats || {students: 0, teachers: 0, songs: 0, classes: 0});
@@ -1342,9 +1449,8 @@ class CadenceApp {
     // Get current instrument name for search queries
     const instrumentName = this.instruments.find(i => i.id === this.currentInstrument)?.name || '';
 
-    // Get resource ratings
+    // Get resource ratings for chords
     const chordsRating = this.formatResourceRating(song.resource_ratings?.chords);
-    const tutorialRating = this.formatResourceRating(song.resource_ratings?.tutorial);
 
     // Check user role - show "Start Learning" button for students or in preview mode
     const user = auth.getCurrentUser();
@@ -1393,15 +1499,9 @@ class CadenceApp {
           ` : `
             <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add chords link">+ Chords</button>
           `}
-          ${song.tutorial_url ? `
-            <div class="resource-link-group">
-              <a href="${song.tutorial_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">Tutorial</a>
-              ${tutorialRating}
-              <button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'tutorial_url', '${song.tutorial_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit tutorial link">✎</button>
-            </div>
-          ` : `
-            <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'tutorial_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add tutorial link">+ Tutorial</button>
-          `}
+          <button class="btn btn-secondary btn-resources ${(song.tutorial_count + song.resource_count) > 0 ? 'has-resources' : ''}" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}')" title="View tutorials & student resources">
+            Resources${(song.tutorial_count + song.resource_count) > 0 ? ` <span class="resource-count">${song.tutorial_count + song.resource_count}</span>` : ''}
+          </button>
           ${song.youtube_url ? `
             <div class="resource-link-group">
               <a href="${song.youtube_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">YouTube</a>
@@ -2985,6 +3085,35 @@ class CadenceApp {
     document.getElementById('loading-screen').classList.toggle('hidden', !show);
   }
 
+  resetAppState() {
+    this.currentInstrument = null;
+    this.instruments = [];
+    this.levels = [];
+    this.songs = [];
+    this.studentProgress = [];
+    this.studentSongs = [];
+    this.currentView = 'pathway';
+    this.classes = [];
+    this.currentClass = null;
+    this.classStudents = [];
+    this.submissions = [];
+    this.flaggedRatings = [];
+    this.loadingSongs = false;
+    this.initializing = false;
+    this.previewMode = {
+      active: false,
+      studentId: null,
+      studentName: null,
+      originalUser: null,
+      originalView: null,
+      originalStudentProgress: null,
+      originalInstruments: null,
+      originalCurrentInstrument: null,
+      originalStudentSongs: null,
+      originalLevels: null
+    };
+  }
+
   showLoginScreen() {
     document.getElementById('login-screen').classList.remove('hidden');
     document.getElementById('role-selection-screen').classList.add('hidden');
@@ -3557,7 +3686,8 @@ class CadenceApp {
       filteredClasses = filteredClasses.filter(cls =>
         cls.name.toLowerCase().includes(searchTerm) ||
         cls.class_code.toLowerCase().includes(searchTerm) ||
-        (cls.year_level && cls.year_level.toLowerCase().includes(searchTerm))
+        (cls.year_level && cls.year_level.toLowerCase().includes(searchTerm)) ||
+        (cls.teacher_name && cls.teacher_name.toLowerCase().includes(searchTerm))
       );
     }
 
@@ -3569,12 +3699,13 @@ class CadenceApp {
     if (!container) return;
 
     const classes = classesToRender || this.classes;
+    const isAdmin = auth.getCurrentUser()?.role === 'admin';
 
     if (this.classes.length === 0) {
       container.innerHTML = `
         <div style="text-align: center; padding: 4rem; color: var(--text-secondary);">
           <p style="font-size: 1.125rem; margin-bottom: 1rem;">No classes yet</p>
-          <p>Create your first class to get started</p>
+          <p>${isAdmin ? 'No classes have been created by any teachers' : 'Create your first class to get started'}</p>
         </div>
       `;
       return;
@@ -3598,6 +3729,7 @@ class CadenceApp {
     const html = sortedClasses.map(cls => {
       const memberCount = cls.student_count || 0;
       const isArchived = cls.archived;
+      const teacherLabel = isAdmin && cls.teacher_name ? `<p style="color: var(--text-secondary); font-size: 0.8125rem;">Teacher: ${cls.teacher_name}</p>` : '';
 
       if (isArchived) {
         // Archived class card with unarchive button
@@ -3607,6 +3739,7 @@ class CadenceApp {
               <div>
                 <h3>${cls.name} <span style="background-color: var(--text-secondary); color: white; padding: 0.125rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: normal;">ARCHIVED</span></h3>
                 ${cls.year_level ? `<p style="color: var(--text-secondary); font-size: 0.875rem;">${cls.year_level}</p>` : ''}
+                ${teacherLabel}
               </div>
               <span class="class-code-badge">${cls.class_code}</span>
             </div>
@@ -3627,6 +3760,7 @@ class CadenceApp {
               <div>
                 <h3>${cls.name}</h3>
                 ${cls.year_level ? `<p style="color: var(--text-secondary); font-size: 0.875rem;">${cls.year_level}</p>` : ''}
+                ${teacherLabel}
               </div>
               <span class="class-code-badge">${cls.class_code}</span>
             </div>
@@ -3666,12 +3800,23 @@ class CadenceApp {
     document.getElementById('class-detail-view').classList.remove('hidden');
 
     // Update header
+    const currentUser = auth.getCurrentUser();
+    const isAdmin = currentUser?.role === 'admin';
+    const isOwnClass = this.currentClass.teacher_id === currentUser?.id;
+
     document.getElementById('class-detail-name').textContent = this.currentClass.name;
     const yearLevelEl = document.getElementById('class-detail-year-level');
     if (yearLevelEl) {
-      yearLevelEl.textContent = this.currentClass.year_level || '';
+      const teacherInfo = isAdmin && this.currentClass.teacher_name ? ` — Teacher: ${this.currentClass.teacher_name}` : '';
+      yearLevelEl.textContent = (this.currentClass.year_level || '') + teacherInfo;
     }
     document.getElementById('class-detail-code').textContent = this.currentClass.class_code;
+
+    // Show/hide class management buttons based on ownership
+    // Admins can bulk add to any class but shouldn't edit/archive other teachers' classes
+    document.getElementById('edit-class-btn')?.classList.toggle('hidden', isAdmin && !isOwnClass);
+    document.getElementById('archive-class-btn')?.classList.toggle('hidden', isAdmin && !isOwnClass);
+    document.getElementById('export-class-data-btn')?.classList.toggle('hidden', isAdmin && !isOwnClass);
 
     // Load class data
     await this.loadClassStudents();
@@ -4442,9 +4587,42 @@ class CadenceApp {
       .eq('status', 'pending')
       .order('submitted_at', { ascending: false });
 
+    // Load pending tutorials for teacher approval
+    const { data: pendingTutorials } = await supabase
+      .from('song_tutorials')
+      .select(`
+        id,
+        song_id,
+        url,
+        title,
+        created_at,
+        submitted_by_user_id,
+        songs!inner (title, artist)
+      `)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    // Load pending student resources for teacher approval
+    const { data: pendingResources } = await supabase
+      .from('student_resources')
+      .select(`
+        id,
+        song_id,
+        title,
+        file_url,
+        file_type,
+        created_at,
+        user_id,
+        songs!inner (title, artist)
+      `)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
     this.flaggedRatings = flagged;
     this.newRatings = newRatings;
     this.pendingLinks = pendingLinks || [];
+    this.pendingTutorials = pendingTutorials || [];
+    this.pendingResources = pendingResources || [];
     this.populateFlaggedFilters();
     this.filterFlaggedRatings();
   }
@@ -4525,7 +4703,7 @@ class CadenceApp {
     if (!container) return;
 
     // Update notification badge - count all items needing review
-    const totalCount = flaggedSongs.length + (this.newRatings?.length || 0) + (this.pendingLinks?.length || 0);
+    const totalCount = flaggedSongs.length + (this.newRatings?.length || 0) + (this.pendingLinks?.length || 0) + (this.pendingTutorials?.length || 0) + (this.pendingResources?.length || 0);
     const badge = document.getElementById('flagged-count-badge');
     if (badge) {
       if (totalCount > 0) {
@@ -4575,6 +4753,91 @@ class CadenceApp {
                   </button>
                   <button class="btn btn-secondary" onclick="app.rejectPendingLink('${link.id}')" style="margin-left: 0.5rem;">
                     <span style="margin-right: 0.5rem;">✗</span> Reject
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    // Build HTML for pending tutorials section
+    let pendingTutorialsHtml = '';
+    if (this.pendingTutorials && this.pendingTutorials.length > 0) {
+      pendingTutorialsHtml = `
+        <div style="margin-bottom: 2rem;">
+          <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Pending Tutorial Approvals (${this.pendingTutorials.length})</h3>
+          ${this.pendingTutorials.map(tutorial => {
+            const submittedDate = new Date(tutorial.created_at).toLocaleDateString();
+
+            return `
+              <div class="flagged-card" style="border-left: 4px solid #9c27b0;">
+                <div class="flagged-header">
+                  <div>
+                    <div class="flagged-song-title">${tutorial.songs.title}</div>
+                    <div class="flagged-song-meta">${tutorial.songs.artist} • Tutorial Video</div>
+                  </div>
+                  <div style="text-align: right; font-size: 0.875rem; color: var(--text-secondary);">
+                    <div>${submittedDate}</div>
+                  </div>
+                </div>
+                <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 4px; margin: 1rem 0;">
+                  ${tutorial.title ? `<div style="font-weight: 500; margin-bottom: 0.5rem; color: var(--text-primary);">${tutorial.title}</div>` : ''}
+                  <a href="${tutorial.url}" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color); word-break: break-all;">${tutorial.url}</a>
+                </div>
+                <div class="flagged-resolve">
+                  <button class="btn btn-primary" onclick="app.approvePendingTutorial('${tutorial.id}', '${tutorial.song_id}')">
+                    <span style="margin-right: 0.5rem;">✓</span> Approve
+                  </button>
+                  <button class="btn btn-danger" onclick="app.deletePendingTutorial('${tutorial.id}')" style="margin-left: 0.5rem;">
+                    <span style="margin-right: 0.5rem;">✗</span> Delete
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    // Build HTML for pending student resources section
+    let pendingResourcesHtml = '';
+    if (this.pendingResources && this.pendingResources.length > 0) {
+      const fileTypeLabels = {
+        'image': 'Image',
+        'pdf': 'PDF Document',
+        'link': 'External Link'
+      };
+
+      pendingResourcesHtml = `
+        <div style="margin-bottom: 2rem;">
+          <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Pending Student Resource Approvals (${this.pendingResources.length})</h3>
+          ${this.pendingResources.map(resource => {
+            const submittedDate = new Date(resource.created_at).toLocaleDateString();
+            const typeLabel = fileTypeLabels[resource.file_type] || resource.file_type;
+
+            return `
+              <div class="flagged-card" style="border-left: 4px solid #ff9800;">
+                <div class="flagged-header">
+                  <div>
+                    <div class="flagged-song-title">${resource.songs.title}</div>
+                    <div class="flagged-song-meta">${resource.songs.artist} • ${typeLabel}</div>
+                  </div>
+                  <div style="text-align: right; font-size: 0.875rem; color: var(--text-secondary);">
+                    <div>${submittedDate}</div>
+                  </div>
+                </div>
+                <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 4px; margin: 1rem 0;">
+                  <div style="font-weight: 500; margin-bottom: 0.5rem; color: var(--text-primary);">${resource.title}</div>
+                  <a href="${resource.file_url}" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color); word-break: break-all;">${resource.file_url}</a>
+                </div>
+                <div class="flagged-resolve">
+                  <button class="btn btn-primary" onclick="app.approvePendingResource('${resource.id}', '${resource.song_id}')">
+                    <span style="margin-right: 0.5rem;">✓</span> Approve
+                  </button>
+                  <button class="btn btn-danger" onclick="app.deletePendingResource('${resource.id}')" style="margin-left: 0.5rem;">
+                    <span style="margin-right: 0.5rem;">✗</span> Delete
                   </button>
                 </div>
               </div>
@@ -4677,8 +4940,8 @@ class CadenceApp {
     }
 
     // Combine all sections
-    if (pendingLinksHtml || newRatingsHtml || flaggedRatingsHtml) {
-      container.innerHTML = pendingLinksHtml + newRatingsHtml + flaggedRatingsHtml;
+    if (pendingLinksHtml || pendingTutorialsHtml || pendingResourcesHtml || newRatingsHtml || flaggedRatingsHtml) {
+      container.innerHTML = pendingLinksHtml + pendingTutorialsHtml + pendingResourcesHtml + newRatingsHtml + flaggedRatingsHtml;
     } else {
       container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No items need review</p>';
     }
@@ -4821,6 +5084,80 @@ class CadenceApp {
     } catch (error) {
       console.error('Exception in rejectPendingLink:', error);
       this.showToast('Failed to reject link', 'error');
+    }
+  }
+
+  async approvePendingTutorial(tutorialId, songId) {
+    try {
+      await this.rawUpdate('song_tutorials', tutorialId, {
+        status: 'approved',
+        reviewed_by_user_id: auth.getCurrentUser().id,
+        reviewed_at: new Date().toISOString()
+      });
+
+      // Update local song count
+      const song = this.songs.find(s => s.id === songId);
+      if (song) {
+        song.tutorial_count = (song.tutorial_count || 0) + 1;
+      }
+
+      this.showToast('Tutorial approved', 'success');
+      await this.loadFlaggedRatings();
+      await this.loadSongs();
+      if (this.currentView === 'songs') {
+        this.filterSongs();
+      }
+    } catch (error) {
+      console.error('Error approving tutorial:', error);
+      this.showToast('Failed to approve tutorial', 'error');
+    }
+  }
+
+  async deletePendingTutorial(tutorialId) {
+    try {
+      await this.rawDelete('song_tutorials', tutorialId);
+      this.showToast('Tutorial deleted', 'success');
+      await this.loadFlaggedRatings();
+    } catch (error) {
+      console.error('Error deleting tutorial:', error);
+      this.showToast('Failed to delete tutorial', 'error');
+    }
+  }
+
+  async approvePendingResource(resourceId, songId) {
+    try {
+      await this.rawUpdate('student_resources', resourceId, {
+        status: 'approved',
+        reviewed_by_user_id: auth.getCurrentUser().id,
+        reviewed_at: new Date().toISOString()
+      });
+
+      // Update local song count
+      const song = this.songs.find(s => s.id === songId);
+      if (song) {
+        song.resource_count = (song.resource_count || 0) + 1;
+      }
+
+      this.showToast('Resource approved', 'success');
+      await this.loadFlaggedRatings();
+      await this.loadSongs();
+      if (this.currentView === 'songs') {
+        this.filterSongs();
+      }
+    } catch (error) {
+      console.error('Error approving resource:', error);
+      this.showToast('Failed to approve resource', 'error');
+    }
+  }
+
+  async deletePendingResource(resourceId) {
+    try {
+      await this.rawDelete('student_resources', resourceId);
+      this.showToast('Resource deleted', 'success');
+      await this.loadFlaggedRatings();
+    } catch (error) {
+      console.error('Error deleting resource:', error);
+      this.showToast('Failed to delete resource', 'error');
     }
   }
 
@@ -5698,6 +6035,239 @@ class CadenceApp {
     }
   }
 
+  // ============================================
+  // ACCOUNT MANAGEMENT (Teachers & Admins)
+  // ============================================
+
+  async loadAccountsData() {
+    await Promise.all([
+      this.loadManageableUsers(),
+      this.loadPendingTeacherAccounts()
+    ]);
+  }
+
+  async loadManageableUsers() {
+    const { data, error } = await supabase.rpc('get_manageable_users');
+
+    if (error) {
+      console.error('Error loading manageable users:', error);
+      this.manageableUsers = [];
+      return;
+    }
+
+    this.manageableUsers = data || [];
+    this.renderAccountsList();
+  }
+
+  async loadPendingTeacherAccounts() {
+    const { data, error } = await supabase
+      .from('pre_registered_accounts')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error loading pending accounts:', error);
+      this.pendingTeacherAccounts = [];
+      return;
+    }
+
+    this.pendingTeacherAccounts = data || [];
+    this.renderPendingAccounts();
+  }
+
+  renderPendingAccounts() {
+    const container = document.getElementById('pending-accounts-list');
+    if (!container) return;
+
+    const section = document.getElementById('pending-accounts-section');
+
+    if (!this.pendingTeacherAccounts || this.pendingTeacherAccounts.length === 0) {
+      if (section) section.classList.add('hidden');
+      return;
+    }
+
+    if (section) section.classList.remove('hidden');
+
+    const html = this.pendingTeacherAccounts.map(account => `
+      <div class="account-card">
+        <div class="account-info">
+          <div class="account-name">${account.name || 'Not specified'}</div>
+          <div class="account-email">${account.email}</div>
+        </div>
+        <div class="account-meta">
+          <span class="user-role-badge teacher">Teacher (Pending)</span>
+          <button class="btn btn-text btn-sm" style="color: var(--error-color);" onclick="app.removePendingTeacherAccount('${account.id}')">Remove</button>
+        </div>
+      </div>
+    `).join('');
+
+    container.innerHTML = html;
+  }
+
+  renderAccountsList() {
+    const container = document.getElementById('accounts-list');
+    if (!container) return;
+
+    let users = this.manageableUsers || [];
+    const currentUserRole = auth.getCurrentUser()?.role;
+
+    // Apply search filter
+    const searchTerm = document.getElementById('accounts-search')?.value?.toLowerCase();
+    if (searchTerm) {
+      users = users.filter(u =>
+        u.name.toLowerCase().includes(searchTerm) ||
+        u.email.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    // Apply role filter
+    const roleFilter = document.getElementById('accounts-role-filter')?.value;
+    if (roleFilter) {
+      users = users.filter(u => u.role === roleFilter);
+    }
+
+    // Update title based on role
+    const title = document.getElementById('accounts-list-title');
+    if (title) {
+      title.textContent = currentUserRole === 'admin' ? 'All Accounts' : 'Student Accounts';
+    }
+
+    // Show/hide role filter based on whether there are multiple roles
+    const roleFilterEl = document.getElementById('accounts-role-filter');
+    if (roleFilterEl) {
+      roleFilterEl.classList.toggle('hidden', currentUserRole !== 'admin');
+    }
+
+    if (users.length === 0) {
+      container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No accounts found</p>';
+      return;
+    }
+
+    const html = users.map(user => {
+      // Determine if current user can delete this account
+      const canDelete = (user.role === 'student' && (currentUserRole === 'teacher' || currentUserRole === 'admin'))
+        || (user.role === 'teacher' && currentUserRole === 'admin');
+
+      return `
+        <div class="account-card">
+          <div class="account-info">
+            <div class="account-name">${user.name}</div>
+            <div class="account-email">${user.email}</div>
+          </div>
+          <div class="account-meta">
+            <span class="user-role-badge ${user.role}">${user.role.charAt(0).toUpperCase() + user.role.slice(1)}</span>
+            ${canDelete ? `<button class="btn btn-danger btn-sm" onclick="app.confirmDeleteAccount('${user.id}', '${user.name.replace(/'/g, "\\'")}', '${user.role}')">Delete</button>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+  }
+
+  showCreateTeacherModal() {
+    document.getElementById('new-teacher-email').value = '';
+    document.getElementById('new-teacher-name').value = '';
+    document.getElementById('create-teacher-modal').classList.remove('hidden');
+  }
+
+  async createTeacherAccount() {
+    const email = document.getElementById('new-teacher-email').value.trim().toLowerCase();
+    const name = document.getElementById('new-teacher-name').value.trim();
+
+    if (!email) {
+      this.showToast('Please enter an email address', 'error');
+      return;
+    }
+
+    // Check if user already exists
+    const existingUser = this.manageableUsers?.find(u => u.email.toLowerCase() === email);
+    if (existingUser) {
+      this.showToast('A user with this email already exists', 'error');
+      return;
+    }
+
+    // Check if already pre-registered
+    const existingPending = this.pendingTeacherAccounts?.find(a => a.email.toLowerCase() === email);
+    if (existingPending) {
+      this.showToast('This email has already been pre-registered', 'error');
+      return;
+    }
+
+    const { error } = await supabase
+      .from('pre_registered_accounts')
+      .insert([{
+        email: email,
+        role: 'teacher',
+        name: name || null,
+        created_by: auth.getCurrentUser().id
+      }]);
+
+    if (error) {
+      console.error('Error creating teacher account:', error);
+      if (error.code === '23505') {
+        this.showToast('This email has already been pre-registered', 'error');
+      } else {
+        this.showToast('Failed to create teacher account', 'error');
+      }
+      return;
+    }
+
+    document.getElementById('create-teacher-modal').classList.add('hidden');
+    this.showToast('Teacher account created. They will be assigned the teacher role when they sign in.', 'success');
+    await this.loadPendingTeacherAccounts();
+  }
+
+  async removePendingTeacherAccount(accountId) {
+    const { error } = await supabase
+      .from('pre_registered_accounts')
+      .delete()
+      .eq('id', accountId);
+
+    if (error) {
+      console.error('Error removing pending account:', error);
+      this.showToast('Failed to remove pending account', 'error');
+      return;
+    }
+
+    this.showToast('Pending account removed', 'success');
+    await this.loadPendingTeacherAccounts();
+  }
+
+  confirmDeleteAccount(userId, userName, userRole) {
+    document.getElementById('delete-account-id').value = userId;
+    document.getElementById('delete-account-info').innerHTML =
+      `<strong>${userName}</strong> (${userRole.charAt(0).toUpperCase() + userRole.slice(1)})`;
+    document.getElementById('delete-account-modal').classList.remove('hidden');
+  }
+
+  async deleteUserAccount() {
+    const userId = document.getElementById('delete-account-id').value;
+
+    if (!userId) {
+      this.showToast('No user selected', 'error');
+      return;
+    }
+
+    const { data, error } = await supabase.rpc('delete_user_account', {
+      p_user_id: userId
+    });
+
+    if (error) {
+      console.error('Error deleting user account:', error);
+      this.showToast('Failed to delete account', 'error');
+      return;
+    }
+
+    if (data && data.success) {
+      document.getElementById('delete-account-modal').classList.add('hidden');
+      this.showToast(`Account for ${data.name} deleted successfully`, 'success');
+      await this.loadManageableUsers();
+    } else {
+      this.showToast(data?.message || 'Failed to delete account', 'error');
+    }
+  }
+
   async approveSong(approved) {
     const { error } = await supabase
       .from('songs')
@@ -5734,6 +6304,607 @@ class CadenceApp {
     document.getElementById('admin-song-modal').classList.add('hidden');
     this.showToast('Song deleted successfully', 'success');
     await this.loadContentModeration();
+  }
+
+  // ============================================
+  // STUDENT RESOURCES & MULTIPLE TUTORIALS
+  // ============================================
+
+  setupResourceModals() {
+    // Add Resource form
+    const addResourceForm = document.getElementById('add-resource-form');
+    if (addResourceForm) {
+      addResourceForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.submitStudentResource();
+      });
+    }
+
+    // Add Tutorial form - using inline onsubmit handler in HTML instead
+  }
+
+  async showSongResourcesModal(songId) {
+    const song = this.songs.find(s => s.id === songId);
+    if (!song) {
+      console.error('Song not found:', songId);
+      return;
+    }
+
+    // Store current song for adding resources
+    this.currentResourceSong = song;
+
+    // Update modal info
+    document.getElementById('song-resources-title').textContent = `Resources for ${song.title}`;
+    document.getElementById('song-resources-info').textContent = `${song.title} - ${song.artist}`;
+
+    // Load tutorials and resources
+    await Promise.all([
+      this.loadSongTutorials(songId),
+      this.loadStudentResources(songId)
+    ]);
+
+    // Show modal
+    document.getElementById('song-resources-modal').classList.remove('hidden');
+  }
+
+  async loadSongTutorials(songId) {
+    const container = document.getElementById('song-tutorials-list');
+    container.innerHTML = '<p style="color: var(--text-secondary);">Loading tutorials...</p>';
+
+    try {
+      const isTeacher = auth.hasRole('teacher') || auth.hasRole('admin');
+
+      // Use raw fetch to avoid Supabase JS client issues after inserts
+      // RLS policy already filters: students see approved tutorials or their own submissions
+      // Teachers see all tutorials
+      const { data, error } = await this.rawSelect(
+        'song_tutorials',
+        `select=id,url,title,status,submitted_by_user_id,created_at&song_id=eq.${songId}&order=created_at.asc`
+      );
+
+      if (error) {
+        console.error('Error loading tutorials:', error);
+        container.innerHTML = '<p class="empty-resources">Failed to load tutorials</p>';
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        container.innerHTML = '<p class="empty-resources">No tutorial videos yet. Be the first to add one!</p>';
+        return;
+      }
+
+      container.innerHTML = data.map(tutorial => {
+        const statusBadge = tutorial.status === 'pending'
+          ? '<span class="resource-badge pending">Pending Approval</span>'
+          : '';
+
+        const approveButton = isTeacher && tutorial.status === 'pending'
+          ? `<button class="btn btn-sm btn-primary" onclick="app.approveTutorial('${tutorial.id}')">Approve</button>`
+          : '';
+
+        const deleteButton = isTeacher
+          ? `<button class="btn btn-sm btn-danger" onclick="app.deleteTutorial('${tutorial.id}')" title="Delete tutorial">Delete</button>`
+          : '';
+
+        return `
+          <div class="tutorial-item ${tutorial.status === 'pending' ? 'pending' : ''}">
+            <span class="tutorial-icon">🎬</span>
+            <div class="tutorial-content">
+              <div class="tutorial-title">
+                <a href="${tutorial.url}" target="_blank">${tutorial.title || 'Tutorial Video'}</a>
+                ${statusBadge}
+              </div>
+              <div class="tutorial-meta">Shared by a student</div>
+            </div>
+            <div class="resource-actions">
+              ${approveButton}
+              ${deleteButton}
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (error) {
+      console.error('Error loading tutorials:', error);
+      container.innerHTML = '<p class="empty-resources">An error occurred</p>';
+    }
+  }
+
+  async loadStudentResources(songId) {
+    const container = document.getElementById('student-resources-list');
+    container.innerHTML = '<p style="color: var(--text-secondary);">Loading resources...</p>';
+
+    try {
+      const isTeacher = auth.hasRole('teacher') || auth.hasRole('admin');
+
+      // Use raw fetch to avoid Supabase JS client issues after inserts
+      // RLS policy already filters: students see approved resources or their own submissions
+      // Teachers see all resources
+      const { data, error } = await this.rawSelect(
+        'student_resources',
+        `select=id,title,description,file_url,file_type,status,user_id,created_at&song_id=eq.${songId}&order=created_at.desc`
+      );
+
+      if (error) {
+        console.error('Error loading resources:', error);
+        container.innerHTML = '<p class="empty-resources">Failed to load resources</p>';
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        container.innerHTML = '<p class="empty-resources">No student resources shared yet. Share your drawings, notes, or helpful links!</p>';
+        return;
+      }
+
+      container.innerHTML = data.map(resource => {
+        const icon = resource.file_type === 'image' ? '🖼️'
+          : resource.file_type === 'pdf' ? '📄'
+          : '🔗';
+
+        const statusBadge = resource.status === 'pending'
+          ? '<span class="resource-badge pending">Pending Approval</span>'
+          : '';
+
+        const approveButton = isTeacher && resource.status === 'pending'
+          ? `<button class="btn btn-sm btn-primary" onclick="app.approveResource('${resource.id}')">Approve</button>`
+          : '';
+
+        const deleteButton = isTeacher
+          ? `<button class="btn btn-sm btn-danger" onclick="app.deleteResource('${resource.id}')" title="Delete resource">Delete</button>`
+          : '';
+
+        return `
+          <div class="resource-item ${resource.status === 'pending' ? 'pending' : ''}">
+            <div class="resource-icon">${icon}</div>
+            <div class="resource-content">
+              <div class="resource-title">
+                <a href="${resource.file_url}" target="_blank">${resource.title}</a>
+                ${statusBadge}
+              </div>
+              ${resource.description ? `<div class="resource-description">${resource.description}</div>` : ''}
+              <div class="resource-meta">Shared by a student</div>
+            </div>
+            <div class="resource-actions">
+              ${approveButton}
+              ${deleteButton}
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (error) {
+      console.error('Error loading resources:', error);
+      container.innerHTML = '<p class="empty-resources">An error occurred</p>';
+    }
+  }
+
+  showAddResourceModal() {
+    if (!this.currentResourceSong) {
+      this.showToast('Please select a song first', 'error');
+      return;
+    }
+
+    document.getElementById('add-resource-song-info').textContent =
+      `${this.currentResourceSong.title} - ${this.currentResourceSong.artist}`;
+
+    // Show pending notice for students
+    const isStudent = auth.hasRole('student');
+    const pendingNotice = document.getElementById('resource-pending-notice');
+    if (pendingNotice) {
+      if (isStudent) {
+        pendingNotice.classList.remove('hidden');
+      } else {
+        pendingNotice.classList.add('hidden');
+      }
+    }
+
+    // Reset form
+    document.getElementById('add-resource-form').reset();
+
+    document.getElementById('add-resource-modal').classList.remove('hidden');
+  }
+
+  showAddTutorialModal() {
+    if (!this.currentResourceSong) {
+      this.showToast('Please select a song first', 'error');
+      return;
+    }
+
+    document.getElementById('add-tutorial-song-info').textContent =
+      `${this.currentResourceSong.title} - ${this.currentResourceSong.artist}`;
+
+    // Show pending notice for students
+    const isStudent = auth.hasRole('student');
+    const pendingNotice = document.getElementById('tutorial-pending-notice');
+    if (pendingNotice) {
+      if (isStudent) {
+        pendingNotice.classList.remove('hidden');
+      } else {
+        pendingNotice.classList.add('hidden');
+      }
+    }
+
+    // Reset form
+    document.getElementById('add-tutorial-form').reset();
+
+    // Open search to help user find tutorials
+    const instrumentName = this.instruments.find(i => i.id === this.currentInstrument)?.name || '';
+    const searchQuery = instrumentName
+      ? `${this.currentResourceSong.title} ${instrumentName} tutorial`
+      : `${this.currentResourceSong.title} tutorial`;
+    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
+    window.open(searchUrl, '_blank');
+
+    document.getElementById('add-tutorial-modal').classList.remove('hidden');
+  }
+
+  async submitStudentResource() {
+    // Prevent double submission
+    if (this.isSubmittingResource) return;
+    this.isSubmittingResource = true;
+
+    try {
+      const title = document.getElementById('resource-title').value.trim();
+      const url = document.getElementById('resource-link').value.trim();
+      const description = document.getElementById('resource-description').value.trim();
+      const fileInput = document.getElementById('resource-file');
+      const file = fileInput?.files[0];
+      const isStudent = auth.hasRole('student');
+
+      let fileUrl = '';
+      let fileType = 'link';
+
+      // Check if we have a file or URL
+      if (file) {
+        // Check file size (5MB limit)
+        if (file.size > 5 * 1024 * 1024) {
+          this.showToast('File size must be under 5MB', 'error');
+          return;
+        }
+
+        // Determine file type
+        fileType = file.type.startsWith('image/') ? 'image' : 'pdf';
+
+        // Upload to Supabase storage
+        const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const filePath = `${this.currentResourceSong.id}/${fileName}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('student-resources')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          this.showToast('Failed to upload file. Please try again.', 'error');
+          return;
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('student-resources')
+          .getPublicUrl(filePath);
+
+        fileUrl = urlData.publicUrl;
+      } else if (url) {
+        fileUrl = url;
+        fileType = 'link';
+      } else {
+        this.showToast('Please provide a URL or upload a file', 'error');
+        return;
+      }
+
+      // Insert resource record using raw fetch (workaround for Supabase JS client bug)
+      await this.rawInsert('student_resources', {
+        song_id: this.currentResourceSong.id,
+        user_id: auth.getCurrentUser().id,
+        title: title,
+        description: description || null,
+        file_url: fileUrl,
+        file_type: fileType,
+        status: isStudent ? 'pending' : 'approved'
+      });
+
+      // Close modal and refresh
+      document.getElementById('add-resource-modal').classList.add('hidden');
+      this.showToast(
+        isStudent ? 'Resource submitted for teacher approval' : 'Resource added successfully',
+        'success'
+      );
+
+      // Refresh the resources list
+      await this.loadStudentResources(this.currentResourceSong.id);
+    } catch (error) {
+      console.error('Error submitting resource:', error);
+      this.showToast('An error occurred. Please try again.', 'error');
+    } finally {
+      this.isSubmittingResource = false;
+    }
+  }
+
+  // Helper for raw fetch inserts (workaround for Supabase JS client bug)
+  async rawInsert(table, data) {
+    const session = JSON.parse(localStorage.getItem('sb-dgwtihpiqgkhokkkxuzo-auth-token'));
+    const token = session?.access_token;
+
+    const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}`, {
+      method: 'POST',
+      headers: {
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Insert failed: ${response.status} ${errorText}`);
+    }
+
+    return { error: null };
+  }
+
+  // Helper for raw fetch updates (workaround for Supabase JS client bug)
+  async rawUpdate(table, id, data) {
+    const session = JSON.parse(localStorage.getItem('sb-dgwtihpiqgkhokkkxuzo-auth-token'));
+    const token = session?.access_token;
+
+    const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Update failed: ${response.status} ${errorText}`);
+    }
+
+    return { error: null };
+  }
+
+  // Helper for raw fetch deletes (workaround for Supabase JS client bug)
+  async rawDelete(table, id) {
+    const session = JSON.parse(localStorage.getItem('sb-dgwtihpiqgkhokkkxuzo-auth-token'));
+    const token = session?.access_token;
+
+    const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+        'Authorization': `Bearer ${token}`,
+        'Prefer': 'return=minimal'
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Delete failed: ${response.status} ${errorText}`);
+    }
+
+    return { error: null };
+  }
+
+  // Helper for raw fetch selects (workaround for Supabase JS client issues after raw inserts)
+  async rawSelect(table, query = '') {
+    const session = JSON.parse(localStorage.getItem('sb-dgwtihpiqgkhokkkxuzo-auth-token'));
+    const token = session?.access_token;
+
+    const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}?${query}`, {
+      method: 'GET',
+      headers: {
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Select failed: ${response.status} ${errorText}`);
+    }
+
+    const data = await response.json();
+    return { data, error: null };
+  }
+
+  async submitTutorial() {
+    // Prevent double submission
+    if (this.isSubmittingTutorial) return;
+    this.isSubmittingTutorial = true;
+
+    try {
+      const url = document.getElementById('tutorial-url').value.trim();
+      const title = document.getElementById('tutorial-title').value.trim();
+
+      if (!this.currentResourceSong) {
+        this.showToast('No song selected', 'error');
+        return;
+      }
+
+      const isStudent = auth.hasRole('student');
+
+      // Use raw fetch insert (workaround for Supabase JS client bug with inserts)
+      await this.rawInsert('song_tutorials', {
+        song_id: this.currentResourceSong.id,
+        url: url,
+        title: title || null,
+        submitted_by_user_id: auth.getCurrentUser().id,
+        status: isStudent ? 'pending' : 'approved'
+      });
+
+      // Close modal and refresh
+      document.getElementById('add-tutorial-modal').classList.add('hidden');
+      this.showToast(
+        isStudent ? 'Tutorial submitted for teacher approval' : 'Tutorial added successfully',
+        'success'
+      );
+
+      // Refresh the tutorials list
+      await this.loadSongTutorials(this.currentResourceSong.id);
+    } catch (error) {
+      console.error('Error submitting tutorial:', error);
+      this.showToast('Failed to save tutorial: ' + error.message, 'error');
+    } finally {
+      this.isSubmittingTutorial = false;
+    }
+  }
+
+  async approveTutorial(tutorialId) {
+    try {
+      await this.rawUpdate('song_tutorials', tutorialId, {
+        status: 'approved',
+        reviewed_by_user_id: auth.getCurrentUser().id,
+        reviewed_at: new Date().toISOString()
+      });
+
+      // Update local song count and re-render
+      const song = this.songs.find(s => s.id === this.currentResourceSong.id);
+      if (song) {
+        song.tutorial_count = (song.tutorial_count || 0) + 1;
+        this.filterSongs(); // Re-render song cards
+      }
+
+      this.showToast('Tutorial approved', 'success');
+      await this.loadSongTutorials(this.currentResourceSong.id);
+    } catch (error) {
+      console.error('Error approving tutorial:', error);
+      this.showToast('Failed to approve tutorial', 'error');
+    }
+  }
+
+  async rejectTutorial(tutorialId) {
+    try {
+      await this.rawUpdate('song_tutorials', tutorialId, {
+        status: 'rejected',
+        reviewed_by_user_id: auth.getCurrentUser().id,
+        reviewed_at: new Date().toISOString()
+      });
+
+      this.showToast('Tutorial rejected', 'success');
+      await this.loadSongTutorials(this.currentResourceSong.id);
+    } catch (error) {
+      console.error('Error rejecting tutorial:', error);
+      this.showToast('Failed to reject tutorial', 'error');
+    }
+  }
+
+  async deleteTutorial(tutorialId) {
+    if (!confirm('Are you sure you want to delete this tutorial?')) {
+      return;
+    }
+
+    try {
+      await this.rawDelete('song_tutorials', tutorialId);
+
+      this.showToast('Tutorial deleted', 'success');
+      await this.loadSongTutorials(this.currentResourceSong.id);
+    } catch (error) {
+      console.error('Error deleting tutorial:', error);
+      this.showToast('Failed to delete tutorial', 'error');
+    }
+  }
+
+  async approveResource(resourceId) {
+    try {
+      await this.rawUpdate('student_resources', resourceId, {
+        status: 'approved',
+        reviewed_by_user_id: auth.getCurrentUser().id,
+        reviewed_at: new Date().toISOString()
+      });
+
+      // Update local song count and re-render
+      const song = this.songs.find(s => s.id === this.currentResourceSong.id);
+      if (song) {
+        song.resource_count = (song.resource_count || 0) + 1;
+        this.filterSongs(); // Re-render song cards
+      }
+
+      this.showToast('Resource approved', 'success');
+      await this.loadStudentResources(this.currentResourceSong.id);
+    } catch (error) {
+      console.error('Error approving resource:', error);
+      this.showToast('Failed to approve resource', 'error');
+    }
+  }
+
+  async rejectResource(resourceId) {
+    try {
+      await this.rawUpdate('student_resources', resourceId, {
+        status: 'rejected',
+        reviewed_by_user_id: auth.getCurrentUser().id,
+        reviewed_at: new Date().toISOString()
+      });
+
+      this.showToast('Resource rejected', 'success');
+      await this.loadStudentResources(this.currentResourceSong.id);
+    } catch (error) {
+      console.error('Error rejecting resource:', error);
+      this.showToast('Failed to reject resource', 'error');
+    }
+  }
+
+  async deleteResource(resourceId) {
+    if (!confirm('Are you sure you want to delete this resource?')) {
+      return;
+    }
+
+    try {
+      await this.rawDelete('student_resources', resourceId);
+
+      this.showToast('Resource deleted', 'success');
+      await this.loadStudentResources(this.currentResourceSong.id);
+    } catch (error) {
+      console.error('Error deleting resource:', error);
+      this.showToast('Failed to delete resource', 'error');
+    }
+  }
+
+  // ============================================
+  // BACK BUTTON: Browser/Device Back Navigation
+  // ============================================
+
+  setupBackButtonHandler() {
+    // Tag the initial history entry with the current view so back always has a target
+    const cleanUrl = window.location.pathname + window.location.search;
+    history.replaceState({ cadenceView: this.currentView || 'pathway' }, '', cleanUrl);
+
+    window.addEventListener('popstate', (e) => {
+      // Close any overlays that are open (modals, class detail, preview, etc.)
+      this.closeOverlays();
+
+      // Navigate to the view stored in the history entry we landed on
+      const state = e.state;
+      if (state && state.cadenceView) {
+        this.switchView(state.cadenceView, { addToHistory: false });
+      }
+    });
+  }
+
+  closeOverlays() {
+    // Close any open modals
+    document.querySelectorAll('.modal:not(.hidden)').forEach(m => m.classList.add('hidden'));
+
+    // Hide instrument selection overlay
+    const instrumentSelection = document.getElementById('instrument-selection');
+    if (instrumentSelection) instrumentSelection.classList.add('hidden');
+
+    // Exit preview mode
+    if (this.previewMode.active) {
+      this.exitStudentPreview();
+    }
+
+    // Close class detail back to classes list
+    const classDetailView = document.getElementById('class-detail-view');
+    if (classDetailView && !classDetailView.classList.contains('hidden')) {
+      classDetailView.classList.add('hidden');
+      const classesList = document.getElementById('classes-list');
+      if (classesList) classesList.classList.remove('hidden');
+    }
   }
 
   // ============================================
