@@ -136,6 +136,21 @@ body {
   margin-bottom: 1.5rem;
 }
 
+.privacy-link {
+  margin-top: 1.5rem;
+  margin-bottom: 0;
+  font-size: 0.85rem;
+}
+
+.privacy-link a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.privacy-link a:hover {
+  text-decoration: underline;
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
