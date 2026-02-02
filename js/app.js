@@ -4683,17 +4683,73 @@ class CadenceApp {
   }
 
   async loadFlaggedRatings() {
+    // Always load pending links, tutorials, and resources first (independent of student data)
+    const { data: pendingLinks, error: pendingError } = await supabase
+      .from('pending_links')
+      .select(`
+        id,
+        song_id,
+        link_type,
+        url,
+        submitted_at,
+        submitted_by_user_id,
+        songs!inner (title, artist),
+        users!pending_links_submitted_by_user_id_fkey (name)
+      `)
+      .eq('status', 'pending')
+      .order('submitted_at', { ascending: false });
+
+    const { data: pendingTutorials } = await supabase
+      .from('song_tutorials')
+      .select(`
+        id,
+        song_id,
+        url,
+        title,
+        created_at,
+        submitted_by_user_id,
+        songs!inner (title, artist)
+      `)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    const { data: pendingResources } = await supabase
+      .from('student_resources')
+      .select(`
+        id,
+        song_id,
+        title,
+        file_url,
+        file_type,
+        created_at,
+        user_id,
+        songs!inner (title, artist)
+      `)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    // Store pending data
+    this.pendingLinks = pendingLinks || [];
+    this.pendingTutorials = pendingTutorials || [];
+    this.pendingResources = pendingResources || [];
+
     // Get all students from all the teacher's classes
     const { data: allStudents, error: studentsError } = await supabase.rpc('get_all_teacher_students');
 
     if (studentsError) {
       console.error('Error loading teacher students:', studentsError);
-      this.renderFlaggedRatings([]);
+      this.flaggedRatings = [];
+      this.newRatings = [];
+      this.populateFlaggedFilters();
+      this.filterFlaggedRatings();
       return;
     }
 
     if (!allStudents || allStudents.length === 0) {
-      this.renderFlaggedRatings([]);
+      this.flaggedRatings = [];
+      this.newRatings = [];
+      this.populateFlaggedFilters();
+      this.filterFlaggedRatings();
       return;
     }
 
@@ -4717,151 +4773,106 @@ class CadenceApp {
 
     if (studentError) {
       console.error('Error loading student ratings:', studentError);
+      this.flaggedRatings = [];
+      this.newRatings = [];
+      this.populateFlaggedFilters();
+      this.filterFlaggedRatings();
       return;
     }
 
     // Get unique song IDs
     const songIds = [...new Set(studentRatings.map(r => r.song_id))];
 
-    if (songIds.length === 0) {
-      this.renderFlaggedRatings([]);
-      return;
+    // Initialize flagged and newRatings arrays
+    let flagged = [];
+    let newRatings = [];
+
+    // Only load song ratings if there are songs to check
+    if (songIds.length > 0) {
+      // Now get ALL ratings for these songs (including teacher ratings)
+      // Don't use inner join on users to avoid RLS issues
+      const { data, error } = await supabase
+        .from('song_ratings')
+        .select(`
+          song_id,
+          instrument_id,
+          assessed_level,
+          user_id,
+          songs!inner (title, artist, suggested_level),
+          instruments (icon, name)
+        `)
+        .in('song_id', songIds);
+
+      if (error) {
+        console.error('Error loading ratings:', error);
+      } else {
+        // Group by song AND instrument to find discrepancies
+        const songGroups = {};
+        data.forEach(rating => {
+          const key = `${rating.song_id}-${rating.instrument_id}`;
+          if (!songGroups[key]) {
+            songGroups[key] = {
+              songId: rating.song_id,
+              song: rating.songs,
+              instrument: rating.instruments,
+              ratings: [],
+              hasBeenResolved: rating.songs.suggested_level !== null
+            };
+          }
+          songGroups[key].ratings.push({
+            student: userMap[rating.user_id] || 'Unknown',
+            level: rating.assessed_level
+          });
+        });
+
+        // Find songs with 2+ level discrepancies (excluding already resolved songs)
+        Object.values(songGroups).forEach(group => {
+          if (group.ratings.length >= 2 && !group.hasBeenResolved) {
+            const levels = group.ratings.map(r => r.level);
+            const min = Math.min(...levels);
+            const max = Math.max(...levels);
+            if (max - min >= 2) {
+              flagged.push(group);
+            }
+          }
+        });
+      }
+
+      // Also load new ratings that need teacher review
+      const { data: unreviewedRatings, error: unreviewedError } = await supabase
+        .from('song_ratings')
+        .select(`
+          id,
+          song_id,
+          instrument_id,
+          assessed_level,
+          user_id,
+          date_graded,
+          songs!inner (title, artist),
+          instruments (icon, name)
+        `)
+        .in('user_id', studentIds)
+        .eq('teacher_reviewed', false)
+        .order('date_graded', { ascending: false });
+
+      // Format unreviewed ratings for display
+      newRatings = (unreviewedRatings || []).map(rating => ({
+        id: rating.id,
+        songId: rating.song_id,
+        song: rating.songs,
+        instrument: rating.instruments,
+        rating: {
+          student: userMap[rating.user_id] || 'Unknown',
+          level: rating.assessed_level,
+          dateGraded: rating.date_graded
+        },
+        isNew: true
+      }));
     }
 
-    // Now get ALL ratings for these songs (including teacher ratings)
-    // Don't use inner join on users to avoid RLS issues
-    const { data, error } = await supabase
-      .from('song_ratings')
-      .select(`
-        song_id,
-        instrument_id,
-        assessed_level,
-        user_id,
-        songs!inner (title, artist, suggested_level),
-        instruments (icon, name)
-      `)
-      .in('song_id', songIds);
-
-    if (error) {
-      console.error('Error loading ratings:', error);
-      return;
-    }
-
-    // Group by song AND instrument to find discrepancies
-    const songGroups = {};
-    data.forEach(rating => {
-      const key = `${rating.song_id}-${rating.instrument_id}`;
-      if (!songGroups[key]) {
-        songGroups[key] = {
-          songId: rating.song_id,
-          song: rating.songs,
-          instrument: rating.instruments,
-          ratings: [],
-          hasBeenResolved: rating.songs.suggested_level !== null
-        };
-      }
-      songGroups[key].ratings.push({
-        student: userMap[rating.user_id] || 'Unknown',
-        level: rating.assessed_level
-      });
-    });
-
-    // Find songs with 2+ level discrepancies (excluding already resolved songs)
-    const flagged = [];
-    Object.values(songGroups).forEach(group => {
-      if (group.ratings.length >= 2 && !group.hasBeenResolved) {
-        const levels = group.ratings.map(r => r.level);
-        const min = Math.min(...levels);
-        const max = Math.max(...levels);
-        if (max - min >= 2) {
-          flagged.push(group);
-        }
-      }
-    });
-
-    // Also load new ratings that need teacher review
-    const { data: unreviewedRatings, error: unreviewedError } = await supabase
-      .from('song_ratings')
-      .select(`
-        id,
-        song_id,
-        instrument_id,
-        assessed_level,
-        user_id,
-        date_graded,
-        songs!inner (title, artist),
-        instruments (icon, name)
-      `)
-      .in('user_id', studentIds)
-      .eq('teacher_reviewed', false)
-      .order('date_graded', { ascending: false });
-
-    // Format unreviewed ratings for display
-    const newRatings = (unreviewedRatings || []).map(rating => ({
-      id: rating.id,
-      songId: rating.song_id,
-      song: rating.songs,
-      instrument: rating.instruments,
-      rating: {
-        student: userMap[rating.user_id] || 'Unknown',
-        level: rating.assessed_level,
-        dateGraded: rating.date_graded
-      },
-      isNew: true
-    }));
-
-    // Also load pending links for teacher approval
-    const { data: pendingLinks, error: pendingError } = await supabase
-      .from('pending_links')
-      .select(`
-        id,
-        song_id,
-        link_type,
-        url,
-        submitted_at,
-        submitted_by_user_id,
-        songs!inner (title, artist),
-        users!pending_links_submitted_by_user_id_fkey (name)
-      `)
-      .eq('status', 'pending')
-      .order('submitted_at', { ascending: false });
-
-    // Load pending tutorials for teacher approval
-    const { data: pendingTutorials } = await supabase
-      .from('song_tutorials')
-      .select(`
-        id,
-        song_id,
-        url,
-        title,
-        created_at,
-        submitted_by_user_id,
-        songs!inner (title, artist)
-      `)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
-
-    // Load pending student resources for teacher approval
-    const { data: pendingResources } = await supabase
-      .from('student_resources')
-      .select(`
-        id,
-        song_id,
-        title,
-        file_url,
-        file_type,
-        created_at,
-        user_id,
-        songs!inner (title, artist)
-      `)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
-
+    // Store rating data and render
     this.flaggedRatings = flagged;
     this.newRatings = newRatings;
-    this.pendingLinks = pendingLinks || [];
-    this.pendingTutorials = pendingTutorials || [];
-    this.pendingResources = pendingResources || [];
     this.populateFlaggedFilters();
     this.filterFlaggedRatings();
   }
