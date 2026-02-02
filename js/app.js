@@ -3178,8 +3178,45 @@ class CadenceApp {
     }
   }
 
-  showCreateClassModal() {
+  async showCreateClassModal() {
+    const user = auth.getCurrentUser();
+    const teacherGroup = document.getElementById('class-teacher-group');
+    const teacherSelect = document.getElementById('class-teacher');
+
+    // Show teacher dropdown for admins
+    if (user && user.role === 'admin') {
+      teacherGroup.classList.remove('hidden');
+      await this.loadTeachersForDropdown(teacherSelect);
+    } else {
+      teacherGroup.classList.add('hidden');
+    }
+
     document.getElementById('create-class-modal').classList.remove('hidden');
+  }
+
+  async loadTeachersForDropdown(selectElement) {
+    // Fetch all teachers and admins
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, name, email, role')
+      .in('role', ['teacher', 'admin'])
+      .order('name');
+
+    if (error) {
+      console.error('Error loading teachers:', error);
+      return;
+    }
+
+    // Clear existing options except the first one
+    selectElement.innerHTML = '<option value="">-- Select a teacher (or leave empty for yourself) --</option>';
+
+    // Add teacher options
+    data.forEach(teacher => {
+      const option = document.createElement('option');
+      option.value = teacher.id;
+      option.textContent = `${teacher.name || teacher.email}${teacher.role === 'admin' ? ' (Admin)' : ''}`;
+      selectElement.appendChild(option);
+    });
   }
 
   setupCreateClassForm() {
@@ -3193,17 +3230,19 @@ class CadenceApp {
 
       const className = document.getElementById('class-name').value;
       const yearLevel = document.getElementById('class-year-level').value;
+      const teacherSelect = document.getElementById('class-teacher');
+      const teacherId = teacherSelect ? teacherSelect.value : null;
 
       if (!className || className.trim() === '') {
         this.showToast('Please enter a class name', 'error');
         return;
       }
 
-      await this.createClass(className, yearLevel);
+      await this.createClass(className, yearLevel, teacherId || null);
     });
   }
 
-  async createClass(className, yearLevel) {
+  async createClass(className, yearLevel, teacherId = null) {
     try {
       const user = auth.getCurrentUser();
 
@@ -3225,13 +3264,16 @@ class CadenceApp {
 
       const classCode = codeData;
 
+      // Use specified teacherId (for admin creating on behalf of teacher) or current user
+      const assignedTeacherId = teacherId || user.id;
+
       // Create the class
       const { data, error } = await supabase
         .from('classes')
         .insert([{
           class_code: classCode,
           name: className,
-          teacher_id: user.id,
+          teacher_id: assignedTeacherId,
           year_level: yearLevel || null
         }])
         .select()

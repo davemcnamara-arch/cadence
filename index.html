@@ -628,6 +628,13 @@
             <label for="class-year-level">Year Level (optional)</label>
             <input type="text" id="class-year-level" placeholder="e.g., Year 7, Grade 9">
           </div>
+          <div id="class-teacher-group" class="form-group hidden">
+            <label for="class-teacher">Assign to Teacher</label>
+            <select id="class-teacher">
+              <option value="">-- Select a teacher --</option>
+            </select>
+            <p class="form-help-text">Leave empty to assign to yourself</p>
+          </div>
           <div class="form-actions">
             <button type="button" class="btn btn-secondary modal-close">Cancel</button>
             <button type="submit" class="btn btn-primary">Create Class</button>
