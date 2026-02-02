@@ -2491,18 +2491,6 @@ class CadenceApp {
     }
 
     try {
-      // Check if connection is alive with a quick ping before the main request
-      // This helps wake up stale connections after idle periods
-      try {
-        const pingPromise = supabase.from('instruments').select('id').limit(1);
-        const pingTimeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Connection check timeout')), 3000)
-        );
-        await Promise.race([pingPromise, pingTimeout]);
-      } catch (pingErr) {
-        console.warn('🎯 Connection appears stale, will retry RPC anyway');
-      }
-
       const rpcParams = {
         p_student_id: userId,
         p_title: this.gradingData.title,
@@ -2516,15 +2504,10 @@ class CadenceApp {
         p_add_to_learning: document.getElementById('add-to-learning').checked
       };
 
-      // Add a timeout to detect hangs
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timed out - please refresh the page and try again')), 30000)
-      );
+      // Use direct fetch to bypass potentially stale Supabase client
+      const result = await this.callRpcDirect('grade_song', rpcParams);
 
-      const rpcPromise = supabase.rpc('grade_song', rpcParams);
-      const { data, error } = await Promise.race([rpcPromise, timeoutPromise]);
-
-      if (error) throw error;
+      if (result.error) throw result.error;
 
       // Close modal and refresh
       document.getElementById('song-grading-modal').classList.add('hidden');
@@ -2550,6 +2533,64 @@ class CadenceApp {
         const errorMsg = error.message || error.details || 'Failed to submit grading';
         this.showToast(`Failed to submit grading: ${errorMsg}`, 'error');
       }
+    }
+  }
+
+  // Direct RPC call using fetch to bypass stale Supabase client connections
+  async callRpcDirect(functionName, params) {
+    // Get fresh token from localStorage
+    const sessionKey = 'sb-dgwtihpiqgkhokkkxuzo-auth-token';
+    const sessionData = localStorage.getItem(sessionKey);
+
+    if (!sessionData) {
+      throw new Error('Not authenticated - please refresh the page and log in again');
+    }
+
+    const session = JSON.parse(sessionData);
+    const accessToken = session.access_token;
+
+    if (!accessToken) {
+      throw new Error('No access token - please refresh the page and log in again');
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    try {
+      const response = await fetch(
+        `https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/rpc/${functionName}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: JSON.stringify(params),
+          signal: controller.signal
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw {
+          message: errorData.message || `HTTP ${response.status}`,
+          details: errorData.details,
+          hint: errorData.hint,
+          code: errorData.code
+        };
+      }
+
+      const data = await response.json();
+      return { data, error: null };
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        throw new Error('Request timed out - please refresh the page and try again');
+      }
+      throw err;
     }
   }
 
