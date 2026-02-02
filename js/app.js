@@ -2512,10 +2512,18 @@ class CadenceApp {
       // Close modal and refresh
       document.getElementById('song-grading-modal').classList.add('hidden');
       this.showToast('Song graded successfully!', 'success');
+
+      // Refresh data and re-render current view
       await this.loadSongs();
 
       if (this.currentView === 'songs') {
         this.renderSongs();
+      } else if (this.currentView === 'progress') {
+        this.renderProgress();
+      } else if (this.currentView === 'students' && this.previewMode.active) {
+        // If in student preview, refresh the student's data
+        await this.loadStudentPreviewData(this.previewMode.studentId);
+        this.renderProgress();
       }
     } catch (error) {
       console.error('🎯 Error submitting grading:', error);
