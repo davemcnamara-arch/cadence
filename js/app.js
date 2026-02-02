@@ -2458,9 +2458,17 @@ class CadenceApp {
     }
 
     try {
-      // Add a timeout to detect hangs
+      // Refresh session before RPC call to handle idle timeout issues
+      // This ensures the connection is fresh after the app has been idle
+      const { error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError) {
+        console.warn('🎯 Session refresh warning:', refreshError.message);
+        // Continue anyway - the session might still be valid
+      }
+
+      // Add a timeout to detect hangs (increased to 30s to allow for reconnection)
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timed out after 15 seconds')), 15000)
+        setTimeout(() => reject(new Error('Request timed out after 30 seconds')), 30000)
       );
 
       const rpcPromise = supabase.rpc('grade_song', {
