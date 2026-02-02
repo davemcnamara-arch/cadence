@@ -172,6 +172,11 @@ export class AuthManager {
       // Process any pending enrollments for this new user
       await this.processPendingEnrollments(newUser.id);
 
+      // For teachers/admins, transfer any classes that were pre-assigned to them
+      if (role === 'teacher' || role === 'admin') {
+        await this.transferPendingClasses(newUser.email);
+      }
+
       // Notify listeners
       if (this.onAuthStateChange) {
         this.onAuthStateChange(this.currentUser);
@@ -204,6 +209,27 @@ export class AuthManager {
       }
     } catch (error) {
       console.error('Unexpected error processing pending enrollments:', error);
+    }
+  }
+
+  // Transfer classes that were pre-assigned to a pending teacher
+  async transferPendingClasses(email) {
+    try {
+      const { data, error } = await supabase.rpc('complete_pending_teacher_setup', {
+        p_email: email
+      });
+
+      if (error) {
+        console.error('Error transferring pending classes:', error);
+        return;
+      }
+
+      if (data && data.transferred_classes > 0) {
+        console.log(`Transferred ${data.transferred_classes} class(es) to new teacher`);
+        this.lastClassTransferResult = data;
+      }
+    } catch (error) {
+      console.error('Unexpected error transferring pending classes:', error);
     }
   }
 
