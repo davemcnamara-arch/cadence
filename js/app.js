@@ -3193,27 +3193,52 @@ class CadenceApp {
 
   async loadTeachersForDropdown(selectElement) {
     // Fetch all teachers and admins
-    const { data, error } = await supabase
-      .from('users')
-      .select('id, name, email, role')
-      .in('role', ['teacher', 'admin'])
-      .order('name');
+    const [usersRes, pendingRes] = await Promise.all([
+      supabase
+        .from('users')
+        .select('id, name, email, role')
+        .in('role', ['teacher', 'admin'])
+        .order('name'),
+      supabase
+        .from('pre_registered_accounts')
+        .select('id, name, email, role')
+        .order('name')
+    ]);
 
-    if (error) {
-      console.error('Error loading teachers:', error);
+    if (usersRes.error) {
+      console.error('Error loading teachers:', usersRes.error);
       return;
     }
 
     // Clear existing options except the first one
     selectElement.innerHTML = '<option value="">-- Select a teacher (or leave empty for yourself) --</option>';
 
-    // Add teacher options
-    data.forEach(teacher => {
+    // Add active teacher/admin options
+    const activeTeachers = usersRes.data || [];
+    activeTeachers.forEach(teacher => {
       const option = document.createElement('option');
       option.value = teacher.id;
       option.textContent = `${teacher.name || teacher.email}${teacher.role === 'admin' ? ' (Admin)' : ''}`;
       selectElement.appendChild(option);
     });
+
+    // Add pending teacher options (use email prefix to identify them)
+    const pendingTeachers = pendingRes.data || [];
+    if (pendingTeachers.length > 0) {
+      // Add a separator
+      const separator = document.createElement('option');
+      separator.disabled = true;
+      separator.textContent = '── Pending Teachers ──';
+      selectElement.appendChild(separator);
+
+      pendingTeachers.forEach(teacher => {
+        const option = document.createElement('option');
+        // Use 'pending:email' format to identify pending teachers
+        option.value = `pending:${teacher.email}`;
+        option.textContent = `${teacher.name || teacher.email} (Pending)`;
+        selectElement.appendChild(option);
+      });
+    }
   }
 
   setupCreateClassForm() {
@@ -3261,8 +3286,18 @@ class CadenceApp {
 
       const classCode = codeData;
 
-      // Use specified teacherId (for admin creating on behalf of teacher) or current user
-      const assignedTeacherId = teacherId || user.id;
+      // Check if assigning to a pending teacher (value starts with 'pending:')
+      let assignedTeacherId = user.id;
+      let pendingTeacherEmail = null;
+
+      if (teacherId && teacherId.startsWith('pending:')) {
+        // Pending teacher - store email and use admin as temporary owner
+        pendingTeacherEmail = teacherId.substring(8); // Remove 'pending:' prefix
+        assignedTeacherId = user.id; // Admin is temporary owner
+      } else if (teacherId) {
+        // Regular teacher - use their ID
+        assignedTeacherId = teacherId;
+      }
 
       // Create the class
       const { data, error } = await supabase
@@ -3271,7 +3306,8 @@ class CadenceApp {
           class_code: classCode,
           name: className,
           teacher_id: assignedTeacherId,
-          year_level: yearLevel || null
+          year_level: yearLevel || null,
+          pending_teacher_email: pendingTeacherEmail
         }])
         .select()
         .single();
