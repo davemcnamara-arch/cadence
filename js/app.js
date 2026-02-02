@@ -80,7 +80,40 @@ class CadenceApp {
     // Set up back button after auth (URL hash is now cleaned)
     this.setupBackButtonHandler();
 
+    // Start connection keepalive to prevent stale connections after idle
+    this.startConnectionKeepalive();
+
     this.showLoading(false);
+  }
+
+  // Keepalive mechanism to prevent Supabase connection from going stale
+  startConnectionKeepalive() {
+    // Ping every 2 minutes to keep connection alive
+    const KEEPALIVE_INTERVAL = 2 * 60 * 1000;
+
+    setInterval(async () => {
+      // Only ping if the page is visible (don't waste resources when tab is hidden)
+      if (document.visibilityState === 'visible') {
+        try {
+          await supabase.from('instruments').select('id').limit(1);
+        } catch (err) {
+          console.warn('🎯 Keepalive ping failed:', err.message);
+        }
+      }
+    }, KEEPALIVE_INTERVAL);
+
+    // Also reconnect when page becomes visible after being hidden
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'visible') {
+        try {
+          // Small delay to let browser wake up
+          await new Promise(resolve => setTimeout(resolve, 100));
+          await supabase.from('instruments').select('id').limit(1);
+        } catch (err) {
+          console.warn('🎯 Visibility change ping failed:', err.message);
+        }
+      }
+    });
   }
 
   setupEventListeners() {
@@ -2451,13 +2484,6 @@ class CadenceApp {
     // Use student ID if in preview mode, otherwise use current user
     const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
-    console.log('🎯 [DEBUG] submitSongGrading started', {
-      previewMode: this.previewMode.active,
-      userId,
-      currentUserId: user?.id,
-      gradingData: this.gradingData
-    });
-
     if (!this.gradingData.level) {
       this.showToast('Error: Level not set. Please refresh and try again.', 'error');
       console.error('🎯 Level is missing from gradingData');
@@ -2465,28 +2491,18 @@ class CadenceApp {
     }
 
     try {
-      // Refresh session before RPC call to handle idle timeout issues
-      // Use a short timeout for refresh - if it fails, try to proceed anyway
-      console.log('🎯 [DEBUG] Refreshing session...');
-      const refreshStart = Date.now();
+      // Check if connection is alive with a quick ping before the main request
+      // This helps wake up stale connections after idle periods
       try {
-        const refreshPromise = supabase.auth.refreshSession();
-        const refreshTimeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Session refresh timeout')), 5000)
+        const pingPromise = supabase.from('instruments').select('id').limit(1);
+        const pingTimeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Connection check timeout')), 3000)
         );
-        const { data: sessionData, error: refreshError } = await Promise.race([refreshPromise, refreshTimeout]);
-        console.log('🎯 [DEBUG] Session refresh completed in', Date.now() - refreshStart, 'ms', {
-          hasSession: !!sessionData?.session,
-          error: refreshError?.message
-        });
-        if (refreshError) {
-          console.warn('🎯 Session refresh warning:', refreshError.message);
-        }
-      } catch (refreshErr) {
-        console.warn('🎯 [DEBUG] Session refresh failed/timed out:', refreshErr.message, '- proceeding anyway');
+        await Promise.race([pingPromise, pingTimeout]);
+      } catch (pingErr) {
+        console.warn('🎯 Connection appears stale, will retry RPC anyway');
       }
 
-      // Prepare the RPC call parameters
       const rpcParams = {
         p_student_id: userId,
         p_title: this.gradingData.title,
@@ -2499,19 +2515,14 @@ class CadenceApp {
         p_tutorial_url: this.gradingData.tutorial_url || null,
         p_add_to_learning: document.getElementById('add-to-learning').checked
       };
-      console.log('🎯 [DEBUG] RPC params:', rpcParams);
 
       // Add a timeout to detect hangs
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timed out after 30 seconds')), 30000)
+        setTimeout(() => reject(new Error('Request timed out - please refresh the page and try again')), 30000)
       );
 
-      console.log('🎯 [DEBUG] Calling grade_song RPC...');
-      const rpcStart = Date.now();
       const rpcPromise = supabase.rpc('grade_song', rpcParams);
-
       const { data, error } = await Promise.race([rpcPromise, timeoutPromise]);
-      console.log('🎯 [DEBUG] RPC completed in', Date.now() - rpcStart, 'ms', { data, error });
 
       if (error) throw error;
 
@@ -2531,8 +2542,14 @@ class CadenceApp {
         hint: error.hint,
         code: error.code
       });
-      const errorMsg = error.message || error.details || 'Failed to submit grading';
-      this.showToast(`Failed to submit grading: ${errorMsg}`, 'error');
+
+      // If it's a timeout, suggest refreshing the page
+      if (error.message?.includes('timed out') || error.message?.includes('timeout')) {
+        this.showToast('Connection lost - please refresh the page and try again', 'error');
+      } else {
+        const errorMsg = error.message || error.details || 'Failed to submit grading';
+        this.showToast(`Failed to submit grading: ${errorMsg}`, 'error');
+      }
     }
   }
 
