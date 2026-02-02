@@ -38,6 +38,11 @@ BEGIN
         SELECT COUNT(*)
         FROM class_members cm
         WHERE cm.class_id = c.id
+      ),
+      'pending_count', (
+        SELECT COUNT(*)
+        FROM pending_enrollments pe
+        WHERE pe.class_id = c.id
       )
     )
     ORDER BY c.created_at DESC
