@@ -3527,8 +3527,10 @@ class CadenceApp {
         // Clear the textarea
         textarea.value = '';
 
-        // Reload pending enrollments list
+        // Reload pending enrollments list and refresh class roster
         this.loadPendingEnrollments();
+        await this.loadClassStudents();
+        this.renderClassRoster();
 
         // Show success message
         this.showToast(data.message, 'success');
@@ -3554,8 +3556,10 @@ class CadenceApp {
       }
 
       if (data.success) {
-        // Reload the list
+        // Reload the list in modal and refresh class roster
         this.loadPendingEnrollments();
+        await this.loadClassStudents();
+        this.renderClassRoster();
         this.showToast('Email removed', 'success');
       } else {
         this.showToast(data.message || 'Failed to remove enrollment', 'error');
@@ -3872,27 +3876,40 @@ class CadenceApp {
     if (!this.currentClass) return;
 
     try {
-      // Use RPC function to bypass RLS recursion issues
-      const { data, error } = await supabase.rpc('get_class_students', {
-        p_class_id: this.currentClass.id
-      });
+      // Load both active students and pending enrollments in parallel
+      const [studentsResult, pendingResult] = await Promise.all([
+        supabase.rpc('get_class_students', { p_class_id: this.currentClass.id }),
+        supabase.rpc('get_pending_enrollments', { p_class_id: this.currentClass.id })
+      ]);
 
-      if (error) {
-        console.error('Error loading class students:', error);
+      if (studentsResult.error) {
+        console.error('Error loading class students:', studentsResult.error);
         this.classStudents = [];
-        document.getElementById('class-detail-count').textContent = '0 students';
-        return;
+      } else {
+        this.classStudents = studentsResult.data || [];
       }
 
-      // Data is already in the right format from the function
-      this.classStudents = data || [];
+      if (pendingResult.error) {
+        console.error('Error loading pending enrollments:', pendingResult.error);
+        this.pendingEnrollments = [];
+      } else {
+        this.pendingEnrollments = pendingResult.data || [];
+      }
 
-      // Update student count
-      document.getElementById('class-detail-count').textContent =
-        `${this.classStudents.length} student${this.classStudents.length !== 1 ? 's' : ''}`;
+      // Update student count (including pending)
+      const activeCount = this.classStudents.length;
+      const pendingCount = this.pendingEnrollments.length;
+      const totalCount = activeCount + pendingCount;
+
+      let countText = `${activeCount} student${activeCount !== 1 ? 's' : ''}`;
+      if (pendingCount > 0) {
+        countText += ` (${pendingCount} pending)`;
+      }
+      document.getElementById('class-detail-count').textContent = countText;
     } catch (err) {
       console.error('Exception in loadClassStudents:', err);
       this.classStudents = [];
+      this.pendingEnrollments = [];
       document.getElementById('class-detail-count').textContent = '0 students';
     }
   }
@@ -3905,7 +3922,10 @@ class CadenceApp {
     const container = document.getElementById('class-roster');
     if (!container) return;
 
-    if (this.classStudents.length === 0) {
+    const pendingEnrollments = this.pendingEnrollments || [];
+    const hasStudents = this.classStudents.length > 0 || pendingEnrollments.length > 0;
+
+    if (!hasStudents) {
       container.innerHTML = `
         <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
           <p style="font-size: 1.125rem; margin-bottom: 0.5rem;">No students yet</p>
@@ -3915,7 +3935,8 @@ class CadenceApp {
       return;
     }
 
-    const html = this.classStudents.map(member => {
+    // Render active students
+    const activeStudentsHtml = this.classStudents.map(member => {
       const student = member.users;
       const progress = member.student_progress || [];
       const instruments = progress.map(p => {
@@ -3941,7 +3962,31 @@ class CadenceApp {
       `;
     }).join('');
 
-    container.innerHTML = html;
+    // Render pending students
+    const pendingStudentsHtml = pendingEnrollments.map(enrollment => {
+      // Extract display name from email (part before @)
+      const displayName = enrollment.email.split('@')[0];
+
+      return `
+        <div class="roster-item roster-item-pending">
+          <div class="roster-student-info" style="flex: 1;">
+            <div class="roster-student-name">
+              ${this.escapeHtml(displayName)}
+              <span class="roster-pending-badge">Pending</span>
+            </div>
+            <div class="roster-student-meta">
+              ${this.escapeHtml(enrollment.email)} • Added ${new Date(enrollment.created_at).toLocaleDateString()}
+            </div>
+          </div>
+          <div class="roster-student-instruments" style="color: var(--text-secondary); font-size: 0.875rem;">Awaiting login</div>
+          <div class="roster-actions" style="display: flex; gap: 0.5rem; margin-left: 1rem;">
+            <button class="btn-text" style="font-size: 0.75rem; color: var(--error-color);" onclick="event.stopPropagation(); app.removePendingEnrollment(${enrollment.id})">Remove</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = activeStudentsHtml + pendingStudentsHtml;
   }
 
   async renderProgressHeatmap() {
@@ -6910,6 +6955,12 @@ class CadenceApp {
   // ============================================
   // UTILITIES: Helpers & UI Components
   // ============================================
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
 
   showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
