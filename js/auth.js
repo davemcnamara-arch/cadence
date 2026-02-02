@@ -1,5 +1,5 @@
 // Authentication Module
-import { supabase } from './config.js';
+import { supabase, SUPABASE_URL } from './config.js';
 
 export class AuthManager {
   constructor() {
@@ -70,52 +70,69 @@ export class AuthManager {
     }
   }
 
-  // Sign out with timeout protection
-  // The Supabase client can become stale after idle periods and hang indefinitely
+  // Sign out using direct fetch to bypass potentially stale Supabase client
+  // This mirrors the approach used for grading RPC calls
   async signOut() {
     const SIGNOUT_TIMEOUT_MS = 5000;
 
     try {
-      // Race between signOut and timeout to prevent infinite hang
-      const result = await Promise.race([
-        supabase.auth.signOut(),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Sign out timed out')), SIGNOUT_TIMEOUT_MS)
-        )
-      ]);
-
-      if (result.error) throw result.error;
-      // handleSignOut() will be called automatically by the auth state change listener
-      return { success: true };
-    } catch (error) {
-      console.error('Error signing out:', error);
-
-      // If signOut timed out or failed, manually clear the session
-      // This ensures the user can always log out even if the connection is stale
-      this.forceLocalSignOut();
-
-      return { success: true, wasForced: true };
-    }
-  }
-
-  // Force local sign out by clearing session data
-  // Used as fallback when supabase.auth.signOut() hangs or fails
-  forceLocalSignOut() {
-    try {
-      // Clear Supabase auth tokens from localStorage
+      // Get access token from localStorage
       const storageKey = Object.keys(localStorage).find(key =>
         key.startsWith('sb-') && key.endsWith('-auth-token')
       );
+
       if (storageKey) {
+        const tokenData = JSON.parse(localStorage.getItem(storageKey));
+        const accessToken = tokenData?.access_token;
+
+        if (accessToken) {
+          // Use AbortController for clean timeout handling
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), SIGNOUT_TIMEOUT_MS);
+
+          try {
+            // Call Supabase logout endpoint directly, bypassing the stale client
+            await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+              },
+              signal: controller.signal
+            });
+          } finally {
+            clearTimeout(timeoutId);
+          }
+        }
+
+        // Clear local session data
         localStorage.removeItem(storageKey);
       }
 
-      // Trigger the sign out handler to update app state
       this.handleSignOut();
-    } catch (e) {
-      console.error('Error during forced local sign out:', e);
-      // Still call handleSignOut to reset app state
+      return { success: true };
+    } catch (error) {
+      // AbortError means timeout - not a real failure, just slow connection
+      if (error.name === 'AbortError') {
+        console.log('Sign out request timed out, clearing local session');
+      } else {
+        console.error('Error during sign out:', error);
+      }
+
+      // Clear local session regardless of server response
+      this.clearLocalSession();
       this.handleSignOut();
+      return { success: true };
+    }
+  }
+
+  // Clear session data from localStorage
+  clearLocalSession() {
+    const storageKey = Object.keys(localStorage).find(key =>
+      key.startsWith('sb-') && key.endsWith('-auth-token')
+    );
+    if (storageKey) {
+      localStorage.removeItem(storageKey);
     }
   }
 
