@@ -463,6 +463,10 @@ class CadenceApp {
       // Show admin tabs (includes Classes tab for managing all teachers' classes)
       document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('hidden'));
 
+      // Change "My Classes" to "Classes" for admin view
+      const classesTitle = document.getElementById('classes-view-title');
+      if (classesTitle) classesTitle.textContent = 'Classes';
+
       await this.loadAdminData();
       await this.loadClasses();
 
