@@ -463,9 +463,6 @@ class CadenceApp {
       // Show admin tabs (includes Classes tab for managing all teachers' classes)
       document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('hidden'));
 
-      // Hide teacher-only controls that don't apply to admins
-      document.getElementById('create-class-btn')?.classList.add('hidden');
-
       await this.loadAdminData();
       await this.loadClasses();
 
