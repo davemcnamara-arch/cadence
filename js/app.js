@@ -3532,6 +3532,9 @@ class CadenceApp {
         await this.loadClassStudents();
         this.renderClassRoster();
 
+        // Reload classes to update pending count in class cards
+        await this.loadClasses();
+
         // Show success message
         this.showToast(data.message, 'success');
       } else {
@@ -3560,6 +3563,10 @@ class CadenceApp {
         this.loadPendingEnrollments();
         await this.loadClassStudents();
         this.renderClassRoster();
+
+        // Reload classes to update pending count in class cards
+        await this.loadClasses();
+
         this.showToast('Email removed', 'success');
       } else {
         this.showToast(data.message || 'Failed to remove enrollment', 'error');
@@ -3732,8 +3739,15 @@ class CadenceApp {
 
     const html = sortedClasses.map(cls => {
       const memberCount = cls.student_count || 0;
+      const pendingCount = cls.pending_count || 0;
       const isArchived = cls.archived;
       const teacherLabel = isAdmin && cls.teacher_name ? `<p style="color: var(--text-secondary); font-size: 0.8125rem;">Teacher: ${cls.teacher_name}</p>` : '';
+
+      // Build student count text with pending indicator
+      let studentCountText = `${memberCount} student${memberCount !== 1 ? 's' : ''}`;
+      if (pendingCount > 0) {
+        studentCountText += ` <span class="roster-pending-badge">${pendingCount} pending</span>`;
+      }
 
       if (isArchived) {
         // Archived class card with unarchive button
@@ -3748,7 +3762,7 @@ class CadenceApp {
               <span class="class-code-badge">${cls.class_code}</span>
             </div>
             <div class="class-card-meta">
-              <span>${memberCount} student${memberCount !== 1 ? 's' : ''}</span>
+              <span>${studentCountText}</span>
               <span>Created ${new Date(cls.created_at).toLocaleDateString('en-GB')}</span>
             </div>
             <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">
@@ -3769,7 +3783,7 @@ class CadenceApp {
               <span class="class-code-badge">${cls.class_code}</span>
             </div>
             <div class="class-card-meta">
-              <span>${memberCount} student${memberCount !== 1 ? 's' : ''}</span>
+              <span>${studentCountText}</span>
               <span>Created ${new Date(cls.created_at).toLocaleDateString('en-GB')}</span>
             </div>
           </div>
