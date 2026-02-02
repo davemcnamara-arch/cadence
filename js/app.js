@@ -2451,6 +2451,13 @@ class CadenceApp {
     // Use student ID if in preview mode, otherwise use current user
     const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
+    console.log('🎯 [DEBUG] submitSongGrading started', {
+      previewMode: this.previewMode.active,
+      userId,
+      currentUserId: user?.id,
+      gradingData: this.gradingData
+    });
+
     if (!this.gradingData.level) {
       this.showToast('Error: Level not set. Please refresh and try again.', 'error');
       console.error('🎯 Level is missing from gradingData');
@@ -2459,19 +2466,28 @@ class CadenceApp {
 
     try {
       // Refresh session before RPC call to handle idle timeout issues
-      // This ensures the connection is fresh after the app has been idle
-      const { error: refreshError } = await supabase.auth.refreshSession();
-      if (refreshError) {
-        console.warn('🎯 Session refresh warning:', refreshError.message);
-        // Continue anyway - the session might still be valid
+      // Use a short timeout for refresh - if it fails, try to proceed anyway
+      console.log('🎯 [DEBUG] Refreshing session...');
+      const refreshStart = Date.now();
+      try {
+        const refreshPromise = supabase.auth.refreshSession();
+        const refreshTimeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Session refresh timeout')), 5000)
+        );
+        const { data: sessionData, error: refreshError } = await Promise.race([refreshPromise, refreshTimeout]);
+        console.log('🎯 [DEBUG] Session refresh completed in', Date.now() - refreshStart, 'ms', {
+          hasSession: !!sessionData?.session,
+          error: refreshError?.message
+        });
+        if (refreshError) {
+          console.warn('🎯 Session refresh warning:', refreshError.message);
+        }
+      } catch (refreshErr) {
+        console.warn('🎯 [DEBUG] Session refresh failed/timed out:', refreshErr.message, '- proceeding anyway');
       }
 
-      // Add a timeout to detect hangs (increased to 30s to allow for reconnection)
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timed out after 30 seconds')), 30000)
-      );
-
-      const rpcPromise = supabase.rpc('grade_song', {
+      // Prepare the RPC call parameters
+      const rpcParams = {
         p_student_id: userId,
         p_title: this.gradingData.title,
         p_artist: this.gradingData.artist,
@@ -2482,9 +2498,20 @@ class CadenceApp {
         p_chords_url: this.gradingData.chords_url || null,
         p_tutorial_url: this.gradingData.tutorial_url || null,
         p_add_to_learning: document.getElementById('add-to-learning').checked
-      });
+      };
+      console.log('🎯 [DEBUG] RPC params:', rpcParams);
+
+      // Add a timeout to detect hangs
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out after 30 seconds')), 30000)
+      );
+
+      console.log('🎯 [DEBUG] Calling grade_song RPC...');
+      const rpcStart = Date.now();
+      const rpcPromise = supabase.rpc('grade_song', rpcParams);
 
       const { data, error } = await Promise.race([rpcPromise, timeoutPromise]);
+      console.log('🎯 [DEBUG] RPC completed in', Date.now() - rpcStart, 'ms', { data, error });
 
       if (error) throw error;
 
