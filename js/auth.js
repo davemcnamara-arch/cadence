@@ -70,16 +70,52 @@ export class AuthManager {
     }
   }
 
-  // Sign out
+  // Sign out with timeout protection
+  // The Supabase client can become stale after idle periods and hang indefinitely
   async signOut() {
+    const SIGNOUT_TIMEOUT_MS = 5000;
+
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      // Race between signOut and timeout to prevent infinite hang
+      const result = await Promise.race([
+        supabase.auth.signOut(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Sign out timed out')), SIGNOUT_TIMEOUT_MS)
+        )
+      ]);
+
+      if (result.error) throw result.error;
       // handleSignOut() will be called automatically by the auth state change listener
       return { success: true };
     } catch (error) {
       console.error('Error signing out:', error);
-      return { success: false, error: error.message };
+
+      // If signOut timed out or failed, manually clear the session
+      // This ensures the user can always log out even if the connection is stale
+      this.forceLocalSignOut();
+
+      return { success: true, wasForced: true };
+    }
+  }
+
+  // Force local sign out by clearing session data
+  // Used as fallback when supabase.auth.signOut() hangs or fails
+  forceLocalSignOut() {
+    try {
+      // Clear Supabase auth tokens from localStorage
+      const storageKey = Object.keys(localStorage).find(key =>
+        key.startsWith('sb-') && key.endsWith('-auth-token')
+      );
+      if (storageKey) {
+        localStorage.removeItem(storageKey);
+      }
+
+      // Trigger the sign out handler to update app state
+      this.handleSignOut();
+    } catch (e) {
+      console.error('Error during forced local sign out:', e);
+      // Still call handleSignOut to reset app state
+      this.handleSignOut();
     }
   }
 

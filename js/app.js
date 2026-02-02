@@ -153,9 +153,13 @@ class CadenceApp {
             }
           }
 
-          await auth.signOut();
+          const result = await auth.signOut();
+          if (result.wasForced) {
+            console.log('Sign out completed via forced local cleanup');
+          }
         } catch (error) {
           console.error('Error during sign out:', error);
+          // Even if signOut throws unexpectedly, proceed with local cleanup
         }
         // Always reset app state and show login screen directly
         this.resetAppState();
