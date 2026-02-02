@@ -149,17 +149,20 @@ BEGIN
     SELECT id INTO v_student_song_id
     FROM student_songs
     WHERE user_id = p_student_id
-      AND song_id = v_song_id;
+      AND song_id = v_song_id
+      AND instrument_id = p_instrument_id;
 
     IF v_student_song_id IS NULL THEN
       INSERT INTO student_songs (
         user_id,
         song_id,
+        instrument_id,
         status
       )
       VALUES (
         p_student_id,
         v_song_id,
+        p_instrument_id,
         'learning'
       )
       RETURNING id INTO v_student_song_id;
