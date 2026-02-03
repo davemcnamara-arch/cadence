@@ -1660,19 +1660,21 @@ class CadenceApp {
       return;
     }
 
-    // Use RPC function to bypass RLS issues
-    const { data, error } = await supabase.rpc('add_student_song', {
-      p_student_id: userId,
-      p_song_id: songId,
-      p_instrument_id: this.currentInstrument,
-      p_status: 'learning'
-    });
-
-    if (error) {
+    // Use direct RPC call to bypass stale Supabase client connections
+    let data;
+    try {
+      const result = await this.callRpcDirect('add_student_song', {
+        p_student_id: userId,
+        p_song_id: songId,
+        p_instrument_id: this.currentInstrument,
+        p_status: 'learning'
+      });
+      data = result.data;
+    } catch (error) {
       console.error('Error adding song:', error);
-      if (error.message.includes('Already tracking')) {
+      if (error.message?.includes('Already tracking')) {
         this.showToast('Already tracking this song!', 'info');
-      } else if (error.message.includes('Permission denied')) {
+      } else if (error.message?.includes('Permission denied')) {
         this.showToast('Permission denied', 'error');
       } else {
         this.showToast('Failed to add song', 'error');
@@ -2826,15 +2828,15 @@ class CadenceApp {
     const chordsRating = document.getElementById('chords-rating').value;
     const tutorialRating = document.getElementById('tutorial-rating').value;
 
-    // Save ratings if provided - use RPC function to bypass RLS
+    // Save ratings if provided - use direct RPC call to bypass stale connections
     if (chordsRating || tutorialRating) {
-      const { error } = await supabase.rpc('submit_resource_ratings', {
-        p_student_song_id: this.pendingMasteredSong.studentSongId,
-        p_chords_rating: chordsRating ? parseInt(chordsRating) : null,
-        p_tutorial_rating: tutorialRating ? parseInt(tutorialRating) : null
-      });
-
-      if (error) {
+      try {
+        await this.callRpcDirect('submit_resource_ratings', {
+          p_student_song_id: this.pendingMasteredSong.studentSongId,
+          p_chords_rating: chordsRating ? parseInt(chordsRating) : null,
+          p_tutorial_rating: tutorialRating ? parseInt(tutorialRating) : null
+        });
+      } catch (error) {
         console.error('Error saving ratings:', error);
         // Continue anyway - don't block mastering due to rating error
       }
@@ -2852,14 +2854,14 @@ class CadenceApp {
 
     const { studentSongId, instrumentId } = this.pendingMasteredSong;
 
-    // Use RPC function to bypass RLS when in preview mode
-    const { error } = await supabase.rpc('update_student_song_status', {
-      p_student_song_id: studentSongId,
-      p_status: 'mastered',
-      p_date_completed: new Date().toISOString()
-    });
-
-    if (error) {
+    // Use direct RPC call to bypass stale Supabase client connections
+    try {
+      await this.callRpcDirect('update_student_song_status', {
+        p_student_song_id: studentSongId,
+        p_status: 'mastered',
+        p_date_completed: new Date().toISOString()
+      });
+    } catch (error) {
       console.error('Error marking song mastered:', error);
       this.showToast('Failed to update song', 'error');
       return;
@@ -2943,14 +2945,14 @@ class CadenceApp {
   }
 
   async unmasterSong(studentSongId) {
-    // Use RPC function to bypass RLS when in preview mode
-    const { error } = await supabase.rpc('update_student_song_status', {
-      p_student_song_id: studentSongId,
-      p_status: 'learning',
-      p_date_completed: null
-    });
-
-    if (error) {
+    // Use direct RPC call to bypass stale Supabase client connections
+    try {
+      await this.callRpcDirect('update_student_song_status', {
+        p_student_song_id: studentSongId,
+        p_status: 'learning',
+        p_date_completed: null
+      });
+    } catch (error) {
       console.error('Error unmarking song:', error);
       this.showToast('Failed to unmaster song', 'error');
       return;
@@ -2972,12 +2974,12 @@ class CadenceApp {
       return;
     }
 
-    // Use RPC function to bypass RLS when in preview mode
-    const { error } = await supabase.rpc('remove_student_song', {
-      p_student_song_id: studentSongId
-    });
-
-    if (error) {
+    // Use direct RPC call to bypass stale Supabase client connections
+    try {
+      await this.callRpcDirect('remove_student_song', {
+        p_student_song_id: studentSongId
+      });
+    } catch (error) {
       console.error('Error removing song:', error);
       this.showToast('Failed to remove song', 'error');
       return;
@@ -3692,16 +3694,11 @@ class CadenceApp {
     }
 
     try {
-      const { data, error } = await supabase.rpc('add_pending_enrollments', {
+      // Use direct RPC call to bypass stale Supabase client connections
+      const { data } = await this.callRpcDirect('add_pending_enrollments', {
         p_class_id: this.currentClass.id,
         p_emails: emails
       });
-
-      if (error) {
-        console.error('Error adding pending enrollments:', error);
-        this.showToast('Failed to add students', 'error');
-        return;
-      }
 
       if (data.success) {
         // Clear the textarea
@@ -3728,15 +3725,10 @@ class CadenceApp {
 
   async removePendingEnrollment(enrollmentId) {
     try {
-      const { data, error } = await supabase.rpc('remove_pending_enrollment', {
+      // Use direct RPC call to bypass stale Supabase client connections
+      const { data } = await this.callRpcDirect('remove_pending_enrollment', {
         p_enrollment_id: enrollmentId
       });
-
-      if (error) {
-        console.error('Error removing pending enrollment:', error);
-        this.showToast('Failed to remove enrollment', 'error');
-        return;
-      }
 
       if (data.success) {
         // Reload the list in modal and refresh class roster
@@ -3792,17 +3784,12 @@ class CadenceApp {
     }
 
     try {
-      const { data, error } = await supabase.rpc('update_student_name', {
+      // Use direct RPC call to bypass stale Supabase client connections
+      const { data } = await this.callRpcDirect('update_student_name', {
         p_class_id: this.currentClass.id,
         p_student_id: studentId,
         p_new_name: newName
       });
-
-      if (error) {
-        console.error('Error updating student name:', error);
-        this.showToast('Failed to update student name', 'error');
-        return;
-      }
 
       if (data.success) {
         document.getElementById('edit-student-modal').classList.add('hidden');
@@ -3839,16 +3826,11 @@ class CadenceApp {
     }
 
     try {
-      const { data, error } = await supabase.rpc('remove_student_from_class', {
+      // Use direct RPC call to bypass stale Supabase client connections
+      const { data } = await this.callRpcDirect('remove_student_from_class', {
         p_class_id: this.currentClass.id,
         p_student_id: studentId
       });
-
-      if (error) {
-        console.error('Error removing student:', error);
-        this.showToast('Failed to remove student', 'error');
-        return;
-      }
 
       if (data.success) {
         document.getElementById('remove-student-modal').classList.add('hidden');
@@ -5207,17 +5189,11 @@ class CadenceApp {
     }
 
     try {
-      // Update the song's suggested_level using RPC to bypass RLS
-      const { error } = await supabase.rpc('update_song_suggested_level', {
+      // Use direct RPC call to bypass stale Supabase client connections
+      await this.callRpcDirect('update_song_suggested_level', {
         p_song_id: songId,
         p_level: level
       });
-
-      if (error) {
-        console.error('Error resolving flagged rating:', error);
-        this.showToast('Failed to resolve rating: ' + error.message, 'error');
-        return;
-      }
 
       this.showToast('Official level set successfully', 'success');
 
@@ -5245,17 +5221,11 @@ class CadenceApp {
     }
 
     try {
-      // Update the rating level (if overridden) and mark as teacher_reviewed
-      const { data, error } = await supabase.rpc('approve_song_rating', {
+      // Use direct RPC call to bypass stale Supabase client connections
+      await this.callRpcDirect('approve_song_rating', {
         p_rating_id: ratingId,
         p_assessed_level: level
       });
-
-      if (error) {
-        console.error('Error reviewing rating:', error);
-        this.showToast('Failed to review rating: ' + error.message, 'error');
-        return;
-      }
 
       this.showToast('Rating reviewed successfully', 'success');
 
@@ -5279,17 +5249,10 @@ class CadenceApp {
       // Set flag to prevent real-time subscription from double-loading
       this.approvingLink = true;
 
-      // Call the RPC function to approve the link
-      const { error } = await supabase.rpc('approve_pending_link', {
+      // Use direct RPC call to bypass stale Supabase client connections
+      await this.callRpcDirect('approve_pending_link', {
         pending_link_id: linkId
       });
-
-      if (error) {
-        console.error('Error approving link:', error);
-        this.showToast('Failed to approve link: ' + error.message, 'error');
-        this.approvingLink = false;
-        return;
-      }
 
       this.showToast('Link approved successfully', 'success');
 
@@ -5316,16 +5279,10 @@ class CadenceApp {
 
   async rejectPendingLink(linkId) {
     try {
-      // Call the RPC function to reject the link
-      const { error } = await supabase.rpc('reject_pending_link', {
+      // Use direct RPC call to bypass stale Supabase client connections
+      await this.callRpcDirect('reject_pending_link', {
         pending_link_id: linkId
       });
-
-      if (error) {
-        console.error('Error rejecting link:', error);
-        this.showToast('Failed to reject link: ' + error.message, 'error');
-        return;
-      }
 
       this.showToast('Link rejected', 'success');
 
@@ -5601,40 +5558,32 @@ class CadenceApp {
     try {
       const user = auth.getCurrentUser();
 
-      // Add timeout to RPC call
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout after 10 seconds')), 10000)
-      );
-
-      const rpcPromise = supabase.rpc('join_class_by_code', {
-        p_user_id: user.id,
-        p_class_code: classCode
-      });
-
-      const { data, error } = await Promise.race([rpcPromise, timeoutPromise])
-        .catch(err => {
-          console.error('RPC call failed or timed out:', err);
-          return { data: null, error: err };
+      // Use direct RPC call to bypass stale Supabase client connections
+      let data;
+      try {
+        const result = await this.callRpcDirect('join_class_by_code', {
+          p_user_id: user.id,
+          p_class_code: classCode
         });
-
-      if (error) {
+        data = result.data;
+      } catch (rpcError) {
         console.error('Database error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
+          message: rpcError.message,
+          details: rpcError.details,
+          hint: rpcError.hint,
+          code: rpcError.code
         });
 
         // Handle timeout
-        if (error.message?.includes('timeout')) {
+        if (rpcError.message?.includes('timeout') || rpcError.message?.includes('timed out')) {
           this.showToast('Request timed out. Please check your connection and try again.', 'error');
           return;
         }
 
         // Handle specific error cases
-        if (error.message?.includes('not found')) {
+        if (rpcError.message?.includes('not found')) {
           this.showToast('Class not found. Please check the code.', 'error');
-        } else if (error.message?.includes('already') || error.code === '23505') {
+        } else if (rpcError.message?.includes('already') || rpcError.code === '23505') {
           this.showToast('You are already in this class', 'info');
         } else {
           this.showToast('Failed to join class. Please try again.', 'error');
@@ -6499,11 +6448,14 @@ class CadenceApp {
       return;
     }
 
-    const { data, error } = await supabase.rpc('delete_user_account', {
-      p_user_id: userId
-    });
-
-    if (error) {
+    // Use direct RPC call to bypass stale Supabase client connections
+    let data;
+    try {
+      const result = await this.callRpcDirect('delete_user_account', {
+        p_user_id: userId
+      });
+      data = result.data;
+    } catch (error) {
       console.error('Error deleting user account:', error);
       this.showToast('Failed to delete account', 'error');
       return;
