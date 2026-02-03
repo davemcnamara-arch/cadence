@@ -1541,12 +1541,24 @@ class CadenceApp {
   renderSongCardWithData(song, levelDisplay, levelLabel, ratingsCount) {
 
     // Get instrument data for display and search queries
-    // Priority: filter dropdown > currentInstrument > null
+    // Priority: specific filter selection > currentInstrument > song's assigned instrument
     let instrumentId = this.currentFilterInstrument;
     if (instrumentId === 'my-instruments' || !instrumentId) {
       instrumentId = this.currentInstrument;
     }
-    const instrument = this.instruments.find(i => i.id === instrumentId);
+    let instrument = this.instruments.find(i => i.id === instrumentId);
+
+    // Fallback to song's assigned instrument or first rated instrument
+    if (!instrument) {
+      if (song.instruments) {
+        instrument = song.instruments;
+      } else if (song.song_ratings?.length > 0) {
+        // Use the first instrument the song has been rated for
+        const firstRatingInstrumentId = song.song_ratings[0].instrument_id;
+        instrument = this.instruments.find(i => i.id === firstRatingInstrumentId);
+      }
+    }
+
     const instrumentName = instrument?.name || '';
     const instrumentIcon = instrument?.icon || '';
 
