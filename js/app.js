@@ -1536,8 +1536,10 @@ class CadenceApp {
 
   renderSongCardWithData(song, levelDisplay, levelLabel, ratingsCount) {
 
-    // Get current instrument name for search queries
-    const instrumentName = this.instruments.find(i => i.id === this.currentInstrument)?.name || '';
+    // Get current instrument data for display and search queries
+    const instrument = this.instruments.find(i => i.id === this.currentInstrument);
+    const instrumentName = instrument?.name || '';
+    const instrumentIcon = instrument?.icon || '';
 
     // Get resource ratings for chords
     const chordsRating = this.formatResourceRating(song.resource_ratings?.chords);
@@ -1577,7 +1579,7 @@ class CadenceApp {
           ${actionButton}
         </div>
         <div class="song-meta">
-          ${song.instruments ? `<span class="song-tag instrument">${song.instruments.icon} ${song.instruments.name}</span>` : ''}
+          ${instrument ? `<span class="song-tag instrument">${instrumentIcon} ${instrumentName}</span>` : ''}
           <span class="song-tag level">${levelLabel}</span>
         </div>
         <div class="song-actions">
@@ -1649,8 +1651,11 @@ class CadenceApp {
       return;
     }
 
-    // Update modal title with instrument if available
-    const instrumentDisplay = song.instruments ? ` (${song.instruments.icon} ${song.instruments.name})` : '';
+    // Update modal title with instrument if available (use song's instrument or current filter instrument)
+    const currentInstrument = this.instruments.find(i => i.id === this.currentInstrument);
+    const instrumentDisplay = song.instruments
+      ? ` (${song.instruments.icon} ${song.instruments.name})`
+      : (currentInstrument ? ` (${currentInstrument.icon} ${currentInstrument.name})` : '');
     document.getElementById('song-details-title').textContent = `${song.title} - ${song.artist}${instrumentDisplay}`;
 
     // Render content
@@ -2995,8 +3000,11 @@ class CadenceApp {
   }
 
   showRateResourcesModal(song, hasChords, hasTutorial) {
-    // Update modal content with instrument if available
-    const instrumentDisplay = song.instruments ? ` (${song.instruments.icon} ${song.instruments.name})` : '';
+    // Update modal content with instrument if available (use song's instrument or current filter instrument)
+    const currentInstrument = this.instruments.find(i => i.id === this.currentInstrument);
+    const instrumentDisplay = song.instruments
+      ? ` (${song.instruments.icon} ${song.instruments.name})`
+      : (currentInstrument ? ` (${currentInstrument.icon} ${currentInstrument.name})` : '');
     document.getElementById('rate-resources-song-info').textContent =
       `${song.title} - ${song.artist}${instrumentDisplay}`;
 
@@ -6796,8 +6804,11 @@ class CadenceApp {
     // Store current song for adding resources
     this.currentResourceSong = song;
 
-    // Update modal info with instrument if available
-    const instrumentDisplay = song.instruments ? ` (${song.instruments.icon} ${song.instruments.name})` : '';
+    // Update modal info with instrument if available (use song's instrument or current filter instrument)
+    const currentInstrument = this.instruments.find(i => i.id === this.currentInstrument);
+    const instrumentDisplay = song.instruments
+      ? ` (${song.instruments.icon} ${song.instruments.name})`
+      : (currentInstrument ? ` (${currentInstrument.icon} ${currentInstrument.name})` : '');
     document.getElementById('song-resources-title').textContent = `Resources for ${song.title}`;
     document.getElementById('song-resources-info').textContent = `${song.title} - ${song.artist}${instrumentDisplay}`;
 
