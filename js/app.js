@@ -12,6 +12,7 @@ class CadenceApp {
 
   constructor() {
     this.currentInstrument = null;
+    this.currentFilterInstrument = null;
     this.instruments = [];
     this.levels = [];
     this.songs = [];
@@ -1330,6 +1331,9 @@ class CadenceApp {
     const instrumentFilter = document.getElementById('filter-instrument')?.value || '';
     const levelFilter = document.getElementById('filter-level')?.value || '';
 
+    // Store current filter instrument for use in rendering
+    this.currentFilterInstrument = instrumentFilter;
+
     // Check for duplicates in this.songs before filtering
     const songIds = this.songs.map(s => s.id);
     const uniqueIds = [...new Set(songIds)];
@@ -1536,8 +1540,13 @@ class CadenceApp {
 
   renderSongCardWithData(song, levelDisplay, levelLabel, ratingsCount) {
 
-    // Get current instrument data for display and search queries
-    const instrument = this.instruments.find(i => i.id === this.currentInstrument);
+    // Get instrument data for display and search queries
+    // Priority: filter dropdown > currentInstrument > null
+    let instrumentId = this.currentFilterInstrument;
+    if (instrumentId === 'my-instruments' || !instrumentId) {
+      instrumentId = this.currentInstrument;
+    }
+    const instrument = this.instruments.find(i => i.id === instrumentId);
     const instrumentName = instrument?.name || '';
     const instrumentIcon = instrument?.icon || '';
 
