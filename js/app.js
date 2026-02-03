@@ -2652,7 +2652,9 @@ class CadenceApp {
         };
       }
 
-      const data = await response.json();
+      // Handle empty responses (some RPC functions don't return data)
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : null;
       return { data, error: null };
     } catch (err) {
       clearTimeout(timeoutId);
