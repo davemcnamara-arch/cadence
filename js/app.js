@@ -640,6 +640,11 @@ class CadenceApp {
           .from('songs')
           .select(`
             *,
+            instruments (
+              id,
+              name,
+              icon
+            ),
             song_ratings (
               assessed_level,
               instrument_id,
@@ -1572,6 +1577,7 @@ class CadenceApp {
           ${actionButton}
         </div>
         <div class="song-meta">
+          ${song.instruments ? `<span class="song-tag instrument">${song.instruments.icon} ${song.instruments.name}</span>` : ''}
           <span class="song-tag level">${levelLabel}</span>
         </div>
         <div class="song-actions">
@@ -1643,8 +1649,9 @@ class CadenceApp {
       return;
     }
 
-    // Update modal title
-    document.getElementById('song-details-title').textContent = `${song.title} - ${song.artist}`;
+    // Update modal title with instrument if available
+    const instrumentDisplay = song.instruments ? ` (${song.instruments.icon} ${song.instruments.name})` : '';
+    document.getElementById('song-details-title').textContent = `${song.title} - ${song.artist}${instrumentDisplay}`;
 
     // Render content
     const content = document.getElementById('song-details-content');
@@ -2882,8 +2889,10 @@ class CadenceApp {
 
   renderStudentSongItem(studentSong) {
     const song = studentSong.songs;
-    // Get instrument name for search queries
-    const instrumentName = this.instruments.find(i => i.id === studentSong.instrument_id)?.name || '';
+    // Get instrument data for display and search queries
+    const instrument = this.instruments.find(i => i.id === studentSong.instrument_id);
+    const instrumentName = instrument?.name || '';
+    const instrumentIcon = instrument?.icon || '';
 
     // Get resource ratings
     const chordsRating = this.formatResourceRating(studentSong.resource_ratings?.chords);
@@ -2894,6 +2903,7 @@ class CadenceApp {
         <div class="info">
           <div class="title">${song.title}</div>
           <div class="artist">${song.artist}</div>
+          ${instrument ? `<div class="instrument-tag" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">${instrumentIcon} ${instrumentName}</div>` : ''}
           <div class="song-links" style="margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
             ${song.chords_url ? `
               <span style="display: inline-flex; align-items: center; gap: 2px;">
@@ -2985,9 +2995,10 @@ class CadenceApp {
   }
 
   showRateResourcesModal(song, hasChords, hasTutorial) {
-    // Update modal content
+    // Update modal content with instrument if available
+    const instrumentDisplay = song.instruments ? ` (${song.instruments.icon} ${song.instruments.name})` : '';
     document.getElementById('rate-resources-song-info').textContent =
-      `${song.title} - ${song.artist}`;
+      `${song.title} - ${song.artist}${instrumentDisplay}`;
 
     // Show/hide rating groups based on what resources exist
     const chordsGroup = document.getElementById('chords-rating-group');
@@ -6785,9 +6796,10 @@ class CadenceApp {
     // Store current song for adding resources
     this.currentResourceSong = song;
 
-    // Update modal info
+    // Update modal info with instrument if available
+    const instrumentDisplay = song.instruments ? ` (${song.instruments.icon} ${song.instruments.name})` : '';
     document.getElementById('song-resources-title').textContent = `Resources for ${song.title}`;
-    document.getElementById('song-resources-info').textContent = `${song.title} - ${song.artist}`;
+    document.getElementById('song-resources-info').textContent = `${song.title} - ${song.artist}${instrumentDisplay}`;
 
     // Load tutorials and resources
     await Promise.all([

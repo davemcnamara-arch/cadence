@@ -935,6 +935,11 @@ body {
   color: white;
 }
 
+.song-tag.instrument {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
 .song-actions {
   display: flex;
   gap: 0.5rem;
