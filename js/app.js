@@ -1743,19 +1743,29 @@ class CadenceApp {
 
     this.showToast('Song added to Currently Learning!', 'success');
 
-    // Reload student data to show the new song
+    // Reload data and re-render current view
     if (this.previewMode.active) {
+      // If in student preview, refresh the student's data first
       await this.loadStudentPreviewData(this.previewMode.studentId);
+      // Then re-render the current view
+      if (this.currentView === 'songs') {
+        this.renderSongs();
+      } else if (this.currentView === 'progress') {
+        this.renderProgress();
+      } else if (this.currentView === 'pathway') {
+        this.renderPathway();
+      }
     } else {
       // Reload own songs if not in preview mode
       await this.loadSongs();
-    }
-
-    // Re-render current view to update button states
-    if (this.currentView === 'songs') {
-      this.renderSongs();
-    } else if (this.currentView === 'progress') {
-      this.renderProgress();
+      // Re-render current view to update button states
+      if (this.currentView === 'songs') {
+        this.renderSongs();
+      } else if (this.currentView === 'progress') {
+        this.renderProgress();
+      } else if (this.currentView === 'pathway') {
+        this.renderPathway();
+      }
     }
   }
 
@@ -2577,14 +2587,27 @@ class CadenceApp {
       // Refresh data and re-render current view
       await this.loadSongs();
 
-      if (this.currentView === 'songs') {
+      if (this.previewMode.active) {
+        // If in student preview, refresh the student's data first
+        await this.loadStudentPreviewData(this.previewMode.studentId);
+        // Then re-render the current view
+        if (this.currentView === 'songs') {
+          this.renderSongs();
+        } else if (this.currentView === 'progress') {
+          this.renderProgress();
+        } else if (this.currentView === 'pathway') {
+          this.renderPathway();
+        }
+      } else if (this.currentView === 'songs') {
         this.renderSongs();
       } else if (this.currentView === 'progress') {
         this.renderProgress();
-      } else if (this.currentView === 'students' && this.previewMode.active) {
-        // If in student preview, refresh the student's data
-        await this.loadStudentPreviewData(this.previewMode.studentId);
-        this.renderProgress();
+      } else if (this.currentView === 'submissions') {
+        // Refresh submissions feed to show the new graded song
+        await this.loadSubmissions();
+      } else if (this.currentView === 'flagged') {
+        // Refresh flagged ratings in case the grading affects them
+        await this.loadFlaggedRatings();
       }
     } catch (error) {
       console.error('🎯 Error submitting grading:', error);
