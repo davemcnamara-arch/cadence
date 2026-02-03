@@ -747,13 +747,13 @@ class CadenceApp {
   }
 
   setupSongUpdatesSubscription() {
-    // Subscribe to changes in the songs table
+    // Subscribe to all changes in the songs table (INSERT, UPDATE, DELETE)
     const subscription = supabase
       .channel('song-updates')
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
           table: 'songs'
         },
@@ -763,17 +763,49 @@ class CadenceApp {
             return;
           }
 
-          // Only reload if user is viewing the songs tab
+          const eventType = payload.eventType;
+          let toastMessage = 'Song library updated!';
+          if (eventType === 'INSERT') {
+            toastMessage = 'New song added to the library!';
+          } else if (eventType === 'UPDATE') {
+            toastMessage = 'Song updated!';
+          } else if (eventType === 'DELETE') {
+            toastMessage = 'Song removed from library';
+          }
+
+          // Reload and re-render based on current view
           if (this.currentView === 'songs') {
             this.loadSongs().then(() => {
               this.filterSongs();
-              this.showToast('Song updated with new link!', 'info');
+              this.showToast(toastMessage, 'info');
             });
           } else if (this.currentView === 'progress') {
             // Also update progress view if it shows songs
             this.loadSongs().then(() => {
               this.renderProgress();
             });
+          } else if (this.currentView === 'pathway') {
+            // Update pathway view as it also shows songs
+            this.loadSongs().then(() => {
+              this.renderPathway();
+            });
+          } else if (this.currentView === 'submissions') {
+            // Update submissions feed for teachers
+            this.loadSubmissions().then(() => {
+              this.showToast(toastMessage, 'info');
+            });
+            // Also update background song data
+            this.loadSongs();
+          } else if (this.currentView === 'admin') {
+            // Check if admin content moderation section is visible
+            const contentSection = document.getElementById('content-section');
+            if (contentSection && contentSection.classList.contains('active')) {
+              this.loadContentModeration().then(() => {
+                this.showToast(toastMessage, 'info');
+              });
+            }
+            // Also update background song data
+            this.loadSongs();
           } else {
             // Still update the data in background so it's fresh when they switch views
             this.loadSongs();
