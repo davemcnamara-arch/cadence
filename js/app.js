@@ -87,31 +87,48 @@ class CadenceApp {
   }
 
   // Keepalive mechanism to prevent Supabase connection from going stale
+  // Uses direct fetch to avoid hanging on stale connections
   startConnectionKeepalive() {
     // Ping every 2 minutes to keep connection alive
     const KEEPALIVE_INTERVAL = 2 * 60 * 1000;
 
+    const pingConnection = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      try {
+        const response = await fetch(
+          'https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/instruments?select=id&limit=1',
+          {
+            method: 'GET',
+            headers: {
+              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo'
+            },
+            signal: controller.signal
+          }
+        );
+        clearTimeout(timeoutId);
+        return response.ok;
+      } catch (err) {
+        clearTimeout(timeoutId);
+        console.warn('🎯 Keepalive ping failed:', err.message);
+        return false;
+      }
+    };
+
     setInterval(async () => {
       // Only ping if the page is visible (don't waste resources when tab is hidden)
       if (document.visibilityState === 'visible') {
-        try {
-          await supabase.from('instruments').select('id').limit(1);
-        } catch (err) {
-          console.warn('🎯 Keepalive ping failed:', err.message);
-        }
+        await pingConnection();
       }
     }, KEEPALIVE_INTERVAL);
 
     // Also reconnect when page becomes visible after being hidden
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'visible') {
-        try {
-          // Small delay to let browser wake up
-          await new Promise(resolve => setTimeout(resolve, 100));
-          await supabase.from('instruments').select('id').limit(1);
-        } catch (err) {
-          console.warn('🎯 Visibility change ping failed:', err.message);
-        }
+        // Small delay to let browser wake up
+        await new Promise(resolve => setTimeout(resolve, 100));
+        await pingConnection();
       }
     });
   }
@@ -536,10 +553,15 @@ class CadenceApp {
   // ============================================
 
   async loadInstruments() {
-    const { data, error } = await supabase
-      .from('instruments')
-      .select('*')
-      .order('display_order');
+    // Use queryWithTimeout to prevent stalling on stale connections
+    const { data, error } = await this.queryWithTimeout(
+      supabase
+        .from('instruments')
+        .select('*')
+        .order('display_order'),
+      15000,
+      'instruments'
+    );
 
     if (error) {
       console.error('Error loading instruments:', error);
@@ -558,10 +580,14 @@ class CadenceApp {
     // Retry once on failure - a transient error here causes the app to think
     // the student has no instruments, skipping all song loading
     for (let attempt = 0; attempt < 2; attempt++) {
-      const { data, error } = await supabase
-        .from('student_progress')
-        .select('*')
-        .eq('user_id', userId);
+      const { data, error } = await this.queryWithTimeout(
+        supabase
+          .from('student_progress')
+          .select('*')
+          .eq('user_id', userId),
+        15000,
+        'student progress'
+      );
 
       if (!error) {
         this.studentProgress = data || [];
@@ -576,11 +602,15 @@ class CadenceApp {
   }
 
   async loadLevels(instrumentId) {
-    const { data, error } = await supabase
-      .from('levels')
-      .select('*')
-      .eq('instrument_id', instrumentId)
-      .order('level_number');
+    const { data, error } = await this.queryWithTimeout(
+      supabase
+        .from('levels')
+        .select('*')
+        .eq('instrument_id', instrumentId)
+        .order('level_number'),
+      15000,
+      'levels'
+    );
 
     if (error) {
       console.error('Error loading levels:', error);
@@ -604,18 +634,23 @@ class CadenceApp {
     this.loadingSongsStarted = Date.now();
 
     try {
-      const { data, error } = await supabase
-        .from('songs')
-        .select(`
-          *,
-          song_ratings (
-            assessed_level,
-            instrument_id,
-            user_id
-          )
-        `)
-        .eq('approved', true)
-        .order('date_added', { ascending: false });
+      // Use queryWithTimeout to prevent stalling on stale connections
+      const { data, error } = await this.queryWithTimeout(
+        supabase
+          .from('songs')
+          .select(`
+            *,
+            song_ratings (
+              assessed_level,
+              instrument_id,
+              user_id
+            )
+          `)
+          .eq('approved', true)
+          .order('date_added', { ascending: false }),
+        15000,
+        'songs'
+      );
 
       if (error) {
         console.error('Error loading songs:', error);
@@ -623,9 +658,13 @@ class CadenceApp {
       }
 
     // Load resource ratings separately and attach to songs
-    const { data: resourceRatings } = await supabase
-      .from('resource_ratings')
-      .select('*, student_songs!inner(song_id)');
+    const { data: resourceRatings } = await this.queryWithTimeout(
+      supabase
+        .from('resource_ratings')
+        .select('*, student_songs!inner(song_id)'),
+      15000,
+      'resource ratings'
+    );
 
     // Create a map of song_id to ratings
     const ratingsMap = {};
@@ -645,15 +684,23 @@ class CadenceApp {
     }
 
     // Load resource counts (tutorials + student resources)
-    const { data: tutorialCounts } = await supabase
-      .from('song_tutorials')
-      .select('song_id')
-      .eq('status', 'approved');
+    const { data: tutorialCounts } = await this.queryWithTimeout(
+      supabase
+        .from('song_tutorials')
+        .select('song_id')
+        .eq('status', 'approved'),
+      15000,
+      'tutorial counts'
+    );
 
-    const { data: resourceCounts } = await supabase
-      .from('student_resources')
-      .select('song_id')
-      .eq('status', 'approved');
+    const { data: resourceCounts } = await this.queryWithTimeout(
+      supabase
+        .from('student_resources')
+        .select('song_id')
+        .eq('status', 'approved'),
+      15000,
+      'resource counts'
+    );
 
     // Create count maps
     const tutorialCountMap = {};
@@ -1258,10 +1305,14 @@ class CadenceApp {
     if (!this.previewMode.active) {
       const user = auth.getCurrentUser();
       if (user) {
-        const { data: studentSongs } = await supabase
-          .from('student_songs')
-          .select('*')
-          .eq('user_id', user.id);
+        const { data: studentSongs } = await this.queryWithTimeout(
+          supabase
+            .from('student_songs')
+            .select('*')
+            .eq('user_id', user.id),
+          15000,
+          'student songs'
+        );
         this.studentSongs = studentSongs || [];
       }
     }
@@ -1561,23 +1612,31 @@ class CadenceApp {
     // Get list of students if user is a teacher (to show their names)
     let studentMap = {};
     if (user.role === 'teacher') {
-      const { data: students } = await supabase.rpc('get_all_teacher_students');
-      if (students) {
-        students.forEach(s => {
-          studentMap[s.user_id] = s.name;
-        });
+      try {
+        const result = await this.callRpcDirect('get_all_teacher_students', {});
+        if (result.data) {
+          result.data.forEach(s => {
+            studentMap[s.user_id] = s.name;
+          });
+        }
+      } catch (err) {
+        console.warn('Could not load teacher students:', err);
       }
     }
 
     // Fetch all ratings for this song (without user join due to RLS)
-    const { data: ratings, error } = await supabase
-      .from('song_ratings')
-      .select(`
-        *,
-        instruments (icon, name)
-      `)
-      .eq('song_id', songId)
-      .order('date_graded', { ascending: false });
+    const { data: ratings, error } = await this.queryWithTimeout(
+      supabase
+        .from('song_ratings')
+        .select(`
+          *,
+          instruments (icon, name)
+        `)
+        .eq('song_id', songId)
+        .order('date_graded', { ascending: false }),
+      15000,
+      'song ratings'
+    );
 
     if (error) {
       console.error('Error loading song ratings:', error);
@@ -2604,6 +2663,101 @@ class CadenceApp {
     }
   }
 
+  // Wrapper for Supabase queries that may stall on stale connections
+  // Returns { data, error } - on timeout, shows toast and returns null data
+  async queryWithTimeout(queryPromise, timeoutMs = 15000, context = 'data') {
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('QUERY_TIMEOUT')), timeoutMs)
+    );
+
+    try {
+      return await Promise.race([queryPromise, timeoutPromise]);
+    } catch (error) {
+      if (error.message === 'QUERY_TIMEOUT') {
+        console.warn(`Query timeout while loading ${context}`);
+        this.showToast('Connection lost. Please refresh the page.', 'error');
+        return { data: null, error: { message: 'Connection timeout' } };
+      }
+      throw error;
+    }
+  }
+
+  // Direct SELECT query using fetch to bypass stale Supabase client connections
+  // Use for simple queries; complex nested queries should use queryWithTimeout
+  async callSelectDirect(table, select = '*', filters = {}, options = {}) {
+    const sessionKey = 'sb-dgwtihpiqgkhokkkxuzo-auth-token';
+    const sessionData = localStorage.getItem(sessionKey);
+
+    const session = sessionData ? JSON.parse(sessionData) : null;
+    const accessToken = session?.access_token;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), options.timeout || 15000);
+
+    // Build query string
+    const params = new URLSearchParams();
+    params.set('select', select);
+
+    // Add filters (e.g., { eq: { column: value }, neq: { column: value } })
+    for (const [op, conditions] of Object.entries(filters)) {
+      for (const [column, value] of Object.entries(conditions)) {
+        params.append(column, `${op}.${value}`);
+      }
+    }
+
+    // Add order if specified
+    if (options.order) {
+      params.set('order', options.order);
+    }
+
+    // Add limit if specified
+    if (options.limit) {
+      params.set('limit', options.limit);
+    }
+
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo'
+      };
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch(
+        `https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}?${params.toString()}`,
+        {
+          method: 'GET',
+          headers,
+          signal: controller.signal
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return {
+          data: null,
+          error: {
+            message: errorData.message || `HTTP ${response.status}`,
+            details: errorData.details
+          }
+        };
+      }
+
+      const data = await response.json();
+      return { data, error: null };
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        this.showToast('Connection lost. Please refresh the page.', 'error');
+        return { data: null, error: { message: 'Connection timeout' } };
+      }
+      return { data: null, error: { message: err.message } };
+    }
+  }
+
   // ============================================
   // STUDENT: Progress Tracking & Mastery
   // ============================================
@@ -2620,22 +2774,32 @@ class CadenceApp {
       // Load fresh data for current user
       const userId = user.id;
 
-      // Load student songs
-      const { data: studentSongs } = await supabase
-        .from('student_songs')
-        .select(`
-          *,
-          songs (*)
-        `)
-        .eq('user_id', userId)
-        .order('date_started', { ascending: false });
+      // Load student songs with timeout to prevent stalling on stale connections
+      const { data: studentSongs } = await this.queryWithTimeout(
+        supabase
+          .from('student_songs')
+          .select(`
+            *,
+            songs (*)
+          `)
+          .eq('user_id', userId)
+          .order('date_started', { ascending: false }),
+        15000,
+        'student songs progress'
+      );
 
       // Load resource ratings for these student songs
       const studentSongIds = studentSongs?.map(s => s.id) || [];
-      const { data: resourceRatings } = await supabase
-        .from('resource_ratings')
-        .select('*')
-        .in('student_song_id', studentSongIds);
+      const { data: resourceRatings } = studentSongIds.length > 0
+        ? await this.queryWithTimeout(
+            supabase
+              .from('resource_ratings')
+              .select('*')
+              .in('student_song_id', studentSongIds),
+            15000,
+            'resource ratings'
+          )
+        : { data: [] };
 
       // Create a map of student_song_id to ratings
       const ratingsMap = {};
@@ -2760,12 +2924,14 @@ class CadenceApp {
     const user = auth.getCurrentUser();
 
     // Get the student song to check which instrument it's for
-    // Use RPC function to bypass RLS when in preview mode
-    const { data: studentSong, error } = await supabase.rpc('get_student_song_detail', {
-      p_student_song_id: studentSongId
-    });
-
-    if (error) {
+    // Use direct RPC call to bypass stale connections and RLS when in preview mode
+    let studentSong;
+    try {
+      const result = await this.callRpcDirect('get_student_song_detail', {
+        p_student_song_id: studentSongId
+      });
+      studentSong = result.data;
+    } catch (error) {
       console.error('Error getting student song:', error);
       this.showToast('Failed to load song details', 'error');
       return;
@@ -3259,13 +3425,15 @@ class CadenceApp {
     // Check if we should include archived classes
     const showArchived = document.getElementById('show-archived-classes')?.checked || false;
 
-    // Use RPC function to bypass RLS and get accurate student counts
-    const { data, error } = await supabase.rpc('get_teacher_classes', {
-      p_teacher_id: user.id,
-      p_include_archived: showArchived
-    });
-
-    if (error) {
+    // Use direct RPC call to bypass stale Supabase client connections
+    let data;
+    try {
+      const result = await this.callRpcDirect('get_teacher_classes', {
+        p_teacher_id: user.id,
+        p_include_archived: showArchived
+      });
+      data = result.data;
+    } catch (error) {
       console.error('Error loading classes:', error);
       this.classes = [];
       return;
@@ -3626,15 +3794,11 @@ class CadenceApp {
     container.innerHTML = '<p style="color: var(--text-secondary);">Loading...</p>';
 
     try {
-      const { data, error } = await supabase.rpc('get_pending_enrollments', {
+      // Use direct RPC call to bypass stale connections
+      const result = await this.callRpcDirect('get_pending_enrollments', {
         p_class_id: this.currentClass.id
       });
-
-      if (error) {
-        console.error('Error loading pending enrollments:', error);
-        container.innerHTML = '<p style="color: var(--error-color);">Failed to load pending enrollments</p>';
-        return;
-      }
+      const data = result.data;
 
       if (!data || data.length === 0) {
         container.innerHTML = '<p style="color: var(--text-secondary); font-style: italic;">No pending enrollments</p>';
@@ -4052,10 +4216,12 @@ class CadenceApp {
     if (!this.currentClass) return;
 
     try {
-      // Load both active students and pending enrollments in parallel
+      // Load both active students and pending enrollments in parallel using direct RPC calls
       const [studentsResult, pendingResult] = await Promise.all([
-        supabase.rpc('get_class_students', { p_class_id: this.currentClass.id }),
-        supabase.rpc('get_pending_enrollments', { p_class_id: this.currentClass.id })
+        this.callRpcDirect('get_class_students', { p_class_id: this.currentClass.id })
+          .catch(err => ({ data: null, error: err })),
+        this.callRpcDirect('get_pending_enrollments', { p_class_id: this.currentClass.id })
+          .catch(err => ({ data: null, error: err }))
       ]);
 
       if (studentsResult.error) {
@@ -4220,12 +4386,14 @@ class CadenceApp {
       return;
     }
 
-    // Use RPC function to bypass RLS
-    const { data, error } = await supabase.rpc('get_class_timeline', {
-      p_class_id: this.currentClass.id
-    });
-
-    if (error) {
+    // Use direct RPC call to bypass stale connections and RLS
+    let data;
+    try {
+      const result = await this.callRpcDirect('get_class_timeline', {
+        p_class_id: this.currentClass.id
+      });
+      data = result.data;
+    } catch (error) {
       console.error('Error loading timeline:', error);
       container.innerHTML = '<p style="color: var(--text-secondary);">Error loading timeline</p>';
       return;
@@ -4258,12 +4426,14 @@ class CadenceApp {
   }
 
   async viewStudentDetail(studentId) {
-    // Use RPC function to bypass RLS
-    const { data, error } = await supabase.rpc('get_student_detail', {
-      p_student_id: studentId
-    });
-
-    if (error) {
+    // Use direct RPC call to bypass stale connections and RLS
+    let data;
+    try {
+      const result = await this.callRpcDirect('get_student_detail', {
+        p_student_id: studentId
+      });
+      data = result.data;
+    } catch (error) {
       console.error('Error loading student detail:', error);
       return;
     }
@@ -4395,12 +4565,14 @@ class CadenceApp {
   }
 
   async loadStudentPreviewData(studentId) {
-    // Use RPC function to bypass RLS
-    const { data, error } = await supabase.rpc('get_student_detail', {
-      p_student_id: studentId
-    });
-
-    if (error) {
+    // Use direct RPC call to bypass stale connections and RLS
+    let data;
+    try {
+      const result = await this.callRpcDirect('get_student_detail', {
+        p_student_id: studentId
+      });
+      data = result.data;
+    } catch (error) {
       console.error('Error loading student preview data:', error);
       return;
     }
@@ -4494,11 +4666,12 @@ class CadenceApp {
   async loadSubmissions() {
     const user = auth.getCurrentUser();
 
-    // Use RPC function to get all students from teacher's classes
-    const { data: students, error: studentsError } = await supabase
-      .rpc('get_all_teacher_students');
-
-    if (studentsError) {
+    // Use direct RPC call to get all students from teacher's classes
+    let students;
+    try {
+      const result = await this.callRpcDirect('get_all_teacher_students', {});
+      students = result.data;
+    } catch (studentsError) {
       console.error('Error loading students:', studentsError);
       this.submissions = [];
       this.renderSubmissionsFeed();
@@ -4519,17 +4692,21 @@ class CadenceApp {
       studentMap[s.user_id] = { name: s.name, email: s.email };
     });
 
-    // Get submissions from those students
-    const { data, error } = await supabase
-      .from('song_ratings')
-      .select(`
-        *,
-        songs!inner (title, artist),
-        instruments (icon, name)
-      `)
-      .in('user_id', studentIds)
-      .order('date_graded', { ascending: false })
-      .limit(50);
+    // Get submissions from those students with timeout to prevent stalling
+    const { data, error } = await this.queryWithTimeout(
+      supabase
+        .from('song_ratings')
+        .select(`
+          *,
+          songs!inner (title, artist),
+          instruments (icon, name)
+        `)
+        .in('user_id', studentIds)
+        .order('date_graded', { ascending: false })
+        .limit(50),
+      15000,
+      'submissions'
+    );
 
     if (error) {
       console.error('Error loading submissions:', error);
@@ -4666,57 +4843,77 @@ class CadenceApp {
 
   async loadFlaggedRatings() {
     // Always load pending links, tutorials, and resources first (independent of student data)
-    const { data: pendingLinks, error: pendingError } = await supabase
-      .from('pending_links')
-      .select(`
-        id,
-        song_id,
-        link_type,
-        url,
-        submitted_at,
-        submitted_by_user_id,
-        songs!inner (title, artist),
-        users!pending_links_submitted_by_user_id_fkey (name)
-      `)
-      .eq('status', 'pending')
-      .order('submitted_at', { ascending: false });
+    // Use queryWithTimeout to prevent stalling on stale connections
+    const { data: pendingLinks, error: pendingError } = await this.queryWithTimeout(
+      supabase
+        .from('pending_links')
+        .select(`
+          id,
+          song_id,
+          link_type,
+          url,
+          submitted_at,
+          submitted_by_user_id,
+          songs!inner (title, artist),
+          users!pending_links_submitted_by_user_id_fkey (name)
+        `)
+        .eq('status', 'pending')
+        .order('submitted_at', { ascending: false }),
+      15000,
+      'pending links'
+    );
 
-    const { data: pendingTutorials } = await supabase
-      .from('song_tutorials')
-      .select(`
-        id,
-        song_id,
-        url,
-        title,
-        created_at,
-        submitted_by_user_id,
-        songs!inner (title, artist)
-      `)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
+    const { data: pendingTutorials } = await this.queryWithTimeout(
+      supabase
+        .from('song_tutorials')
+        .select(`
+          id,
+          song_id,
+          url,
+          title,
+          created_at,
+          submitted_by_user_id,
+          songs!inner (title, artist)
+        `)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false }),
+      15000,
+      'pending tutorials'
+    );
 
-    const { data: pendingResources } = await supabase
-      .from('student_resources')
-      .select(`
-        id,
-        song_id,
-        title,
-        file_url,
-        file_type,
-        created_at,
-        user_id,
-        songs!inner (title, artist)
-      `)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
+    const { data: pendingResources } = await this.queryWithTimeout(
+      supabase
+        .from('student_resources')
+        .select(`
+          id,
+          song_id,
+          title,
+          file_url,
+          file_type,
+          created_at,
+          user_id,
+          songs!inner (title, artist)
+        `)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false }),
+      15000,
+      'pending resources'
+    );
 
     // Store pending data
     this.pendingLinks = pendingLinks || [];
     this.pendingTutorials = pendingTutorials || [];
     this.pendingResources = pendingResources || [];
 
-    // Get all students from all the teacher's classes
-    const { data: allStudents, error: studentsError } = await supabase.rpc('get_all_teacher_students');
+    // Get all students from all the teacher's classes using direct RPC call
+    let allStudents;
+    let studentsError;
+    try {
+      const result = await this.callRpcDirect('get_all_teacher_students', {});
+      allStudents = result.data;
+    } catch (err) {
+      studentsError = err;
+    }
 
     if (studentsError) {
       console.error('Error loading teacher students:', studentsError);
@@ -4748,10 +4945,14 @@ class CadenceApp {
     const studentIds = allStudents.map(s => s.user_id);
 
     // First, get all song IDs that have been rated by class students
-    const { data: studentRatings, error: studentError } = await supabase
-      .from('song_ratings')
-      .select('song_id')
-      .in('user_id', studentIds);
+    const { data: studentRatings, error: studentError } = await this.queryWithTimeout(
+      supabase
+        .from('song_ratings')
+        .select('song_id')
+        .in('user_id', studentIds),
+      15000,
+      'student ratings'
+    );
 
     if (studentError) {
       console.error('Error loading student ratings:', studentError);
@@ -4763,7 +4964,7 @@ class CadenceApp {
     }
 
     // Get unique song IDs
-    const songIds = [...new Set(studentRatings.map(r => r.song_id))];
+    const songIds = [...new Set((studentRatings || []).map(r => r.song_id))];
 
     // Initialize flagged and newRatings arrays
     let flagged = [];
@@ -4773,21 +4974,25 @@ class CadenceApp {
     if (songIds.length > 0) {
       // Now get ALL ratings for these songs (including teacher ratings)
       // Don't use inner join on users to avoid RLS issues
-      const { data, error } = await supabase
-        .from('song_ratings')
-        .select(`
-          song_id,
-          instrument_id,
-          assessed_level,
-          user_id,
-          songs!inner (title, artist, suggested_level),
-          instruments (icon, name)
-        `)
-        .in('song_id', songIds);
+      const { data, error } = await this.queryWithTimeout(
+        supabase
+          .from('song_ratings')
+          .select(`
+            song_id,
+            instrument_id,
+            assessed_level,
+            user_id,
+            songs!inner (title, artist, suggested_level),
+            instruments (icon, name)
+          `)
+          .in('song_id', songIds),
+        15000,
+        'all song ratings'
+      );
 
       if (error) {
         console.error('Error loading ratings:', error);
-      } else {
+      } else if (data) {
         // Group by song AND instrument to find discrepancies
         const songGroups = {};
         data.forEach(rating => {
@@ -4821,21 +5026,25 @@ class CadenceApp {
       }
 
       // Also load new ratings that need teacher review
-      const { data: unreviewedRatings, error: unreviewedError } = await supabase
-        .from('song_ratings')
-        .select(`
-          id,
-          song_id,
-          instrument_id,
-          assessed_level,
-          user_id,
-          date_graded,
-          songs!inner (title, artist),
-          instruments (icon, name)
-        `)
-        .in('user_id', studentIds)
-        .eq('teacher_reviewed', false)
-        .order('date_graded', { ascending: false });
+      const { data: unreviewedRatings, error: unreviewedError } = await this.queryWithTimeout(
+        supabase
+          .from('song_ratings')
+          .select(`
+            id,
+            song_id,
+            instrument_id,
+            assessed_level,
+            user_id,
+            date_graded,
+            songs!inner (title, artist),
+            instruments (icon, name)
+          `)
+          .in('user_id', studentIds)
+          .eq('teacher_reviewed', false)
+          .order('date_graded', { ascending: false }),
+        15000,
+        'unreviewed ratings'
+      );
 
       // Format unreviewed ratings for display
       newRatings = (unreviewedRatings || []).map(rating => ({
@@ -5439,21 +5648,25 @@ class CadenceApp {
     const user = auth.getCurrentUser();
     const container = document.getElementById('student-classes-list');
 
-    // Load classes the student has joined
-    const { data: memberships, error } = await supabase
-      .from('class_members')
-      .select(`
-        *,
-        classes (
-          id,
-          name,
-          class_code,
-          year_level,
-          created_at
-        )
-      `)
-      .eq('user_id', user.id)
-      .order('joined_at', { ascending: false });
+    // Load classes the student has joined with timeout to prevent stalling
+    const { data: memberships, error } = await this.queryWithTimeout(
+      supabase
+        .from('class_members')
+        .select(`
+          *,
+          classes (
+            id,
+            name,
+            class_code,
+            year_level,
+            created_at
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('joined_at', { ascending: false }),
+      15000,
+      'student classes'
+    );
 
     if (error) {
       console.error('Error loading student classes:', error);
@@ -5507,20 +5720,24 @@ class CadenceApp {
 
     const userId = user.id;
 
-    // Load classes the student has joined
-    const { data: memberships, error } = await supabase
-      .from('class_members')
-      .select(`
-        *,
-        classes (
-          id,
-          name,
-          class_code,
-          year_level
-        )
-      `)
-      .eq('user_id', userId)
-      .order('joined_at', { ascending: false });
+    // Load classes the student has joined with timeout to prevent stalling
+    const { data: memberships, error } = await this.queryWithTimeout(
+      supabase
+        .from('class_members')
+        .select(`
+          *,
+          classes (
+            id,
+            name,
+            class_code,
+            year_level
+          )
+        `)
+        .eq('user_id', userId)
+        .order('joined_at', { ascending: false }),
+      15000,
+      'student classes header'
+    );
 
     if (error) {
       console.error('Error loading student classes for header:', error);
@@ -6246,9 +6463,12 @@ class CadenceApp {
   }
 
   async loadManageableUsers() {
-    const { data, error } = await supabase.rpc('get_manageable_users');
-
-    if (error) {
+    // Use direct RPC call to bypass stale connections
+    let data;
+    try {
+      const result = await this.callRpcDirect('get_manageable_users', {});
+      data = result.data;
+    } catch (error) {
       console.error('Error loading manageable users:', error);
       this.manageableUsers = [];
       return;
@@ -6259,10 +6479,15 @@ class CadenceApp {
   }
 
   async loadPendingTeacherAccounts() {
-    const { data, error } = await supabase
-      .from('pre_registered_accounts')
-      .select('*')
-      .order('created_at', { ascending: false });
+    // Use queryWithTimeout to prevent stalling on stale connections
+    const { data, error } = await this.queryWithTimeout(
+      supabase
+        .from('pre_registered_accounts')
+        .select('*')
+        .order('created_at', { ascending: false }),
+      15000,
+      'pending teacher accounts'
+    );
 
     if (error) {
       console.error('Error loading pending accounts:', error);
