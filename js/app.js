@@ -6717,20 +6717,27 @@ class CadenceApp {
 
         const newRole = document.getElementById('user-role-select').value;
 
-        const { error } = await supabase
-          .from('users')
-          .update({ role: newRole })
-          .eq('id', this.currentEditingUserId);
-
-        if (error) {
+        // Use RPC function to bypass RLS restrictions
+        let data;
+        try {
+          const result = await this.callRpcDirect('change_user_role', {
+            p_user_id: this.currentEditingUserId,
+            p_new_role: newRole
+          });
+          data = result.data;
+        } catch (error) {
           console.error('Error updating user role:', error);
           this.showToast('Failed to update user role', 'error');
           return;
         }
 
-        document.getElementById('edit-user-role-modal').classList.add('hidden');
-        this.showToast('User role updated successfully', 'success');
-        await this.loadUsersManagement();
+        if (data && data.success) {
+          document.getElementById('edit-user-role-modal').classList.add('hidden');
+          this.showToast(`${data.name}'s role updated to ${data.new_role}`, 'success');
+          await this.loadUsersManagement();
+        } else {
+          this.showToast(data?.message || 'Failed to update user role', 'error');
+        }
       });
     }
   }
