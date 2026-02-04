@@ -172,6 +172,11 @@ export class AuthManager {
         // Fall through to manual role selection
       }
 
+      // Auto-assign student role for all new users (teachers are promoted by admin)
+      const result = await this.completeSignupWithRole('student', authUser);
+      if (result.success) return;
+
+      // If auto-creation failed, store pending user and notify
       this.pendingAuthUser = authUser;
       if (this.onNeedRoleSelection) {
         this.onNeedRoleSelection(authUser);
