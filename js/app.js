@@ -653,7 +653,7 @@ class CadenceApp {
             )
           `)
           .eq('approved', true)
-          .order('date_added', { ascending: false }),
+          .order('title', { ascending: true }),
         15000,
         'songs'
       );
