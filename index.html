@@ -458,6 +458,16 @@
               <label for="song-artist">Artist *</label>
               <input type="text" id="song-artist" required>
             </div>
+            <!-- Similar songs suggestions container -->
+            <div id="similar-songs-container" class="similar-songs-container hidden">
+              <div class="similar-songs-header">
+                <span>Did you mean one of these existing songs?</span>
+              </div>
+              <div id="similar-songs-list" class="similar-songs-list">
+                <!-- Populated dynamically -->
+              </div>
+              <button type="button" class="btn btn-link" id="dismiss-similar-songs">No, this is a new song</button>
+            </div>
             <div class="form-group">
               <label for="grading-instrument">Instrument *</label>
               <select id="grading-instrument" required>

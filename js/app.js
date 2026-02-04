@@ -1917,6 +1917,36 @@ class CadenceApp {
       });
     }
 
+    // Similar songs detection - debounced input handlers
+    const songTitleInput = document.getElementById('song-title');
+    const songArtistInput = document.getElementById('song-artist');
+    const dismissSimilarSongsBtn = document.getElementById('dismiss-similar-songs');
+
+    // Debounce timer
+    let similarSongsDebounceTimer = null;
+
+    const checkForSimilarSongs = () => {
+      clearTimeout(similarSongsDebounceTimer);
+      similarSongsDebounceTimer = setTimeout(() => {
+        this.findSimilarSongs();
+      }, 500); // Wait 500ms after user stops typing
+    };
+
+    if (songTitleInput) {
+      songTitleInput.addEventListener('input', checkForSimilarSongs);
+    }
+
+    if (songArtistInput) {
+      songArtistInput.addEventListener('input', checkForSimilarSongs);
+    }
+
+    if (dismissSimilarSongsBtn) {
+      dismissSimilarSongsBtn.addEventListener('click', () => {
+        document.getElementById('similar-songs-container').classList.add('hidden');
+        this.similarSongsDismissed = true;
+      });
+    }
+
     // Navigation buttons
     if (nextBtn) {
       nextBtn.addEventListener('click', () => this.nextGradingStep());
@@ -2187,10 +2217,86 @@ class CadenceApp {
   showSongGradingModal() {
     this.currentStep = 1;
     this.gradingData = {};
+    this.similarSongsDismissed = false; // Reset dismissal state
     this.updateInstrumentDropdown(); // Populate instrument dropdown
     document.getElementById('song-grading-modal').classList.remove('hidden');
     document.getElementById('song-grading-form').reset();
+    document.getElementById('similar-songs-container').classList.add('hidden'); // Hide suggestions
     this.updateGradingStep();
+  }
+
+  async findSimilarSongs() {
+    // Don't search if user dismissed suggestions for this session
+    if (this.similarSongsDismissed) return;
+
+    const title = document.getElementById('song-title').value.trim();
+    const artist = document.getElementById('song-artist').value.trim();
+    const container = document.getElementById('similar-songs-container');
+    const list = document.getElementById('similar-songs-list');
+
+    // Need at least 2 characters in both fields to search
+    if (title.length < 2 || artist.length < 2) {
+      container.classList.add('hidden');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('find_similar_songs', {
+        p_title: title,
+        p_artist: artist,
+        p_threshold: 0.3,
+        p_limit: 5
+      });
+
+      if (error) {
+        console.error('Error finding similar songs:', error);
+        container.classList.add('hidden');
+        return;
+      }
+
+      // Filter to show only reasonably similar matches (combined score > 0.4)
+      const relevantMatches = (data || []).filter(s => s.similarity_score > 0.4);
+
+      if (relevantMatches.length === 0) {
+        container.classList.add('hidden');
+        return;
+      }
+
+      // Display the suggestions
+      list.innerHTML = relevantMatches.map(song => `
+        <div class="similar-song-item" data-song-id="${song.id}" data-title="${this.escapeHtml(song.title)}" data-artist="${this.escapeHtml(song.artist)}">
+          <div class="similar-song-info">
+            <span class="similar-song-title">${this.escapeHtml(song.title)}</span>
+            <span class="similar-song-artist">${this.escapeHtml(song.artist)}</span>
+          </div>
+          <span class="similar-song-match">${Math.round(song.similarity_score * 100)}% match</span>
+        </div>
+      `).join('');
+
+      // Add click handlers to each suggestion
+      list.querySelectorAll('.similar-song-item').forEach(item => {
+        item.addEventListener('click', () => this.selectSimilarSong(item));
+      });
+
+      container.classList.remove('hidden');
+    } catch (error) {
+      console.error('Error in findSimilarSongs:', error);
+      container.classList.add('hidden');
+    }
+  }
+
+  selectSimilarSong(item) {
+    const title = item.dataset.title;
+    const artist = item.dataset.artist;
+
+    // Populate the form fields with the selected song's data
+    document.getElementById('song-title').value = title;
+    document.getElementById('song-artist').value = artist;
+
+    // Hide the suggestions
+    document.getElementById('similar-songs-container').classList.add('hidden');
+
+    this.showToast(`Selected "${title}" by ${artist}`, 'success');
   }
 
   generateComprehensiveChecklist() {

@@ -1135,6 +1135,80 @@ body {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
+/* Similar Songs Suggestions */
+.similar-songs-container {
+  background: var(--bg-secondary);
+  border: 2px solid var(--warning-color);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.similar-songs-header {
+  font-weight: 500;
+  color: var(--warning-color);
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.similar-songs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.similar-song-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background: var(--bg-primary);
+  border-radius: calc(var(--border-radius) / 2);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.similar-song-item:hover {
+  border-color: var(--primary-color);
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.similar-song-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.similar-song-title {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.similar-song-artist {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.similar-song-match {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+#dismiss-similar-songs {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 0;
+  text-decoration: underline;
+}
+
+#dismiss-similar-songs:hover {
+  color: var(--primary-color);
+}
+
 .grading-checklist {
   display: flex;
   flex-direction: column;
