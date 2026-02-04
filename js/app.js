@@ -1625,8 +1625,12 @@ class CadenceApp {
         actionButton = `<button class="btn btn-primary" onclick="event.stopPropagation(); app.addSongToLearning('${song.id}')">Start Learning</button>`;
       }
     } else {
-      // Teachers/admins get a delete button
-      actionButton = `<button class="btn btn-danger" onclick="event.stopPropagation(); app.deleteSongFromLibrary('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Delete this song from the library">Delete Song</button>`;
+      // Teachers/admins get delete and edit buttons
+      actionButton = `
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <button class="btn btn-danger" onclick="event.stopPropagation(); app.deleteSongFromLibrary('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Delete this song from the library">Delete Song</button>
+          <button class="btn btn-secondary" onclick="event.stopPropagation(); app.editSongDetails('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Edit song title and artist">Edit Details</button>
+        </div>`;
     }
 
     return `
@@ -1774,16 +1778,6 @@ class CadenceApp {
           </div>
         </div>
       `;
-    }
-
-    // Show/hide edit button for teachers
-    const editBtn = document.getElementById('edit-song-details-btn');
-    if (user.role === 'teacher' || user.role === 'admin') {
-      editBtn.classList.remove('hidden');
-      // Set up click handler with current song data
-      editBtn.onclick = () => this.editSongDetails(song.id, song.title, song.artist);
-    } else {
-      editBtn.classList.add('hidden');
     }
 
     // Show modal
