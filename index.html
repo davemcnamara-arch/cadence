@@ -1111,6 +1111,26 @@
     </div>
   </div>
 
+  <!-- Modal for Promoting User to Teacher -->
+  <div id="promote-teacher-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>Promote to Teacher</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to promote this student to a teacher account?</p>
+        <p id="promote-account-info" style="margin: 0.75rem 0;"></p>
+        <p style="color: var(--text-secondary); font-size: 0.875rem;">This will give them the ability to create classes and manage students.</p>
+        <input type="hidden" id="promote-account-id">
+        <div class="form-actions" style="margin-top: 1.5rem;">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="button" id="confirm-promote-teacher-btn" class="btn btn-primary">Promote to Teacher</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal for Deleting User Account -->
   <div id="delete-account-modal" class="modal hidden">
     <div class="modal-content modal-small">

@@ -445,6 +445,12 @@ class CadenceApp {
       confirmDeleteBtn.addEventListener('click', () => this.deleteUserAccount());
     }
 
+    // Account Management: Promote to teacher confirmation
+    const confirmPromoteBtn = document.getElementById('confirm-promote-teacher-btn');
+    if (confirmPromoteBtn) {
+      confirmPromoteBtn.addEventListener('click', () => this.promoteToTeacher());
+    }
+
     // Account Management: Search and filter
     const accountsSearch = document.getElementById('accounts-search');
     if (accountsSearch) {
@@ -6775,6 +6781,9 @@ class CadenceApp {
       const canDelete = (user.role === 'student' && (currentUserRole === 'teacher' || currentUserRole === 'admin'))
         || (user.role === 'teacher' && currentUserRole === 'admin');
 
+      // Admins can promote students to teachers
+      const canPromote = currentUserRole === 'admin' && user.role === 'student';
+
       return `
         <div class="account-card">
           <div class="account-info">
@@ -6783,6 +6792,7 @@ class CadenceApp {
           </div>
           <div class="account-meta">
             <span class="user-role-badge ${user.role}">${user.role.charAt(0).toUpperCase() + user.role.slice(1)}</span>
+            ${canPromote ? `<button class="btn btn-secondary btn-sm" onclick="app.confirmPromoteToTeacher('${user.id}', '${user.name.replace(/'/g, "\\'")}')">Promote to Teacher</button>` : ''}
             ${canDelete ? `<button class="btn btn-danger btn-sm" onclick="app.confirmDeleteAccount('${user.id}', '${user.name.replace(/'/g, "\\'")}', '${user.role}')">Delete</button>` : ''}
           </div>
         </div>
@@ -6895,6 +6905,43 @@ class CadenceApp {
       await this.loadManageableUsers();
     } else {
       this.showToast(data?.message || 'Failed to delete account', 'error');
+    }
+  }
+
+  confirmPromoteToTeacher(userId, userName) {
+    document.getElementById('promote-account-id').value = userId;
+    document.getElementById('promote-account-info').innerHTML =
+      `<strong>${userName}</strong>`;
+    document.getElementById('promote-teacher-modal').classList.remove('hidden');
+  }
+
+  async promoteToTeacher() {
+    const userId = document.getElementById('promote-account-id').value;
+
+    if (!userId) {
+      this.showToast('No user selected', 'error');
+      return;
+    }
+
+    // Use direct RPC call to promote user
+    let data;
+    try {
+      const result = await this.callRpcDirect('promote_to_teacher', {
+        p_user_id: userId
+      });
+      data = result.data;
+    } catch (error) {
+      console.error('Error promoting user to teacher:', error);
+      this.showToast('Failed to promote user', 'error');
+      return;
+    }
+
+    if (data && data.success) {
+      document.getElementById('promote-teacher-modal').classList.add('hidden');
+      this.showToast(`${data.name} has been promoted to teacher`, 'success');
+      await this.loadManageableUsers();
+    } else {
+      this.showToast(data?.message || 'Failed to promote user', 'error');
     }
   }
 
