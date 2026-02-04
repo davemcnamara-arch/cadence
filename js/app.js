@@ -352,6 +352,7 @@ class CadenceApp {
     this.setupEditClassForm();
     this.setupEditStudentForm();
     this.setupEditSongLevelForm();
+    this.setupEditSongDetailsForm();
     this.setupSubmissionsFilters();
     this.setupFlaggedFilters();
 
@@ -1767,6 +1768,16 @@ class CadenceApp {
           </div>
         </div>
       `;
+    }
+
+    // Show/hide edit button for teachers
+    const editBtn = document.getElementById('edit-song-details-btn');
+    if (user.role === 'teacher' || user.role === 'admin') {
+      editBtn.classList.remove('hidden');
+      // Set up click handler with current song data
+      editBtn.onclick = () => this.editSongDetails(song.id, song.title, song.artist);
+    } else {
+      editBtn.classList.add('hidden');
     }
 
     // Show modal
@@ -5835,6 +5846,70 @@ class CadenceApp {
     document.getElementById('edit-song-level').value = currentLevel;
     document.getElementById('edit-song-notes').value = currentNotes || '';
     document.getElementById('edit-song-level-modal').classList.remove('hidden');
+  }
+
+  // Edit song title and artist (teachers only)
+  editSongDetails(songId, currentTitle, currentArtist) {
+    // Store the song ID for the form handler
+    this.editingSongId = songId;
+
+    document.getElementById('edit-song-title').value = currentTitle;
+    document.getElementById('edit-song-artist').value = currentArtist;
+    document.getElementById('edit-song-details-modal').classList.remove('hidden');
+  }
+
+  setupEditSongDetailsForm() {
+    const form = document.getElementById('edit-song-details-form');
+    if (!form) return;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      if (!this.editingSongId) {
+        console.error('No editing song ID set');
+        this.showToast('Error: No song ID found', 'error');
+        return;
+      }
+
+      const newTitle = document.getElementById('edit-song-title').value.trim();
+      const newArtist = document.getElementById('edit-song-artist').value.trim();
+
+      if (!newTitle || !newArtist) {
+        this.showToast('Please fill in both title and artist', 'warning');
+        return;
+      }
+
+      try {
+        // Use RPC function to update song details
+        const { data, error } = await supabase
+          .rpc('update_song_details', {
+            p_song_id: this.editingSongId,
+            p_title: newTitle,
+            p_artist: newArtist
+          });
+
+        if (error) {
+          console.error('Update error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          throw error;
+        }
+
+        document.getElementById('edit-song-details-modal').classList.add('hidden');
+        document.getElementById('song-details-modal').classList.add('hidden');
+        this.showToast('Song details updated successfully', 'success');
+
+        // Reload songs to show the updated details
+        await this.loadSongs();
+        this.renderSongs();
+      } catch (error) {
+        console.error('Error updating song details:', error);
+        this.showToast(`Failed to update song details: ${error.message}`, 'error');
+      }
+    });
   }
 
   toggleJoinClassSection() {
