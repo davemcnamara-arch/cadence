@@ -3035,7 +3035,44 @@ class CadenceApp {
     const learning = studentSongsWithRatings?.filter(s => s.status === 'learning') || [];
     const mastered = studentSongsWithRatings?.filter(s => s.status === 'mastered') || [];
 
-    // Render stats
+    // Group songs by song_id to show same song across instruments together
+    const groupedBySong = {};
+    studentSongsWithRatings?.forEach(s => {
+      const songId = s.songs?.id || s.song_id;
+      if (!groupedBySong[songId]) {
+        groupedBySong[songId] = {
+          song: s.songs,
+          instruments: []
+        };
+      }
+      groupedBySong[songId].instruments.push(s);
+    });
+
+    // Separate into learning (any instrument still learning) vs mastered (all instruments mastered)
+    const learningGroups = [];
+    const masteredGroups = [];
+    Object.values(groupedBySong).forEach(group => {
+      const hasLearning = group.instruments.some(i => i.status === 'learning');
+      if (hasLearning) {
+        learningGroups.push(group);
+      } else {
+        masteredGroups.push(group);
+      }
+    });
+
+    // Sort by most recent date_started
+    learningGroups.sort((a, b) => {
+      const aDate = Math.max(...a.instruments.map(i => new Date(i.date_started || 0).getTime()));
+      const bDate = Math.max(...b.instruments.map(i => new Date(i.date_started || 0).getTime()));
+      return bDate - aDate;
+    });
+    masteredGroups.sort((a, b) => {
+      const aDate = Math.max(...a.instruments.map(i => new Date(i.date_mastered || i.date_started || 0).getTime()));
+      const bDate = Math.max(...b.instruments.map(i => new Date(i.date_mastered || i.date_started || 0).getTime()));
+      return bDate - aDate;
+    });
+
+    // Render stats (count unique songs, not individual entries)
     const statsContainer = document.getElementById('progress-stats');
     statsContainer.innerHTML = `
       <div class="stat-card">
@@ -3043,23 +3080,128 @@ class CadenceApp {
         <div class="stat-label">Instruments</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">${learning.length}</div>
-        <div class="stat-label">Currently Learning</div>
+        <div class="stat-value">${learningGroups.length}</div>
+        <div class="stat-label">Songs Learning</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">${mastered.length}</div>
+        <div class="stat-value">${masteredGroups.length}</div>
         <div class="stat-label">Songs Mastered</div>
       </div>
     `;
 
-    // Render song lists
-    document.getElementById('learning-songs').innerHTML = learning.length > 0
-      ? learning.map(s => this.renderStudentSongItem(s)).join('')
+    // Render song lists (grouped by song)
+    document.getElementById('learning-songs').innerHTML = learningGroups.length > 0
+      ? learningGroups.map(g => this.renderGroupedSongItem(g)).join('')
       : '<p style="color: var(--text-secondary);">No songs in progress</p>';
 
-    document.getElementById('mastered-songs').innerHTML = mastered.length > 0
-      ? mastered.map(s => this.renderStudentSongItem(s)).join('')
+    document.getElementById('mastered-songs').innerHTML = masteredGroups.length > 0
+      ? masteredGroups.map(g => this.renderGroupedSongItem(g)).join('')
       : '<p style="color: var(--text-secondary);">No mastered songs yet</p>';
+  }
+
+  renderGroupedSongItem(group) {
+    const song = group.song;
+    if (!song) return '';
+
+    // Sort instruments: learning first, then mastered
+    const sortedInstruments = [...group.instruments].sort((a, b) => {
+      if (a.status === 'learning' && b.status !== 'learning') return -1;
+      if (a.status !== 'learning' && b.status === 'learning') return 1;
+      return 0;
+    });
+
+    // Build instrument badges with status
+    const instrumentBadges = sortedInstruments.map(studentSong => {
+      const instrument = this.instruments.find(i => i.id === studentSong.instrument_id);
+      const instrumentName = instrument?.name || 'Unknown';
+      const instrumentIcon = instrument?.icon || '';
+      const isMastered = studentSong.status === 'mastered';
+
+      return `
+        <span class="instrument-status-badge ${isMastered ? 'mastered' : 'learning'}"
+              title="${instrumentName}: ${isMastered ? 'Mastered' : 'Learning'}">
+          ${instrumentIcon} ${instrumentName}
+          ${isMastered ? '<span class="status-icon">✓</span>' : ''}
+        </span>
+      `;
+    }).join('');
+
+    // Get first student song for resource links (they're shared across instruments)
+    const firstStudentSong = sortedInstruments[0];
+    const firstInstrument = this.instruments.find(i => i.id === firstStudentSong.instrument_id);
+    const firstInstrumentName = firstInstrument?.name || '';
+    const chordsRating = this.formatResourceRating(firstStudentSong.resource_ratings?.chords);
+    const tutorialRating = this.formatResourceRating(firstStudentSong.resource_ratings?.tutorial);
+
+    // Build actions for each instrument
+    const instrumentActions = sortedInstruments.map(studentSong => {
+      const instrument = this.instruments.find(i => i.id === studentSong.instrument_id);
+      const instrumentName = instrument?.name || 'Unknown';
+      const instrumentIcon = instrument?.icon || '';
+      const isMastered = studentSong.status === 'mastered';
+
+      if (isMastered) {
+        return `
+          <div class="instrument-action-row">
+            <span class="instrument-action-label">${instrumentIcon}</span>
+            <button class="btn btn-sm btn-secondary" onclick="app.unmasterSong('${studentSong.id}')">Unmaster</button>
+            <button class="btn-text btn-sm btn-danger" onclick="app.removeSong('${studentSong.id}')">Remove</button>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="instrument-action-row">
+            <span class="instrument-action-label">${instrumentIcon}</span>
+            <button class="btn btn-sm btn-primary" onclick="app.markSongMastered('${studentSong.id}')">Mastered</button>
+            <button class="btn-text btn-sm btn-danger" onclick="app.removeSong('${studentSong.id}')">Remove</button>
+          </div>
+        `;
+      }
+    }).join('');
+
+    return `
+      <div class="song-list-item grouped">
+        <div class="info">
+          <div class="title">${song.title}</div>
+          <div class="artist">${song.artist}</div>
+          <div class="instrument-badges" style="margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap;">
+            ${instrumentBadges}
+          </div>
+          <div class="song-links" style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            ${song.chords_url ? `
+              <span style="display: inline-flex; align-items: center; gap: 2px;">
+                <a href="${song.chords_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">Chords</a>
+                ${chordsRating}
+                <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'chords_url', '${song.chords_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Edit chords link">✎</button>
+              </span>
+            ` : `
+              <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Add chords link">+ Chords</button>
+            `}
+            ${song.tutorial_url ? `
+              <span style="display: inline-flex; align-items: center; gap: 2px;">
+                <a href="${song.tutorial_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">Tutorial</a>
+                ${tutorialRating}
+                <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'tutorial_url', '${song.tutorial_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Edit tutorial link">✎</button>
+              </span>
+            ` : `
+              <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'tutorial_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Add tutorial link">+ Tutorial</button>
+            `}
+            ${song.youtube_url ? `
+              <span style="display: inline-flex; align-items: center; gap: 2px;">
+                <a href="${song.youtube_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">YouTube</a>
+                <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'youtube_url', '${song.youtube_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Edit YouTube link">✎</button>
+              </span>
+            ` : `
+              <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
+            `}
+            <button class="btn-link-add" onclick="app.showSongResourcesModal('${song.id}')" title="View tutorials and resources">Resources</button>
+          </div>
+        </div>
+        <div class="actions-grouped">
+          ${instrumentActions}
+        </div>
+      </div>
+    `;
   }
 
   renderStudentSongItem(studentSong) {
