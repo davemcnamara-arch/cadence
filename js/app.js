@@ -1601,6 +1601,10 @@ class CadenceApp {
     const instrumentName = instrument?.name || '';
     const instrumentIcon = instrument?.icon || '';
 
+    // Check which instruments this song has been rated for
+    const ratedInstrumentIds = [...new Set((song.song_ratings || []).map(r => r.instrument_id))];
+    const hasMultipleInstruments = ratedInstrumentIds.length > 1;
+
     // Get resource ratings for chords
     const chordsRating = this.formatResourceRating(song.resource_ratings?.chords);
 
@@ -1633,6 +1637,32 @@ class CadenceApp {
         </div>`;
     }
 
+    // Build instrument display - dropdown if multiple, static tag if single
+    let instrumentDisplay = '';
+    if (hasMultipleInstruments) {
+      // Build dropdown with all rated instruments
+      const instrumentOptions = ratedInstrumentIds.map(instId => {
+        const inst = this.instruments.find(i => i.id === instId);
+        if (!inst) return '';
+        const isSelected = inst.id === instrument?.id;
+        return `<option value="${inst.id}" ${isSelected ? 'selected' : ''}>${inst.icon} ${inst.name}</option>`;
+      }).join('');
+
+      // Store ratings data as JSON for the change handler
+      const ratingsData = JSON.stringify(song.song_ratings || []).replace(/"/g, '&quot;');
+
+      instrumentDisplay = `
+        <select class="song-instrument-select"
+                onchange="event.stopPropagation(); app.onSongCardInstrumentChange('${song.id}', this.value, this)"
+                onclick="event.stopPropagation()"
+                data-ratings="${ratingsData}">
+          ${instrumentOptions}
+        </select>
+      `;
+    } else if (instrument) {
+      instrumentDisplay = `<span class="song-tag instrument">${instrumentIcon} ${instrumentName}</span>`;
+    }
+
     return `
       <div class="song-card" data-song-id="${song.id}">
         <div class="song-header">
@@ -1643,8 +1673,8 @@ class CadenceApp {
           ${actionButton}
         </div>
         <div class="song-meta">
-          ${instrument ? `<span class="song-tag instrument">${instrumentIcon} ${instrumentName}</span>` : ''}
-          <span class="song-tag level">${levelLabel}</span>
+          ${instrumentDisplay}
+          <span class="song-tag level" data-song-id="${song.id}">${levelLabel}</span>
         </div>
         <div class="song-actions">
           ${song.chords_url ? `
@@ -1670,6 +1700,52 @@ class CadenceApp {
         </div>
       </div>
     `;
+  }
+
+  // Handle instrument change on song card dropdown
+  onSongCardInstrumentChange(songId, instrumentId, selectElement) {
+    // Get ratings data from the select element
+    const ratingsData = selectElement.dataset.ratings;
+    let allRatings = [];
+    try {
+      allRatings = JSON.parse(ratingsData.replace(/&quot;/g, '"'));
+    } catch (e) {
+      console.error('Failed to parse ratings data:', e);
+      return;
+    }
+
+    // Filter ratings for the selected instrument
+    const ratings = allRatings.filter(r => r.instrument_id === instrumentId);
+
+    // Find the song to check for suggested_level
+    const song = this.songs.find(s => s.id === songId);
+
+    // Calculate level display
+    let levelLabel;
+    if (song?.suggested_level) {
+      levelLabel = `Level ${song.suggested_level}`;
+    } else if (ratings.length > 0) {
+      const levels = ratings.map(r => r.assessed_level);
+      const min = Math.min(...levels);
+      const max = Math.max(...levels);
+      const hasDiscrepancy = (max - min >= 2) && ratings.length >= 2;
+
+      if (hasDiscrepancy) {
+        levelLabel = 'Flagged for Review';
+      } else {
+        const avgLevel = (ratings.reduce((sum, r) => sum + r.assessed_level, 0) / ratings.length).toFixed(1);
+        levelLabel = `Level ${avgLevel}`;
+      }
+    } else {
+      levelLabel = 'Not rated';
+    }
+
+    // Update the level tag on this card
+    const card = selectElement.closest('.song-card');
+    const levelTag = card?.querySelector('.song-tag.level');
+    if (levelTag) {
+      levelTag.textContent = levelLabel;
+    }
   }
 
   async viewSongDetails(songId) {

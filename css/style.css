@@ -940,6 +940,27 @@ body {
   color: var(--text-primary);
 }
 
+.song-instrument-select {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.song-instrument-select:hover {
+  border-color: var(--primary-color);
+}
+
+.song-instrument-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-light);
+}
+
 .song-actions {
   display: flex;
   gap: 0.5rem;
