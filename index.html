@@ -897,7 +897,15 @@
         <button class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
-        <p id="song-resources-info" style="margin-bottom: 1rem; color: var(--text-secondary);"></p>
+        <p id="song-resources-info" style="margin-bottom: 0.5rem; color: var(--text-secondary);"></p>
+
+        <!-- Instrument Filter -->
+        <div class="resources-instrument-filter" style="margin-bottom: 1rem;">
+          <label for="resources-instrument-filter" style="font-size: 0.875rem; color: var(--text-secondary); margin-right: 0.5rem;">Showing resources for:</label>
+          <select id="resources-instrument-filter" onchange="app.onResourcesInstrumentChange()">
+            <!-- Populated by JS -->
+          </select>
+        </div>
 
         <!-- Tutorials Section -->
         <div class="resources-section">
@@ -954,6 +962,14 @@
             <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Max 5MB. Images or PDFs.</p>
           </div>
           <div class="form-group">
+            <label for="resource-instrument">Instrument</label>
+            <select id="resource-instrument">
+              <option value="">All Instruments (Universal)</option>
+              <!-- Populated by JS -->
+            </select>
+            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Select which instrument this resource is for, or leave as "All" if it applies to everyone.</p>
+          </div>
+          <div class="form-group">
             <label for="resource-description">Description</label>
             <textarea id="resource-description" rows="2" placeholder="Brief description of what this resource helps with"></textarea>
           </div>
@@ -986,6 +1002,14 @@
           <div class="form-group">
             <label for="tutorial-title">Title (optional)</label>
             <input type="text" id="tutorial-title" placeholder="e.g., Beginner-friendly tutorial, Fingerpicking version">
+          </div>
+          <div class="form-group">
+            <label for="tutorial-instrument">Instrument</label>
+            <select id="tutorial-instrument">
+              <option value="">All Instruments (Universal)</option>
+              <!-- Populated by JS -->
+            </select>
+            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Select which instrument this tutorial is for, or leave as "All" if it applies to everyone.</p>
           </div>
           <div class="form-actions">
             <button type="button" class="btn btn-secondary modal-close">Cancel</button>

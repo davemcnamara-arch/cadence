@@ -2680,6 +2680,16 @@ body {
   color: #065f46;
 }
 
+.resource-badge.instrument {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.resource-badge.universal {
+  background-color: #f3e8ff;
+  color: #6b21a8;
+}
+
 .empty-resources {
   text-align: center;
   padding: 1.5rem;
