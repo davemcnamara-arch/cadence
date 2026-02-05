@@ -897,7 +897,15 @@
         <button class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
-        <p id="song-resources-info" style="margin-bottom: 1rem; color: var(--text-secondary);"></p>
+        <p id="song-resources-info" style="margin-bottom: 0.5rem; color: var(--text-secondary);"></p>
+
+        <!-- Instrument Filter -->
+        <div class="resources-instrument-filter" style="margin-bottom: 1rem;">
+          <label for="resources-instrument-filter" style="font-size: 0.875rem; color: var(--text-secondary); margin-right: 0.5rem;">Showing resources for:</label>
+          <select id="resources-instrument-filter" onchange="app.onResourcesInstrumentChange()">
+            <!-- Populated by JS -->
+          </select>
+        </div>
 
         <!-- Tutorials Section -->
         <div class="resources-section">

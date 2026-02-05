@@ -7086,13 +7086,22 @@ class CadenceApp {
     // Store current song for adding resources
     this.currentResourceSong = song;
 
-    // Update modal info with instrument if available (use song's instrument or current filter instrument)
-    const currentInstrument = this.instruments.find(i => i.id === this.currentInstrument);
-    const instrumentDisplay = song.instruments
-      ? ` (${song.instruments.icon} ${song.instruments.name})`
-      : (currentInstrument ? ` (${currentInstrument.icon} ${currentInstrument.name})` : '');
+    // Update modal title and info
     document.getElementById('song-resources-title').textContent = `Resources for ${song.title}`;
-    document.getElementById('song-resources-info').textContent = `${song.title} - ${song.artist}${instrumentDisplay}`;
+    document.getElementById('song-resources-info').textContent = `${song.title} - ${song.artist}`;
+
+    // Populate instrument filter dropdown
+    const filterSelect = document.getElementById('resources-instrument-filter');
+    if (filterSelect && this.instruments) {
+      filterSelect.innerHTML = this.instruments.map(i =>
+        `<option value="${i.id}">${i.icon} ${i.name}</option>`
+      ).join('');
+
+      // Set to current instrument if available, otherwise first instrument
+      if (this.currentInstrument) {
+        filterSelect.value = this.currentInstrument;
+      }
+    }
 
     // Load tutorials and resources
     await Promise.all([
@@ -7102,6 +7111,17 @@ class CadenceApp {
 
     // Show modal
     document.getElementById('song-resources-modal').classList.remove('hidden');
+  }
+
+  // Handle instrument filter change in resources modal
+  async onResourcesInstrumentChange() {
+    if (!this.currentResourceSong) return;
+
+    // Reload tutorials and resources with new instrument filter
+    await Promise.all([
+      this.loadSongTutorials(this.currentResourceSong.id),
+      this.loadStudentResources(this.currentResourceSong.id)
+    ]);
   }
 
   async loadSongTutorials(songId) {
@@ -7114,12 +7134,13 @@ class CadenceApp {
       // Use raw fetch to avoid Supabase JS client issues after inserts
       // RLS policy already filters: students see approved tutorials or their own submissions
       // Teachers see all tutorials
-      // Filter by current instrument: show tutorials for this instrument OR universal (null instrument_id)
+      // Filter by selected instrument in modal: show tutorials for this instrument OR universal (null instrument_id)
       let query = `select=id,url,title,status,submitted_by_user_id,instrument_id,created_at&song_id=eq.${songId}&order=created_at.asc`;
 
-      // Add instrument filter if we have a current instrument
-      if (this.currentInstrument) {
-        query += `&or=(instrument_id.is.null,instrument_id.eq.${this.currentInstrument})`;
+      // Get instrument from filter dropdown (falls back to current instrument)
+      const filterInstrumentId = document.getElementById('resources-instrument-filter')?.value || this.currentInstrument;
+      if (filterInstrumentId) {
+        query += `&or=(instrument_id.is.null,instrument_id.eq.${filterInstrumentId})`;
       }
 
       const { data, error } = await this.rawSelect('song_tutorials', query);
@@ -7190,12 +7211,13 @@ class CadenceApp {
       // Use raw fetch to avoid Supabase JS client issues after inserts
       // RLS policy already filters: students see approved resources or their own submissions
       // Teachers see all resources
-      // Filter by current instrument: show resources for this instrument OR universal (null instrument_id)
+      // Filter by selected instrument in modal: show resources for this instrument OR universal (null instrument_id)
       let query = `select=id,title,description,file_url,file_type,status,user_id,instrument_id,created_at&song_id=eq.${songId}&order=created_at.desc`;
 
-      // Add instrument filter if we have a current instrument
-      if (this.currentInstrument) {
-        query += `&or=(instrument_id.is.null,instrument_id.eq.${this.currentInstrument})`;
+      // Get instrument from filter dropdown (falls back to current instrument)
+      const filterInstrumentId = document.getElementById('resources-instrument-filter')?.value || this.currentInstrument;
+      if (filterInstrumentId) {
+        query += `&or=(instrument_id.is.null,instrument_id.eq.${filterInstrumentId})`;
       }
 
       const { data, error } = await this.rawSelect('student_resources', query);
@@ -7292,9 +7314,10 @@ class CadenceApp {
           `<option value="${i.id}">${i.icon} ${i.name}</option>`
         ).join('');
 
-      // Pre-select current instrument if available
-      if (this.currentInstrument) {
-        instrumentSelect.value = this.currentInstrument;
+      // Pre-select the instrument from the filter dropdown (what user is currently viewing)
+      const filterInstrumentId = document.getElementById('resources-instrument-filter')?.value || this.currentInstrument;
+      if (filterInstrumentId) {
+        instrumentSelect.value = filterInstrumentId;
       }
     }
 
@@ -7332,14 +7355,16 @@ class CadenceApp {
           `<option value="${i.id}">${i.icon} ${i.name}</option>`
         ).join('');
 
-      // Pre-select current instrument if available
-      if (this.currentInstrument) {
-        instrumentSelect.value = this.currentInstrument;
+      // Pre-select the instrument from the filter dropdown (what user is currently viewing)
+      const filterInstrumentId = document.getElementById('resources-instrument-filter')?.value || this.currentInstrument;
+      if (filterInstrumentId) {
+        instrumentSelect.value = filterInstrumentId;
       }
     }
 
-    // Open search to help user find tutorials
-    const instrumentName = this.instruments.find(i => i.id === this.currentInstrument)?.name || '';
+    // Open search to help user find tutorials (use the filter dropdown instrument)
+    const searchInstrumentId = document.getElementById('resources-instrument-filter')?.value || this.currentInstrument;
+    const instrumentName = this.instruments.find(i => i.id === searchInstrumentId)?.name || '';
     const searchQuery = instrumentName
       ? `${this.currentResourceSong.title} ${instrumentName} tutorial`
       : `${this.currentResourceSong.title} tutorial`;
