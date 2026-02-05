@@ -7114,10 +7114,15 @@ class CadenceApp {
       // Use raw fetch to avoid Supabase JS client issues after inserts
       // RLS policy already filters: students see approved tutorials or their own submissions
       // Teachers see all tutorials
-      const { data, error } = await this.rawSelect(
-        'song_tutorials',
-        `select=id,url,title,status,submitted_by_user_id,created_at&song_id=eq.${songId}&order=created_at.asc`
-      );
+      // Filter by current instrument: show tutorials for this instrument OR universal (null instrument_id)
+      let query = `select=id,url,title,status,submitted_by_user_id,instrument_id,created_at&song_id=eq.${songId}&order=created_at.asc`;
+
+      // Add instrument filter if we have a current instrument
+      if (this.currentInstrument) {
+        query += `&or=(instrument_id.is.null,instrument_id.eq.${this.currentInstrument})`;
+      }
+
+      const { data, error } = await this.rawSelect('song_tutorials', query);
 
       if (error) {
         console.error('Error loading tutorials:', error);
@@ -7135,6 +7140,14 @@ class CadenceApp {
           ? '<span class="resource-badge pending">Pending Approval</span>'
           : '';
 
+        // Show instrument badge for instrument-specific tutorials
+        const instrument = tutorial.instrument_id
+          ? this.instruments.find(i => i.id === tutorial.instrument_id)
+          : null;
+        const instrumentBadge = instrument
+          ? `<span class="resource-badge instrument">${instrument.icon} ${instrument.name}</span>`
+          : '<span class="resource-badge universal">All Instruments</span>';
+
         const approveButton = isTeacher && tutorial.status === 'pending'
           ? `<button class="btn btn-sm btn-primary" onclick="app.approveTutorial('${tutorial.id}')">Approve</button>`
           : '';
@@ -7149,6 +7162,7 @@ class CadenceApp {
             <div class="tutorial-content">
               <div class="tutorial-title">
                 <a href="${tutorial.url}" target="_blank">${tutorial.title || 'Tutorial Video'}</a>
+                ${instrumentBadge}
                 ${statusBadge}
               </div>
               <div class="tutorial-meta">Shared by a student</div>
@@ -7176,10 +7190,15 @@ class CadenceApp {
       // Use raw fetch to avoid Supabase JS client issues after inserts
       // RLS policy already filters: students see approved resources or their own submissions
       // Teachers see all resources
-      const { data, error } = await this.rawSelect(
-        'student_resources',
-        `select=id,title,description,file_url,file_type,status,user_id,created_at&song_id=eq.${songId}&order=created_at.desc`
-      );
+      // Filter by current instrument: show resources for this instrument OR universal (null instrument_id)
+      let query = `select=id,title,description,file_url,file_type,status,user_id,instrument_id,created_at&song_id=eq.${songId}&order=created_at.desc`;
+
+      // Add instrument filter if we have a current instrument
+      if (this.currentInstrument) {
+        query += `&or=(instrument_id.is.null,instrument_id.eq.${this.currentInstrument})`;
+      }
+
+      const { data, error } = await this.rawSelect('student_resources', query);
 
       if (error) {
         console.error('Error loading resources:', error);
@@ -7201,6 +7220,14 @@ class CadenceApp {
           ? '<span class="resource-badge pending">Pending Approval</span>'
           : '';
 
+        // Show instrument badge for instrument-specific resources
+        const instrument = resource.instrument_id
+          ? this.instruments.find(i => i.id === resource.instrument_id)
+          : null;
+        const instrumentBadge = instrument
+          ? `<span class="resource-badge instrument">${instrument.icon} ${instrument.name}</span>`
+          : '<span class="resource-badge universal">All Instruments</span>';
+
         const approveButton = isTeacher && resource.status === 'pending'
           ? `<button class="btn btn-sm btn-primary" onclick="app.approveResource('${resource.id}')">Approve</button>`
           : '';
@@ -7215,6 +7242,7 @@ class CadenceApp {
             <div class="resource-content">
               <div class="resource-title">
                 <a href="${resource.file_url}" target="_blank">${resource.title}</a>
+                ${instrumentBadge}
                 ${statusBadge}
               </div>
               ${resource.description ? `<div class="resource-description">${resource.description}</div>` : ''}
@@ -7256,6 +7284,20 @@ class CadenceApp {
     // Reset form
     document.getElementById('add-resource-form').reset();
 
+    // Populate instrument dropdown
+    const instrumentSelect = document.getElementById('resource-instrument');
+    if (instrumentSelect && this.instruments) {
+      instrumentSelect.innerHTML = '<option value="">All Instruments (Universal)</option>' +
+        this.instruments.map(i =>
+          `<option value="${i.id}">${i.icon} ${i.name}</option>`
+        ).join('');
+
+      // Pre-select current instrument if available
+      if (this.currentInstrument) {
+        instrumentSelect.value = this.currentInstrument;
+      }
+    }
+
     document.getElementById('add-resource-modal').classList.remove('hidden');
   }
 
@@ -7281,6 +7323,20 @@ class CadenceApp {
 
     // Reset form
     document.getElementById('add-tutorial-form').reset();
+
+    // Populate instrument dropdown
+    const instrumentSelect = document.getElementById('tutorial-instrument');
+    if (instrumentSelect && this.instruments) {
+      instrumentSelect.innerHTML = '<option value="">All Instruments (Universal)</option>' +
+        this.instruments.map(i =>
+          `<option value="${i.id}">${i.icon} ${i.name}</option>`
+        ).join('');
+
+      // Pre-select current instrument if available
+      if (this.currentInstrument) {
+        instrumentSelect.value = this.currentInstrument;
+      }
+    }
 
     // Open search to help user find tutorials
     const instrumentName = this.instruments.find(i => i.id === this.currentInstrument)?.name || '';
@@ -7348,6 +7404,9 @@ class CadenceApp {
         return;
       }
 
+      // Get selected instrument (empty string = universal/all instruments)
+      const instrumentId = document.getElementById('resource-instrument')?.value || null;
+
       // Insert resource record using raw fetch (workaround for Supabase JS client bug)
       await this.rawInsert('student_resources', {
         song_id: this.currentResourceSong.id,
@@ -7356,6 +7415,7 @@ class CadenceApp {
         description: description || null,
         file_url: fileUrl,
         file_type: fileType,
+        instrument_id: instrumentId || null,
         status: isStudent ? 'pending' : 'approved'
       });
 
@@ -7485,11 +7545,15 @@ class CadenceApp {
 
       const isStudent = auth.hasRole('student');
 
+      // Get selected instrument (empty string = universal/all instruments)
+      const instrumentId = document.getElementById('tutorial-instrument')?.value || null;
+
       // Use raw fetch insert (workaround for Supabase JS client bug with inserts)
       await this.rawInsert('song_tutorials', {
         song_id: this.currentResourceSong.id,
         url: url,
         title: title || null,
+        instrument_id: instrumentId || null,
         submitted_by_user_id: auth.getCurrentUser().id,
         status: isStudent ? 'pending' : 'approved'
       });
