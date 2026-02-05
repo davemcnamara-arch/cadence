@@ -940,6 +940,27 @@ body {
   color: var(--text-primary);
 }
 
+.song-instrument-select {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.song-instrument-select:hover {
+  border-color: var(--primary-color);
+}
+
+.song-instrument-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-light);
+}
+
 .song-actions {
   display: flex;
   gap: 0.5rem;
@@ -1030,6 +1051,60 @@ body {
 .song-list-item .actions {
   display: flex;
   gap: 0.5rem;
+}
+
+/* Grouped song display (multi-instrument) */
+.song-list-item.grouped {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.song-list-item.grouped .info {
+  width: 100%;
+}
+
+.actions-grouped {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.instrument-action-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.instrument-action-label {
+  min-width: 28px;
+  font-size: 1.1rem;
+}
+
+.instrument-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.instrument-status-badge.learning {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.instrument-status-badge.mastered {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.instrument-status-badge .status-icon {
+  font-size: 0.7rem;
 }
 
 /* Modal */
