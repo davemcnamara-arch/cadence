@@ -1579,31 +1579,39 @@ class CadenceApp {
 
   renderSongCardWithData(song, levelDisplay, levelLabel, ratingsCount) {
 
-    // Get instrument data for display and search queries
-    // Priority: specific filter selection > currentInstrument > song's assigned instrument
+    // Check which instruments this song has been rated for
+    const ratedInstrumentIds = [...new Set((song.song_ratings || []).map(r => r.instrument_id))];
+    const hasMultipleInstruments = ratedInstrumentIds.length > 1;
+
+    // Get instrument data for display
+    // Priority:
+    // 1. Specific filter selection (if song is rated for that instrument)
+    // 2. Current instrument (if song is rated for that instrument)
+    // 3. First instrument the song was actually rated for
+    // 4. Song's assigned instrument (legacy)
     let instrumentId = this.currentFilterInstrument;
     if (instrumentId === 'my-instruments' || !instrumentId) {
       instrumentId = this.currentInstrument;
     }
-    let instrument = this.instruments.find(i => i.id === instrumentId);
 
-    // Fallback to song's assigned instrument or first rated instrument
+    // Only use the filter/current instrument if the song has actually been rated for it
+    let instrument = null;
+    if (instrumentId && ratedInstrumentIds.includes(instrumentId)) {
+      instrument = this.instruments.find(i => i.id === instrumentId);
+    }
+
+    // Fallback to first rated instrument or song's assigned instrument
     if (!instrument) {
-      if (song.instruments) {
-        instrument = song.instruments;
-      } else if (song.song_ratings?.length > 0) {
+      if (ratedInstrumentIds.length > 0) {
         // Use the first instrument the song has been rated for
-        const firstRatingInstrumentId = song.song_ratings[0].instrument_id;
-        instrument = this.instruments.find(i => i.id === firstRatingInstrumentId);
+        instrument = this.instruments.find(i => i.id === ratedInstrumentIds[0]);
+      } else if (song.instruments) {
+        instrument = song.instruments;
       }
     }
 
     const instrumentName = instrument?.name || '';
     const instrumentIcon = instrument?.icon || '';
-
-    // Check which instruments this song has been rated for
-    const ratedInstrumentIds = [...new Set((song.song_ratings || []).map(r => r.instrument_id))];
-    const hasMultipleInstruments = ratedInstrumentIds.length > 1;
 
     // Get resource ratings for chords
     const chordsRating = this.formatResourceRating(song.resource_ratings?.chords);
