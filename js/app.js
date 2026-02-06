@@ -7387,21 +7387,19 @@ class CadenceApp {
       }
 
       // Also include the song's main tutorial_url (stored on songs table during grading)
+      // Only show this fallback if there are NO entries in song_tutorials yet (legacy data).
+      // Once per-instrument tutorials exist in song_tutorials, rely solely on that table.
       const song = this.currentResourceSong;
       const allTutorials = [...(data || [])];
-      if (song?.tutorial_url) {
-        // Only add if not already in the list (avoid duplicates)
-        const alreadyListed = allTutorials.some(t => t.url === song.tutorial_url);
-        if (!alreadyListed) {
-          allTutorials.unshift({
-            id: 'main-tutorial',
-            url: song.tutorial_url,
-            title: 'Tutorial Video',
-            status: 'approved',
-            instrument_id: null,
-            is_main: true
-          });
-        }
+      if (song?.tutorial_url && allTutorials.length === 0) {
+        allTutorials.unshift({
+          id: 'main-tutorial',
+          url: song.tutorial_url,
+          title: 'Tutorial Video',
+          status: 'approved',
+          instrument_id: null,
+          is_main: true
+        });
       }
 
       if (allTutorials.length === 0) {
