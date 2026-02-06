@@ -2420,81 +2420,82 @@ class CadenceApp {
     const instrumentName = instrument ? instrument.name : 'this instrument';
 
     // Create a comprehensive questionnaire that works across all levels and instruments
+    // Written to be approachable for 12-16 year olds
     const comprehensiveQuestions = {
-      "Harmonic complexity": [
-        "1-3 basic chords/notes",
-        "4-5 simple chords/progressions",
-        "6-8 chords with some variety",
-        "8-10 chords with extensions or more complex harmony",
-        "10+ chords or very advanced harmony"
+      "How many chords or notes does this song use?": [
+        "1-3 basic chords/notes — just a few simple ones",
+        "4-5 simple chords/progressions — a handful to learn",
+        "6-8 chords with some variety — a decent amount",
+        "8-10 chords with extensions or trickier combos",
+        "10+ chords or very advanced harmony — lots to keep track of"
       ],
-      "Chord/harmony types": [
-        "basic major/minor only",
-        "includes 7ths or sus chords",
-        "includes extensions (9ths, 11ths, 13ths)",
-        "includes alterations or jazz voicings",
-        "n/a - melody/rhythm instrument only"
+      "What kind of chords or notes are they?": [
+        "basic major/minor only — the standard ones everyone learns first",
+        "includes 7ths or sus chords — a few fancier ones mixed in",
+        "includes extensions (9ths, 11ths, 13ths) — some pretty complex chords",
+        "includes alterations or jazz voicings — really unusual chord shapes",
+        "n/a - melody/rhythm instrument only — this doesn't apply to my instrument"
       ],
-      "Playing patterns and articulation": [
-        "single simple pattern throughout",
-        "2-3 different patterns or techniques",
-        "varied patterns with some complexity",
-        "complex patterns with advanced articulation",
-        "very advanced - multiple techniques integrated"
+      "How many different playing patterns does the song have?": [
+        "single simple pattern throughout — one pattern the whole time",
+        "2-3 different patterns or techniques — switches it up a bit",
+        "varied patterns with some complexity — quite a few changes",
+        "complex patterns with advanced articulation — lots of tricky stuff",
+        "very advanced - multiple techniques integrated — everything at once"
       ],
-      "Technique examples (select what applies)": [
+      "What techniques does the song use?": [
         "Basic: strumming, block chords, basic rhythms, straight tone",
         "Intermediate: fingerpicking/arpeggios, ghost notes, basic fills, dynamics",
         "Advanced: slap/pop, syncopation, polyrhythms, vibrato, runs/riffs",
         "Expert: tapping, double bass, advanced coordination, melisma, improvisation"
       ],
-      "Song structure": [
-        "single section or simple repeat",
-        "verse/chorus (2 sections)",
-        "verse/chorus/bridge (3 sections)",
-        "multiple sections (4+) or complex form"
+      "How is the song laid out?": [
+        "single section or simple repeat — same part over and over",
+        "verse/chorus (2 sections) — two main parts that alternate",
+        "verse/chorus/bridge (3 sections) — three different parts",
+        "multiple sections (4+) or complex form — lots of different parts"
       ],
-      "Coordination/independence": [
-        "single element (one rhythm, one melodic line)",
-        "two elements - simple (basic hands/limbs together)",
-        "moderate coordination (independent parts)",
-        "high independence (complex polyrhythmic or contrapuntal)",
-        "mastered independence (full control of all elements)"
+      "How much do your hands/limbs need to do different things at the same time?": [
+        "single element — just one thing at a time",
+        "two elements - simple — both hands/limbs doing something basic together",
+        "moderate coordination — hands/limbs doing their own thing",
+        "high independence — really tricky to keep everything going at once",
+        "mastered independence — full control of everything separately"
       ],
-      "Overall technical difficulty": [
-        "beginner friendly",
-        "some challenges for beginners",
-        "intermediate - moderately challenging",
-        "advanced - quite challenging",
-        "expert - very challenging"
+      "How hard does this song feel overall?": [
+        "beginner friendly — most people could pick this up pretty quickly",
+        "some challenges for beginners — takes a bit of practice",
+        "intermediate - moderately challenging — you need to know what you're doing",
+        "advanced - quite challenging — even experienced players need to practice this",
+        "expert - very challenging — only for people who've been playing a long time"
       ],
-      "Rhythm complexity": [
-        "simple steady rhythm (4/4, straight)",
-        "some variation or off-beats",
-        "syncopated or swing feel",
-        "complex rhythms or time signature changes",
-        "polyrhythmic or very advanced timing"
+      "How tricky is the rhythm?": [
+        "simple steady rhythm (4/4, straight) — easy to tap your foot to",
+        "some variation or off-beats — a few surprises in the rhythm",
+        "syncopated or swing feel — the rhythm has a bounce or groove to it",
+        "complex rhythms or time signature changes — the beat shifts around",
+        "polyrhythmic or very advanced timing — multiple rhythms layered together"
       ],
-      "Dynamics and expression": [
-        "minimal - mostly one dynamic level",
-        "basic dynamic changes (loud/soft)",
-        "moderate expression and phrasing",
-        "highly expressive with nuanced control",
-        "exceptional artistry and interpretation"
+      "How much does the volume and feeling change during the song?": [
+        "minimal — stays pretty much the same the whole time",
+        "basic dynamic changes (loud/soft) — gets louder and softer in places",
+        "moderate expression and phrasing — noticeable ups and downs in feeling",
+        "highly expressive with nuanced control — lots of emotion and detail",
+        "exceptional artistry and interpretation — really deep, performance-level expression"
       ],
-      "Note reading requirement": [
-        "chord symbols/charts only",
-        "simple notation or tab",
-        "standard notation - moderate",
-        "complex notation or score reading",
-        "can play by ear or memory"
+      "How would you learn this song?": [
+        "chord symbols/charts only — just follow the chord names",
+        "simple notation or tab — basic written music or tablature",
+        "standard notation - moderate — regular sheet music",
+        "complex notation or score reading — detailed written music",
+        "can play by ear or memory — listen and figure it out"
       ],
-      "Improvisation/embellishment": [
-        "none - play exactly as written",
-        "minimal decoration or simple fills",
-        "some structured improvisation",
-        "significant improvised sections",
-        "free improvisation or extensive soloing"
+      "Does the song let you add your own flair or make stuff up?": [
+        "none - play exactly as written — stick to what's on the page",
+        "minimal decoration or simple fills — a little room to add small touches",
+        "some structured improvisation — sections where you can freestyle a bit",
+        "significant improvised sections — big parts where you make it your own",
+        "free improvisation or extensive soloing — lots of room to go off-script"
       ]
     };
 
@@ -2502,7 +2503,7 @@ class CadenceApp {
 
     container.innerHTML = `
       <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">
-        Answer these questions about the song for <strong>${instrumentName}</strong>. Choose the option that best describes what's required.
+        Tell us about this song for <strong>${instrumentName}</strong>. Just pick the answer that sounds closest — there are no wrong answers!
       </p>
       ${Object.entries(comprehensiveQuestions).map(([question, options], index) => `
         <div class="checklist-item">
@@ -2819,11 +2820,11 @@ class CadenceApp {
       <div class="form-group" style="margin-top: 1.5rem;">
         <label for="final-level-select">You can adjust this if you think it should be different:</label>
         <select id="final-level-select" class="form-control">
-          <option value="1" ${suggested === 1 ? 'selected' : ''}>Level 1 - Foundation</option>
-          <option value="2" ${suggested === 2 ? 'selected' : ''}>Level 2 - Expanding Vocabulary</option>
-          <option value="3" ${suggested === 3 ? 'selected' : ''}>Level 3 - Technical Development</option>
-          <option value="4" ${suggested === 4 ? 'selected' : ''}>Level 4 - Style Integration</option>
-          <option value="5" ${suggested === 5 ? 'selected' : ''}>Level 5 - Advanced Techniques</option>
+          <option value="1" ${suggested === 1 ? 'selected' : ''}>Level 1 - Getting Started</option>
+          <option value="2" ${suggested === 2 ? 'selected' : ''}>Level 2 - Expanding Skills</option>
+          <option value="3" ${suggested === 3 ? 'selected' : ''}>Level 3 - Building Technique</option>
+          <option value="4" ${suggested === 4 ? 'selected' : ''}>Level 4 - Finding Your Style</option>
+          <option value="5" ${suggested === 5 ? 'selected' : ''}>Level 5 - Mastering It</option>
         </select>
       </div>
     `;
@@ -5791,11 +5792,11 @@ class CadenceApp {
                   <label for="review-level-${index}">Confirm or override level:</label>
                   <select id="review-level-${index}" class="resolve-level-select">
                     <option value="${item.rating.level}" selected>Level ${item.rating.level} (Confirm)</option>
-                    <option value="1" ${item.rating.level === 1 ? 'disabled' : ''}>Level 1 - Foundation</option>
-                    <option value="2" ${item.rating.level === 2 ? 'disabled' : ''}>Level 2 - Expanding Vocabulary</option>
-                    <option value="3" ${item.rating.level === 3 ? 'disabled' : ''}>Level 3 - Technical Development</option>
-                    <option value="4" ${item.rating.level === 4 ? 'disabled' : ''}>Level 4 - Style Integration</option>
-                    <option value="5" ${item.rating.level === 5 ? 'disabled' : ''}>Level 5 - Advanced Techniques</option>
+                    <option value="1" ${item.rating.level === 1 ? 'disabled' : ''}>Level 1 - Getting Started</option>
+                    <option value="2" ${item.rating.level === 2 ? 'disabled' : ''}>Level 2 - Expanding Skills</option>
+                    <option value="3" ${item.rating.level === 3 ? 'disabled' : ''}>Level 3 - Building Technique</option>
+                    <option value="4" ${item.rating.level === 4 ? 'disabled' : ''}>Level 4 - Finding Your Style</option>
+                    <option value="5" ${item.rating.level === 5 ? 'disabled' : ''}>Level 5 - Mastering It</option>
                   </select>
                   <button class="btn btn-primary" onclick="app.reviewNewRating('${item.id}', 'review-level-${index}')">Confirm</button>
                 </div>
@@ -5837,11 +5838,11 @@ class CadenceApp {
             <label for="resolve-level-${index}">Set official level:</label>
             <select id="resolve-level-${index}" class="resolve-level-select">
               <option value="">Choose level...</option>
-              <option value="1">Level 1 - Foundation</option>
-              <option value="2">Level 2 - Expanding Vocabulary</option>
-              <option value="3">Level 3 - Technical Development</option>
-              <option value="4">Level 4 - Style Integration</option>
-              <option value="5">Level 5 - Advanced Techniques</option>
+              <option value="1">Level 1 - Getting Started</option>
+              <option value="2">Level 2 - Expanding Skills</option>
+              <option value="3">Level 3 - Building Technique</option>
+              <option value="4">Level 4 - Finding Your Style</option>
+              <option value="5">Level 5 - Mastering It</option>
             </select>
             <button class="btn btn-primary" onclick="app.resolveFlaggedRating('${item.songId}', 'resolve-level-${index}')">Resolve</button>
           </div>

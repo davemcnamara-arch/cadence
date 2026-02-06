@@ -18,7 +18,7 @@ After running this script, you will have:
 
 ### Guitar
 - **Level 1**: 5 songs (Foundation - basic chords)
-- **Level 2**: 3 songs (Expanding Vocabulary)
+- **Level 2**: 3 songs (Expanding Skills)
 - **Level 3**: 4 songs (Technical Development)
 - **Level 4**: 9+ songs (Rhythm/Fingerstyle/Lead Focus)
 - **Level 5**: 5 songs (Advanced techniques - Rhythm/Fingerstyle/Lead)
