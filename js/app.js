@@ -1510,8 +1510,24 @@ class CadenceApp {
     if (instrumentFilter && instrumentFilter !== 'my-instruments' && instrumentFilter !== '') {
       // Specific instrument filter is active
       activeInstrument = instrumentFilter;
+    } else if (instrumentFilter === 'my-instruments' && this.studentProgress?.length > 0) {
+      // "My Instruments" filter - prefer current instrument, fall back to any of the student's instruments
+      const currentRatings = allRatings.filter(r => r.instrument_id === this.currentInstrument);
+      if (currentRatings.length > 0) {
+        activeInstrument = this.currentInstrument;
+      } else {
+        // Fall back to whichever of the student's instruments has ratings for this song
+        const myInstrumentIds = this.studentProgress.map(p => p.instrument_id);
+        const matchingRating = allRatings.find(r => myInstrumentIds.includes(r.instrument_id));
+        if (matchingRating) {
+          activeInstrument = matchingRating.instrument_id;
+        } else {
+          // None of the student's instruments have ratings for this song
+          return this.renderSongCardWithData(song, '?', 'Not rated', 0);
+        }
+      }
     } else if (this.currentInstrument) {
-      // Student with current instrument selected
+      // Student with current instrument selected (non-"my-instruments" filter, e.g. "All Instruments")
       activeInstrument = this.currentInstrument;
     } else {
       // No specific instrument filter (teacher viewing all, or "my instruments")
