@@ -7,7 +7,7 @@ export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 
 // Initialize Supabase client (will be imported from CDN in index.html for now)
 // Import Supabase from CDN
-import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
