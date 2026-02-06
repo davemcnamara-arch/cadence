@@ -2846,6 +2846,25 @@ class CadenceApp {
 
       if (result.error) throw result.error;
 
+      // Save tutorial URL to song_tutorials with instrument_id so each instrument keeps its own tutorial
+      const gradedSongId = result.data?.song_id;
+      if (gradedSongId && this.gradingData.tutorial_url) {
+        try {
+          const isTeacher = auth.hasRole('teacher') || auth.hasRole('admin');
+          await this.rawInsert('song_tutorials', {
+            song_id: gradedSongId,
+            url: this.gradingData.tutorial_url,
+            title: null,
+            instrument_id: this.gradingData.instrument,
+            submitted_by_user_id: auth.getCurrentUser().id,
+            status: isTeacher ? 'approved' : 'pending'
+          });
+        } catch (tutErr) {
+          // Don't fail the grading if tutorial insert fails (e.g. duplicate)
+          console.warn('Could not save tutorial to song_tutorials:', tutErr);
+        }
+      }
+
       // Close modal and refresh
       document.getElementById('song-grading-modal').classList.add('hidden');
       this.showToast('Song graded successfully!', 'success');
