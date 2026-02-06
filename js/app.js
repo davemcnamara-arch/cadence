@@ -7370,14 +7370,9 @@ class CadenceApp {
       // Use raw fetch to avoid Supabase JS client issues after inserts
       // RLS policy already filters: students see approved tutorials or their own submissions
       // Teachers see all tutorials
-      // Filter by selected instrument in modal: show tutorials for this instrument OR universal (null instrument_id)
+      // Fetch ALL tutorials for this song, then filter by instrument client-side.
+      // This lets us check if ANY tutorials exist before deciding to show the tutorial_url fallback.
       let query = `select=id,url,title,status,submitted_by_user_id,instrument_id,created_at&song_id=eq.${songId}&order=created_at.asc`;
-
-      // Get instrument from filter dropdown (falls back to current instrument)
-      const filterInstrumentId = document.getElementById('resources-instrument-filter')?.value || this.currentInstrument;
-      if (filterInstrumentId) {
-        query += `&or=(instrument_id.is.null,instrument_id.eq.${filterInstrumentId})`;
-      }
 
       const { data, error } = await this.rawSelect('song_tutorials', query);
 
@@ -7387,12 +7382,18 @@ class CadenceApp {
         return;
       }
 
+      // Filter client-side by selected instrument: show tutorials for this instrument OR universal (null instrument_id)
+      const filterInstrumentId = document.getElementById('resources-instrument-filter')?.value || this.currentInstrument;
+      const filteredData = (data || []).filter(t =>
+        !t.instrument_id || t.instrument_id === filterInstrumentId
+      );
+
       // Also include the song's main tutorial_url (stored on songs table during grading)
-      // Only show this fallback if there are NO entries in song_tutorials yet (legacy data).
+      // Only show this fallback if there are NO entries in song_tutorials at all (for any instrument).
       // Once per-instrument tutorials exist in song_tutorials, rely solely on that table.
       const song = this.currentResourceSong;
-      const allTutorials = [...(data || [])];
-      if (song?.tutorial_url && allTutorials.length === 0) {
+      const allTutorials = [...filteredData];
+      if (song?.tutorial_url && (!data || data.length === 0)) {
         allTutorials.unshift({
           id: 'main-tutorial',
           url: song.tutorial_url,
