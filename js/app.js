@@ -3288,7 +3288,7 @@ class CadenceApp {
             ` : `
               <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
             `}
-            <button class="btn-link-add" onclick="app.showSongResourcesModal('${song.id}')" title="View tutorials and resources">Resources</button>
+            <button class="btn-link-add" onclick="app.showSongResourcesModal('${song.id}', '${firstStudentSong.instrument_id}')" title="View tutorials and resources">Resources</button>
           </div>
         </div>
         <div class="actions-grouped">
@@ -3332,7 +3332,7 @@ class CadenceApp {
             ` : `
               <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
             `}
-            <button class="btn-link-add" onclick="app.showSongResourcesModal('${song.id}')" title="View tutorials and resources">Resources</button>
+            <button class="btn-link-add" onclick="app.showSongResourcesModal('${song.id}', '${studentSong.instrument_id}')" title="View tutorials and resources">Resources</button>
           </div>
         </div>
         <div class="actions">
