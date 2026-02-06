@@ -212,7 +212,7 @@ BEGIN
 
   -- Bass Level 1
   INSERT INTO levels (instrument_id, level_number, name, description, skills_json, grading_checklist_json, example_songs)
-  VALUES (bass_id, 1, 'Foundation', 'Basic bass fundamentals and timing',
+  VALUES (bass_id, 1, 'Getting Started', 'Learning the basics of bass and keeping time',
     '[
       "Root notes only, following chord changes",
       "Finger-style technique (index and middle)",
@@ -394,7 +394,7 @@ BEGIN
 
   -- Piano Level 1
   INSERT INTO levels (instrument_id, level_number, name, description, skills_json, grading_checklist_json, example_songs)
-  VALUES (piano_id, 1, 'Foundation', 'Basic hand coordination and simple melodies',
+  VALUES (piano_id, 1, 'Getting Started', 'Learning to use both hands and play simple melodies',
     '[
       "Right hand melody (5-finger position)",
       "Left hand single notes or simple chords",
@@ -587,7 +587,7 @@ BEGIN
 
   -- Drums Level 1
   INSERT INTO levels (instrument_id, level_number, name, description, skills_json, grading_checklist_json, example_songs)
-  VALUES (drums_id, 1, 'Foundation', 'Basic drumming fundamentals and timing',
+  VALUES (drums_id, 1, 'Getting Started', 'Learning basic beats and keeping steady time',
     '[
       "Basic rock beat (bass on 1&3, snare on 2&4)",
       "Consistent tempo with metronome",
@@ -769,7 +769,7 @@ BEGIN
 
   -- Vocals Level 1
   INSERT INTO levels (instrument_id, level_number, name, description, skills_json, grading_checklist_json, example_songs)
-  VALUES (vocals_id, 1, 'Foundation', 'Basic singing fundamentals',
+  VALUES (vocals_id, 1, 'Getting Started', 'Learning the basics of singing',
     '[
       "Simple melodies, limited range (octave or less)",
       "Clear pitch on repeated phrases",
