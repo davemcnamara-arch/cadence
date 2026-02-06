@@ -3089,13 +3089,13 @@ class CadenceApp {
   // STUDENT: Progress Tracking & Mastery
   // ============================================
 
-  async renderProgress() {
+  async renderProgress(useLocalData = false) {
     const user = auth.getCurrentUser();
     let studentSongsWithRatings;
 
-    // If in preview mode, use already-loaded data
-    if (this.previewMode.active) {
-      // Data already has resource_ratings from RPC function
+    // If in preview mode or using local data after a mutation, use already-loaded data
+    if (this.previewMode.active || useLocalData) {
+      // Data already has resource_ratings from RPC function or previous fetch
       studentSongsWithRatings = this.studentSongs || [];
     } else {
       // Load fresh data for current user
@@ -3144,11 +3144,13 @@ class CadenceApp {
         });
       }
 
-      // Attach ratings to student songs
+      // Attach ratings to student songs and save to local state
+      // so subsequent local mutations (remove, master, unmaster) can re-render without re-fetching
       studentSongsWithRatings = studentSongs?.map(s => ({
         ...s,
         resource_ratings: ratingsMap[s.id] || { chords: [], tutorial: [] }
       }));
+      this.studentSongs = studentSongsWithRatings || [];
     }
 
     // Calculate stats
@@ -3502,7 +3504,7 @@ class CadenceApp {
     // Check for level advancement
     await this.checkLevelAdvancement(instrumentId);
 
-    this.renderProgress();
+    this.renderProgress(true);
 
     // Clear pending data
     this.pendingMasteredSong = null;
@@ -3589,7 +3591,7 @@ class CadenceApp {
     }
 
     this.showToast('Song moved back to learning', 'success');
-    this.renderProgress();
+    this.renderProgress(true);
   }
 
   async removeSong(studentSongId) {
@@ -3615,7 +3617,7 @@ class CadenceApp {
     }
 
     this.showToast('Song removed successfully', 'success');
-    this.renderProgress();
+    this.renderProgress(true);
   }
 
   // ============================================
