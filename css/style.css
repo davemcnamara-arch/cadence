@@ -763,6 +763,51 @@ body {
   background: var(--instrument-light);
 }
 
+/* Collapsible completed levels */
+.level-details-toggle {
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+  padding-top: 0.5rem;
+}
+
+.level-details-toggle summary {
+  cursor: pointer;
+  font-size: 0.813rem;
+  color: var(--instrument-color);
+  font-weight: 500;
+  padding: 0.25rem 0;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.level-details-toggle summary::-webkit-details-marker {
+  display: none;
+}
+
+.level-details-toggle summary::before {
+  content: "\25B6";
+  font-size: 0.625rem;
+  transition: transform 0.2s ease;
+}
+
+.level-details-toggle[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.level-details-toggle .level-description {
+  margin-top: 0.75rem;
+}
+
+.level-node.completed .level-name {
+  cursor: pointer;
+}
+
+.level-node.completed .level-name:hover {
+  text-decoration: underline;
+}
+
 /* Instrument selector tabs */
 .instrument-tabs {
   display: flex;
@@ -821,14 +866,15 @@ body {
 
 /* Pathway header with instrument info */
 .pathway-header {
-  background: linear-gradient(135deg, var(--instrument-color), var(--primary-dark));
-  color: white;
+  background: linear-gradient(135deg, var(--instrument-light), #f3f4f6);
+  color: var(--text-primary);
   padding: 2rem;
   border-radius: var(--border-radius);
   margin-bottom: 2rem;
   display: flex;
   align-items: center;
   gap: 1.5rem;
+  border: 2px solid var(--instrument-color);
 }
 
 .pathway-header-icon {
@@ -844,7 +890,7 @@ body {
 
 .pathway-header-content p {
   font-size: 1rem;
-  opacity: 0.9;
+  color: var(--text-secondary);
 }
 
 /* Song Filters */

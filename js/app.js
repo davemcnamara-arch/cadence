@@ -1167,6 +1167,10 @@ class CadenceApp {
     // Add click handlers to level nodes and branch nodes
     container.querySelectorAll('.level-node, .branch-node').forEach(node => {
       node.addEventListener('click', (e) => {
+        // Don't navigate when interacting with the details toggle
+        if (e.target.closest('.level-details-toggle')) {
+          return;
+        }
         const levelNumber = parseInt(node.dataset.level);
         if (levelNumber) {
           this.navigateToLevelSongs(levelNumber);
@@ -1245,22 +1249,41 @@ class CadenceApp {
     const skills = typeof level.skills_json === 'string' ? JSON.parse(level.skills_json) : (level.skills_json || []);
     const statusClass = isComplete ? 'completed' : (isCurrent ? 'current' : '');
 
+    const detailsContent = `
+      <p class="level-description">${level.description}</p>
+      <ul class="level-skills">
+        ${skills.map(skill => `<li>${skill}</li>`).join('')}
+      </ul>
+      ${level.example_songs && level.example_songs.length > 0 ? `
+        <div class="example-songs">
+          <strong>Example songs:</strong> ${level.example_songs.join(', ')}
+        </div>
+      ` : ''}
+    `;
+
+    if (isComplete) {
+      return `
+        <div class="level-node ${statusClass}" data-level="${level.level_number}">
+          <div class="level-header">
+            <span class="level-number">Level ${level.level_number}</span>
+            <span>✓</span>
+          </div>
+          <h3 class="level-name">${level.name}</h3>
+          <details class="level-details-toggle">
+            <summary>Show details</summary>
+            ${detailsContent}
+          </details>
+        </div>
+      `;
+    }
+
     return `
       <div class="level-node ${statusClass}" data-level="${level.level_number}">
         <div class="level-header">
           <span class="level-number">Level ${level.level_number}</span>
-          ${isComplete ? '<span>✓</span>' : ''}
         </div>
         <h3 class="level-name">${level.name}</h3>
-        <p class="level-description">${level.description}</p>
-        <ul class="level-skills">
-          ${skills.map(skill => `<li>${skill}</li>`).join('')}
-        </ul>
-        ${level.example_songs && level.example_songs.length > 0 ? `
-          <div class="example-songs">
-            <strong>Example songs:</strong> ${level.example_songs.join(', ')}
-          </div>
-        ` : ''}
+        ${detailsContent}
       </div>
     `;
   }
