@@ -88,7 +88,7 @@ class CadenceApp {
   }
 
   // Keepalive mechanism to prevent Supabase connection from going stale
-  // Uses direct fetch to avoid hanging on stale connections
+  // Uses both direct fetch AND a Supabase client query to warm up the connection
   startConnectionKeepalive() {
     // Ping every 2 minutes to keep connection alive
     const KEEPALIVE_INTERVAL = 2 * 60 * 1000;
@@ -112,8 +112,20 @@ class CadenceApp {
         return response.ok;
       } catch (err) {
         clearTimeout(timeoutId);
-        console.warn('🎯 Keepalive ping failed:', err.message);
+        console.warn('Keepalive ping failed:', err.message);
         return false;
+      }
+    };
+
+    // Warm up the Supabase client itself (not just raw fetch) to prevent stale internal state
+    const warmupSupabaseClient = async () => {
+      try {
+        await Promise.race([
+          supabase.from('instruments').select('id').limit(1),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('warmup timeout')), 5000))
+        ]);
+      } catch (err) {
+        console.warn('Supabase client warmup failed:', err.message);
       }
     };
 
@@ -129,7 +141,8 @@ class CadenceApp {
       if (document.visibilityState === 'visible') {
         // Small delay to let browser wake up
         await new Promise(resolve => setTimeout(resolve, 100));
-        await pingConnection();
+        // Warm up both the network connection and Supabase client
+        await Promise.all([pingConnection(), warmupSupabaseClient()]);
       }
     });
   }
@@ -561,9 +574,9 @@ class CadenceApp {
   // ============================================
 
   async loadInstruments() {
-    // Use queryWithTimeout to prevent stalling on stale connections
+    // Use queryWithTimeout with factory function for retry on stale connections
     const { data, error } = await this.queryWithTimeout(
-      supabase
+      () => supabase
         .from('instruments')
         .select('*')
         .order('display_order'),
@@ -585,33 +598,27 @@ class CadenceApp {
     // Use student ID if in preview mode, otherwise use current user
     const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
-    // Retry once on failure - a transient error here causes the app to think
-    // the student has no instruments, skipping all song loading
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const { data, error } = await this.queryWithTimeout(
-        supabase
-          .from('student_progress')
-          .select('*')
-          .eq('user_id', userId),
-        15000,
-        'student progress'
-      );
+    // Use factory function for automatic retry on timeout via queryWithTimeout
+    const { data, error } = await this.queryWithTimeout(
+      () => supabase
+        .from('student_progress')
+        .select('*')
+        .eq('user_id', userId),
+      15000,
+      'student progress'
+    );
 
-      if (!error) {
-        this.studentProgress = data || [];
-        return;
-      }
-
-      console.error(`Error loading progress (attempt ${attempt + 1}):`, error);
-      if (attempt === 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
+    if (!error) {
+      this.studentProgress = data || [];
+      return;
     }
+
+    console.error('Error loading progress:', error);
   }
 
   async loadLevels(instrumentId) {
     const { data, error } = await this.queryWithTimeout(
-      supabase
+      () => supabase
         .from('levels')
         .select('*')
         .eq('instrument_id', instrumentId)
@@ -642,42 +649,63 @@ class CadenceApp {
     this.loadingSongsStarted = Date.now();
 
     try {
-      // Use queryWithTimeout to prevent stalling on stale connections
-      const { data, error } = await this.queryWithTimeout(
-        supabase
-          .from('songs')
-          .select(`
-            *,
-            instruments (
-              id,
-              name,
-              icon
-            ),
-            song_ratings (
-              assessed_level,
-              instrument_id,
-              user_id
-            )
-          `)
-          .eq('approved', true)
-          .order('title', { ascending: true }),
-        15000,
-        'songs'
-      );
+      // Run all independent queries in parallel using factory functions for retry support
+      const [songsResult, ratingsResult, tutorialsResult, resourcesResult] = await Promise.all([
+        this.queryWithTimeout(
+          () => supabase
+            .from('songs')
+            .select(`
+              *,
+              instruments (
+                id,
+                name,
+                icon
+              ),
+              song_ratings (
+                assessed_level,
+                instrument_id,
+                user_id
+              )
+            `)
+            .eq('approved', true)
+            .order('title', { ascending: true }),
+          15000,
+          'songs'
+        ),
+        this.queryWithTimeout(
+          () => supabase
+            .from('resource_ratings')
+            .select('*, student_songs!inner(song_id)'),
+          15000,
+          'resource ratings'
+        ),
+        this.queryWithTimeout(
+          () => supabase
+            .from('song_tutorials')
+            .select('song_id')
+            .eq('status', 'approved'),
+          15000,
+          'tutorial counts'
+        ),
+        this.queryWithTimeout(
+          () => supabase
+            .from('student_resources')
+            .select('song_id')
+            .eq('status', 'approved'),
+          15000,
+          'resource counts'
+        ),
+      ]);
 
+      const { data, error } = songsResult;
       if (error) {
         console.error('Error loading songs:', error);
         return;
       }
 
-    // Load resource ratings separately and attach to songs
-    const { data: resourceRatings } = await this.queryWithTimeout(
-      supabase
-        .from('resource_ratings')
-        .select('*, student_songs!inner(song_id)'),
-      15000,
-      'resource ratings'
-    );
+    const { data: resourceRatings } = ratingsResult;
+    const { data: tutorialCounts } = tutorialsResult;
+    const { data: resourceCounts } = resourcesResult;
 
     // Create a map of song_id to ratings
     const ratingsMap = {};
@@ -695,25 +723,6 @@ class CadenceApp {
         }
       });
     }
-
-    // Load resource counts (tutorials + student resources)
-    const { data: tutorialCounts } = await this.queryWithTimeout(
-      supabase
-        .from('song_tutorials')
-        .select('song_id')
-        .eq('status', 'approved'),
-      15000,
-      'tutorial counts'
-    );
-
-    const { data: resourceCounts } = await this.queryWithTimeout(
-      supabase
-        .from('student_resources')
-        .select('song_id')
-        .eq('status', 'approved'),
-      15000,
-      'resource counts'
-    );
 
     // Create count maps
     const tutorialCountMap = {};
@@ -1344,22 +1353,27 @@ class CadenceApp {
   // ============================================
 
   async renderSongs() {
-    await this.loadSongs();
+    // Run loadSongs and student songs query in parallel
+    const loadSongsPromise = this.loadSongs();
 
-    // Load student songs if not in preview mode
+    let studentSongsPromise = Promise.resolve(null);
     if (!this.previewMode.active) {
       const user = auth.getCurrentUser();
       if (user) {
-        const { data: studentSongs } = await this.queryWithTimeout(
-          supabase
+        studentSongsPromise = this.queryWithTimeout(
+          () => supabase
             .from('student_songs')
             .select('*')
             .eq('user_id', user.id),
           15000,
           'student songs'
         );
-        this.studentSongs = studentSongs || [];
       }
+    }
+
+    const [, studentResult] = await Promise.all([loadSongsPromise, studentSongsPromise]);
+    if (studentResult) {
+      this.studentSongs = studentResult.data || [];
     }
 
     this.filterSongs();
@@ -1782,7 +1796,7 @@ class CadenceApp {
 
     // Fetch all ratings for this song (without user join due to RLS)
     const { data: ratings, error } = await this.queryWithTimeout(
-      supabase
+      () => supabase
         .from('song_ratings')
         .select(`
           *,
@@ -2974,21 +2988,33 @@ class CadenceApp {
   }
 
   // Wrapper for Supabase queries that may stall on stale connections
-  // Returns { data, error } - on timeout, shows toast and returns null data
-  async queryWithTimeout(queryPromise, timeoutMs = 15000, context = 'data') {
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('QUERY_TIMEOUT')), timeoutMs)
-    );
+  // Returns { data, error } - on timeout, retries once then shows toast and returns null data
+  // Accepts either a Promise or a function that returns a Promise (factory).
+  // When a factory is provided, retries with a fresh query on timeout.
+  async queryWithTimeout(queryFnOrPromise, timeoutMs = 15000, context = 'data') {
+    const isFactory = typeof queryFnOrPromise === 'function';
+    const maxRetries = isFactory ? 1 : 0;
 
-    try {
-      return await Promise.race([queryPromise, timeoutPromise]);
-    } catch (error) {
-      if (error.message === 'QUERY_TIMEOUT') {
-        console.warn(`Query timeout while loading ${context}`);
-        this.showToast('Connection lost. Please refresh the page.', 'error');
-        return { data: null, error: { message: 'Connection timeout' } };
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const queryPromise = isFactory ? queryFnOrPromise() : queryFnOrPromise;
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('QUERY_TIMEOUT')), timeoutMs)
+      );
+
+      try {
+        return await Promise.race([queryPromise, timeoutPromise]);
+      } catch (error) {
+        if (error.message === 'QUERY_TIMEOUT') {
+          if (attempt < maxRetries) {
+            console.warn(`Query timeout while loading ${context}, retrying...`);
+            continue;
+          }
+          console.warn(`Query timeout while loading ${context}`);
+          this.showToast('Connection lost. Please refresh the page.', 'error');
+          return { data: null, error: { message: 'Connection timeout' } };
+        }
+        throw error;
       }
-      throw error;
     }
   }
 
@@ -3084,9 +3110,9 @@ class CadenceApp {
       // Load fresh data for current user
       const userId = user.id;
 
-      // Load student songs with timeout to prevent stalling on stale connections
+      // Load student songs with timeout and retry to prevent stalling on stale connections
       const { data: studentSongs } = await this.queryWithTimeout(
-        supabase
+        () => supabase
           .from('student_songs')
           .select(`
             *,
@@ -3102,7 +3128,7 @@ class CadenceApp {
       const studentSongIds = studentSongs?.map(s => s.id) || [];
       const { data: resourceRatings } = studentSongIds.length > 0
         ? await this.queryWithTimeout(
-            supabase
+            () => supabase
               .from('resource_ratings')
               .select('*')
               .in('student_song_id', studentSongIds),
@@ -5134,7 +5160,7 @@ class CadenceApp {
 
     // Get submissions from those students with timeout to prevent stalling
     const { data, error } = await this.queryWithTimeout(
-      supabase
+      () => supabase
         .from('song_ratings')
         .select(`
           *,
@@ -5282,68 +5308,67 @@ class CadenceApp {
   }
 
   async loadFlaggedRatings() {
-    // Always load pending links, tutorials, and resources first (independent of student data)
-    // Use queryWithTimeout to prevent stalling on stale connections
-    const { data: pendingLinks, error: pendingError } = await this.queryWithTimeout(
-      supabase
-        .from('pending_links')
-        .select(`
-          id,
-          song_id,
-          link_type,
-          url,
-          submitted_at,
-          submitted_by_user_id,
-          songs!inner (title, artist),
-          users!pending_links_submitted_by_user_id_fkey (name)
-        `)
-        .eq('status', 'pending')
-        .order('submitted_at', { ascending: false }),
-      15000,
-      'pending links'
-    );
-
-    const { data: pendingTutorials } = await this.queryWithTimeout(
-      supabase
-        .from('song_tutorials')
-        .select(`
-          id,
-          song_id,
-          url,
-          title,
-          created_at,
-          submitted_by_user_id,
-          songs!inner (title, artist)
-        `)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false }),
-      15000,
-      'pending tutorials'
-    );
-
-    const { data: pendingResources } = await this.queryWithTimeout(
-      supabase
-        .from('student_resources')
-        .select(`
-          id,
-          song_id,
-          title,
-          file_url,
-          file_type,
-          created_at,
-          user_id,
-          songs!inner (title, artist)
-        `)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false }),
-      15000,
-      'pending resources'
-    );
+    // Load all pending data in parallel with factory functions for retry support
+    const [linksResult, tutorialsResult, resourcesResult] = await Promise.all([
+      this.queryWithTimeout(
+        () => supabase
+          .from('pending_links')
+          .select(`
+            id,
+            song_id,
+            link_type,
+            url,
+            submitted_at,
+            submitted_by_user_id,
+            songs!inner (title, artist),
+            users!pending_links_submitted_by_user_id_fkey (name)
+          `)
+          .eq('status', 'pending')
+          .order('submitted_at', { ascending: false }),
+        15000,
+        'pending links'
+      ),
+      this.queryWithTimeout(
+        () => supabase
+          .from('song_tutorials')
+          .select(`
+            id,
+            song_id,
+            url,
+            title,
+            created_at,
+            submitted_by_user_id,
+            songs!inner (title, artist)
+          `)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false }),
+        15000,
+        'pending tutorials'
+      ),
+      this.queryWithTimeout(
+        () => supabase
+          .from('student_resources')
+          .select(`
+            id,
+            song_id,
+            title,
+            file_url,
+            file_type,
+            created_at,
+            user_id,
+            songs!inner (title, artist)
+          `)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false }),
+        15000,
+        'pending resources'
+      ),
+    ]);
 
     // Store pending data
-    this.pendingLinks = pendingLinks || [];
-    this.pendingTutorials = pendingTutorials || [];
-    this.pendingResources = pendingResources || [];
+    this.pendingLinks = linksResult.data || [];
+    this.pendingTutorials = tutorialsResult.data || [];
+    this.pendingResources = resourcesResult.data || [];
 
     // Get all students from all the teacher's classes using direct RPC call
     let allStudents;
@@ -5386,7 +5411,7 @@ class CadenceApp {
 
     // First, get all song IDs that have been rated by class students
     const { data: studentRatings, error: studentError } = await this.queryWithTimeout(
-      supabase
+      () => supabase
         .from('song_ratings')
         .select('song_id')
         .in('user_id', studentIds),
@@ -5415,7 +5440,7 @@ class CadenceApp {
       // Now get ALL ratings for these songs (including teacher ratings)
       // Don't use inner join on users to avoid RLS issues
       const { data, error } = await this.queryWithTimeout(
-        supabase
+        () => supabase
           .from('song_ratings')
           .select(`
             song_id,
@@ -5467,7 +5492,7 @@ class CadenceApp {
 
       // Also load new ratings that need teacher review
       const { data: unreviewedRatings, error: unreviewedError } = await this.queryWithTimeout(
-        supabase
+        () => supabase
           .from('song_ratings')
           .select(`
             id,
@@ -6152,9 +6177,9 @@ class CadenceApp {
     const user = auth.getCurrentUser();
     const container = document.getElementById('student-classes-list');
 
-    // Load classes the student has joined with timeout to prevent stalling
+    // Load classes the student has joined with timeout and retry to prevent stalling
     const { data: memberships, error } = await this.queryWithTimeout(
-      supabase
+      () => supabase
         .from('class_members')
         .select(`
           *,
@@ -6224,9 +6249,9 @@ class CadenceApp {
 
     const userId = user.id;
 
-    // Load classes the student has joined with timeout to prevent stalling
+    // Load classes the student has joined with timeout and retry to prevent stalling
     const { data: memberships, error } = await this.queryWithTimeout(
-      supabase
+      () => supabase
         .from('class_members')
         .select(`
           *,
@@ -6990,9 +7015,9 @@ class CadenceApp {
   }
 
   async loadPendingTeacherAccounts() {
-    // Use queryWithTimeout to prevent stalling on stale connections
+    // Use queryWithTimeout with factory function for retry on stale connections
     const { data, error } = await this.queryWithTimeout(
-      supabase
+      () => supabase
         .from('pre_registered_accounts')
         .select('*')
         .order('created_at', { ascending: false }),
