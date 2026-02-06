@@ -2444,79 +2444,79 @@ class CadenceApp {
     // Written to be approachable for 12-16 year olds
     const comprehensiveQuestions = {
       "How many chords or notes does this song use?": [
-        "1-3 basic chords/notes — just a few simple ones",
-        "4-5 simple chords/progressions — a handful to learn",
-        "6-8 chords with some variety — a decent amount",
-        "8-10 chords with extensions or trickier combos",
-        "10+ chords or very advanced harmony — lots to keep track of"
+        "Just a few simple ones — 1-3 basic chords/notes",
+        "A handful to learn — 4-5 simple chords/progressions",
+        "A decent amount — 6-8 chords with some variety",
+        "Quite a lot, some trickier combos — 8-10 chords with extensions",
+        "Lots to keep track of — 10+ chords or very advanced harmony"
       ],
       "What kind of chords or notes are they?": [
-        "basic major/minor only — the standard ones everyone learns first",
-        "includes 7ths or sus chords — a few fancier ones mixed in",
-        "includes extensions (9ths, 11ths, 13ths) — some pretty complex chords",
-        "includes alterations or jazz voicings — really unusual chord shapes",
-        "n/a - melody/rhythm instrument only — this doesn't apply to my instrument"
+        "The standard ones everyone learns first — basic major/minor only",
+        "A few fancier ones mixed in — includes 7ths or sus chords",
+        "Some pretty complex chords — includes extensions (9ths, 11ths, 13ths)",
+        "Really unusual chord shapes — includes alterations or jazz voicings",
+        "This doesn't apply to my instrument — n/a - melody/rhythm instrument only"
       ],
       "How many different playing patterns does the song have?": [
-        "single simple pattern throughout — one pattern the whole time",
-        "2-3 different patterns or techniques — switches it up a bit",
-        "varied patterns with some complexity — quite a few changes",
-        "complex patterns with advanced articulation — lots of tricky stuff",
-        "very advanced - multiple techniques integrated — everything at once"
+        "One pattern the whole time — single simple pattern throughout",
+        "Switches it up a bit — 2-3 different patterns or techniques",
+        "Quite a few changes — varied patterns with some complexity",
+        "Lots of tricky stuff — complex patterns with advanced articulation",
+        "Everything at once — very advanced - multiple techniques integrated"
       ],
       "What techniques does the song use?": [
-        "Basic: strumming, block chords, basic rhythms, straight tone",
-        "Intermediate: fingerpicking/arpeggios, ghost notes, basic fills, dynamics",
-        "Advanced: slap/pop, syncopation, polyrhythms, vibrato, runs/riffs",
-        "Expert: tapping, double bass, advanced coordination, melisma, improvisation"
+        "Simple stuff — Basic: strumming, block chords, basic rhythms, straight tone",
+        "A step up — Intermediate: fingerpicking/arpeggios, ghost notes, basic fills, dynamics",
+        "Getting serious — Advanced: slap/pop, syncopation, polyrhythms, vibrato, runs/riffs",
+        "Really complex — Expert: tapping, double bass, advanced coordination, melisma, improvisation"
       ],
       "How is the song laid out?": [
-        "single section or simple repeat — same part over and over",
-        "verse/chorus (2 sections) — two main parts that alternate",
-        "verse/chorus/bridge (3 sections) — three different parts",
-        "multiple sections (4+) or complex form — lots of different parts"
+        "Same part over and over — single section or simple repeat",
+        "Two main parts that alternate — verse/chorus (2 sections)",
+        "Three different parts — verse/chorus/bridge (3 sections)",
+        "Lots of different parts — multiple sections (4+) or complex form"
       ],
       "How much do your hands/limbs need to do different things at the same time?": [
-        "single element — just one thing at a time",
-        "two elements - simple — both hands/limbs doing something basic together",
-        "moderate coordination — hands/limbs doing their own thing",
-        "high independence — really tricky to keep everything going at once",
-        "mastered independence — full control of everything separately"
+        "Just one thing at a time — single element",
+        "Both hands/limbs doing something basic together — two elements - simple",
+        "Hands/limbs doing their own thing — moderate coordination",
+        "Really tricky to keep everything going at once — high independence",
+        "Full control of everything separately — mastered independence"
       ],
       "How hard does this song feel overall?": [
-        "beginner friendly — most people could pick this up pretty quickly",
-        "some challenges for beginners — takes a bit of practice",
-        "intermediate - moderately challenging — you need to know what you're doing",
-        "advanced - quite challenging — even experienced players need to practice this",
-        "expert - very challenging — only for people who've been playing a long time"
+        "Most people could pick this up pretty quickly — beginner friendly",
+        "Takes a bit of practice — some challenges for beginners",
+        "You need to know what you're doing — intermediate - moderately challenging",
+        "Even experienced players need to practice this — advanced - quite challenging",
+        "Only for people who've been playing a long time — expert - very challenging"
       ],
       "How tricky is the rhythm?": [
-        "simple steady rhythm (4/4, straight) — easy to tap your foot to",
-        "some variation or off-beats — a few surprises in the rhythm",
-        "syncopated or swing feel — the rhythm has a bounce or groove to it",
-        "complex rhythms or time signature changes — the beat shifts around",
-        "polyrhythmic or very advanced timing — multiple rhythms layered together"
+        "Easy to tap your foot to — simple steady rhythm (4/4, straight)",
+        "A few surprises in the rhythm — some variation or off-beats",
+        "The rhythm has a bounce or groove to it — syncopated or swing feel",
+        "The beat shifts around — complex rhythms or time signature changes",
+        "Multiple rhythms layered together — polyrhythmic or very advanced timing"
       ],
       "How much does the volume and feeling change during the song?": [
-        "minimal — stays pretty much the same the whole time",
-        "basic dynamic changes (loud/soft) — gets louder and softer in places",
-        "moderate expression and phrasing — noticeable ups and downs in feeling",
-        "highly expressive with nuanced control — lots of emotion and detail",
-        "exceptional artistry and interpretation — really deep, performance-level expression"
+        "Stays pretty much the same the whole time — minimal",
+        "Gets louder and softer in places — basic dynamic changes (loud/soft)",
+        "Noticeable ups and downs in feeling — moderate expression and phrasing",
+        "Lots of emotion and detail — highly expressive with nuanced control",
+        "Really deep, performance-level expression — exceptional artistry and interpretation"
       ],
       "How would you learn this song?": [
-        "chord symbols/charts only — just follow the chord names",
-        "simple notation or tab — basic written music or tablature",
-        "standard notation - moderate — regular sheet music",
-        "complex notation or score reading — detailed written music",
-        "can play by ear or memory — listen and figure it out"
+        "Just follow the chord names — chord symbols/charts only",
+        "Basic written music or tablature — simple notation or tab",
+        "Regular sheet music — standard notation - moderate",
+        "Detailed written music — complex notation or score reading",
+        "Listen and figure it out — can play by ear or memory"
       ],
       "Does the song let you add your own flair or make stuff up?": [
-        "none - play exactly as written — stick to what's on the page",
-        "minimal decoration or simple fills — a little room to add small touches",
-        "some structured improvisation — sections where you can freestyle a bit",
-        "significant improvised sections — big parts where you make it your own",
-        "free improvisation or extensive soloing — lots of room to go off-script"
+        "Stick to what's on the page — none - play exactly as written",
+        "A little room to add small touches — minimal decoration or simple fills",
+        "Sections where you can freestyle a bit — some structured improvisation",
+        "Big parts where you make it your own — significant improvised sections",
+        "Lots of room to go off-script — free improvisation or extensive soloing"
       ]
     };
 
