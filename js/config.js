@@ -9,7 +9,16 @@ export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import Supabase from CDN
 import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Use let so we can recreate the client when it becomes stale
+export let supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Recreate the Supabase client to recover from stale connections.
+// ES module exports are live bindings, so all importers see the new instance.
+export function recreateSupabaseClient() {
+  console.warn('Recreating Supabase client to recover from stale connection');
+  supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return supabase;
+}
 
 // App Configuration
 export const APP_CONFIG = {
