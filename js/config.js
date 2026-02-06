@@ -14,8 +14,19 @@ export let supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Recreate the Supabase client to recover from stale connections.
 // ES module exports are live bindings, so all importers see the new instance.
+// Cooldown prevents cascading recreation when multiple queries timeout simultaneously.
+let lastRecreatedAt = 0;
+const RECREATE_COOLDOWN_MS = 10000;
+
 export function recreateSupabaseClient() {
+  const now = Date.now();
+  if (now - lastRecreatedAt < RECREATE_COOLDOWN_MS) {
+    // Client was recently recreated — return current instance to avoid
+    // spawning multiple GoTrueClient instances and navigator lock conflicts.
+    return supabase;
+  }
   console.warn('Recreating Supabase client to recover from stale connection');
+  lastRecreatedAt = now;
   supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   return supabase;
 }

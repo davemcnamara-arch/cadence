@@ -119,11 +119,12 @@ class CadenceApp {
 
     // Warm up the Supabase client itself (not just raw fetch) to prevent stale internal state.
     // If the client is stale, recreate it entirely for a fresh connection.
+    // Uses a 10s timeout because browsers throttle network after tab is hidden.
     const warmupSupabaseClient = async () => {
       try {
         await Promise.race([
           supabase.from('instruments').select('id').limit(1),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('warmup timeout')), 5000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('warmup timeout')), 10000))
         ]);
       } catch (err) {
         console.warn('Supabase client warmup failed, recreating client:', err.message);
