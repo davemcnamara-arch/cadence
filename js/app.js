@@ -32,6 +32,9 @@ class CadenceApp {
     // Guard against double initialization
     this.initializing = false;
 
+    // Gate that blocks data queries until connection warmup completes after tab restore
+    this._warmupPromise = null;
+
     // Preview mode state
     this.previewMode = {
       active: false,
@@ -118,8 +121,8 @@ class CadenceApp {
     };
 
     // Warm up the Supabase client itself (not just raw fetch) to prevent stale internal state.
-    // If the client is stale, recreate it entirely for a fresh connection.
-    // Uses a 10s timeout because browsers throttle network after tab is hidden.
+    // If the client is stale, recreate it entirely and wait for auth to initialize
+    // before allowing data queries to proceed.
     const warmupSupabaseClient = async () => {
       try {
         await Promise.race([
@@ -130,6 +133,16 @@ class CadenceApp {
         console.warn('Supabase client warmup failed, recreating client:', err.message);
         const newClient = recreateSupabaseClient();
         window.supabase = newClient;
+        // Wait for the new client's auth session to initialize (including token refresh)
+        // before returning, so that subsequent data queries use a fully-ready client.
+        try {
+          await Promise.race([
+            newClient.auth.getSession(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('auth init timeout')), 8000))
+          ]);
+        } catch (authErr) {
+          console.warn('Auth init after client recreation timed out:', authErr.message);
+        }
       }
     };
 
@@ -140,13 +153,21 @@ class CadenceApp {
       }
     }, KEEPALIVE_INTERVAL);
 
-    // Also reconnect when page becomes visible after being hidden
+    // Also reconnect when page becomes visible after being hidden.
+    // Sets _warmupPromise so that queryWithTimeout waits for warmup to finish
+    // before executing data queries against a potentially stale client.
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'visible') {
         // Small delay to let browser wake up
         await new Promise(resolve => setTimeout(resolve, 100));
-        // Warm up both the network connection and Supabase client
-        await Promise.all([pingConnection(), warmupSupabaseClient()]);
+        // Warm up both the network connection and Supabase client.
+        // Store the promise so queryWithTimeout can gate on it.
+        this._warmupPromise = Promise.all([pingConnection(), warmupSupabaseClient()]);
+        try {
+          await this._warmupPromise;
+        } finally {
+          this._warmupPromise = null;
+        }
       }
     });
   }
@@ -2996,7 +3017,18 @@ class CadenceApp {
   // Returns { data, error } - on timeout, recreates the client and retries once
   // Accepts either a Promise or a function that returns a Promise (factory).
   // When a factory is provided, retries with a fresh Supabase client on timeout.
+  // Waits for any in-progress connection warmup to complete first to avoid
+  // querying against a stale or half-initialized client after tab restore.
   async queryWithTimeout(queryFnOrPromise, timeoutMs = 15000, context = 'data') {
+    // Wait for connection warmup to finish (e.g. after tab restore) before querying
+    if (this._warmupPromise) {
+      try {
+        await this._warmupPromise;
+      } catch {
+        // Warmup failed - proceed anyway, the query retry logic will handle it
+      }
+    }
+
     const isFactory = typeof queryFnOrPromise === 'function';
     const maxRetries = isFactory ? 1 : 0;
 
@@ -3015,6 +3047,15 @@ class CadenceApp {
             // Recreate the Supabase client before retry to get a fresh connection
             const newClient = recreateSupabaseClient();
             window.supabase = newClient;
+            // Wait for auth to initialize on the new client before retrying
+            try {
+              await Promise.race([
+                newClient.auth.getSession(),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('auth init timeout')), 5000))
+              ]);
+            } catch {
+              // Auth init timed out - proceed with retry anyway
+            }
             continue;
           }
           console.warn(`Query timeout while loading ${context}`);
