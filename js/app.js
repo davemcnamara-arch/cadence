@@ -1,5 +1,5 @@
 // Main Application Module
-import { supabase } from './config.js';
+import { supabase, recreateSupabaseClient } from './config.js';
 import { auth } from './auth.js';
 
 // Expose for debugging
@@ -117,7 +117,8 @@ class CadenceApp {
       }
     };
 
-    // Warm up the Supabase client itself (not just raw fetch) to prevent stale internal state
+    // Warm up the Supabase client itself (not just raw fetch) to prevent stale internal state.
+    // If the client is stale, recreate it entirely for a fresh connection.
     const warmupSupabaseClient = async () => {
       try {
         await Promise.race([
@@ -125,7 +126,9 @@ class CadenceApp {
           new Promise((_, reject) => setTimeout(() => reject(new Error('warmup timeout')), 5000))
         ]);
       } catch (err) {
-        console.warn('Supabase client warmup failed:', err.message);
+        console.warn('Supabase client warmup failed, recreating client:', err.message);
+        const newClient = recreateSupabaseClient();
+        window.supabase = newClient;
       }
     };
 
@@ -2988,9 +2991,9 @@ class CadenceApp {
   }
 
   // Wrapper for Supabase queries that may stall on stale connections
-  // Returns { data, error } - on timeout, retries once then shows toast and returns null data
+  // Returns { data, error } - on timeout, recreates the client and retries once
   // Accepts either a Promise or a function that returns a Promise (factory).
-  // When a factory is provided, retries with a fresh query on timeout.
+  // When a factory is provided, retries with a fresh Supabase client on timeout.
   async queryWithTimeout(queryFnOrPromise, timeoutMs = 15000, context = 'data') {
     const isFactory = typeof queryFnOrPromise === 'function';
     const maxRetries = isFactory ? 1 : 0;
@@ -3006,7 +3009,10 @@ class CadenceApp {
       } catch (error) {
         if (error.message === 'QUERY_TIMEOUT') {
           if (attempt < maxRetries) {
-            console.warn(`Query timeout while loading ${context}, retrying...`);
+            console.warn(`Query timeout while loading ${context}, recreating client and retrying...`);
+            // Recreate the Supabase client before retry to get a fresh connection
+            const newClient = recreateSupabaseClient();
+            window.supabase = newClient;
             continue;
           }
           console.warn(`Query timeout while loading ${context}`);
