@@ -28,7 +28,7 @@ BEGIN
 
   -- Guitar Level 1
   INSERT INTO levels (instrument_id, level_number, name, description, skills_json, grading_checklist_json, example_songs)
-  VALUES (guitar_id, 1, 'Foundation', 'Building basic chord vocabulary and strumming fundamentals',
+  VALUES (guitar_id, 1, 'Getting Started', 'Learning your first chords and basic strumming',
     '[
       "2-3 basic open chords (G, C, D, Em, Am)",
       "Single strumming pattern throughout",
@@ -48,7 +48,7 @@ BEGIN
 
   -- Guitar Level 2
   INSERT INTO levels (instrument_id, level_number, name, description, skills_json, grading_checklist_json, example_songs)
-  VALUES (guitar_id, 2, 'Expanding Vocabulary', 'Growing chord knowledge and introducing variations',
+  VALUES (guitar_id, 2, 'Expanding Skills', 'Growing your chord knowledge and trying new things',
     '[
       "5-6 chords including minors and 7ths",
       "2-3 different strumming patterns",
@@ -69,7 +69,7 @@ BEGIN
 
   -- Guitar Level 3
   INSERT INTO levels (instrument_id, level_number, name, description, skills_json, grading_checklist_json, example_songs)
-  VALUES (guitar_id, 3, 'Technical Development', 'Advanced techniques and musical expression',
+  VALUES (guitar_id, 3, 'Building Technique', 'Picking up new techniques and expressing yourself musically',
     '[
       "8+ chords including several barre chords",
       "Fingerpicking patterns with alternating bass",
@@ -607,7 +607,7 @@ BEGIN
 
   -- Drums Level 2
   INSERT INTO levels (instrument_id, level_number, name, description, skills_json, grading_checklist_json, example_songs)
-  VALUES (drums_id, 2, 'Pattern Development', 'Expanding beat vocabulary',
+  VALUES (drums_id, 2, 'Pattern Development', 'Learning more beat patterns',
     '[
       "3-4 different basic beats",
       "Simple variations (ride cymbal, open hi-hat)",
