@@ -3025,7 +3025,7 @@ class CadenceApp {
     } catch (error) {
       if (error.message === 'QUERY_TIMEOUT') {
         console.warn(`Query timeout while loading ${context}`);
-        this.showToast('Connection lost. Please refresh the page.', 'error');
+        this.showToast('Connection lost. Retrying...', 'error');
         return { data: null, error: { message: 'Connection timeout' } };
       }
       throw error;
@@ -3101,7 +3101,7 @@ class CadenceApp {
     } catch (err) {
       clearTimeout(timeoutId);
       if (err.name === 'AbortError') {
-        this.showToast('Connection lost. Please refresh the page.', 'error');
+        this.showToast('Connection lost. Retrying...', 'error');
         return { data: null, error: { message: 'Connection timeout' } };
       }
       return { data: null, error: { message: err.message } };
@@ -8058,6 +8058,16 @@ class CadenceApp {
   }
 
   showToast(message, type = 'info') {
+    // Deduplicate identical error toasts within a cooldown window
+    if (type === 'error') {
+      if (!this._toastCooldowns) this._toastCooldowns = {};
+      const now = Date.now();
+      if (this._toastCooldowns[message] && now - this._toastCooldowns[message] < 10000) {
+        return; // Suppress duplicate error toast within 10s
+      }
+      this._toastCooldowns[message] = now;
+    }
+
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
