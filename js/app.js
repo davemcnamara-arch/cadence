@@ -785,37 +785,37 @@ class CadenceApp {
             this.loadSongs().then(() => {
               this.filterSongs();
               this.showToast(toastMessage, 'info');
-            });
+            }).catch(err => console.error('Failed to reload songs view:', err));
           } else if (this.currentView === 'progress') {
             // Also update progress view if it shows songs
             this.loadSongs().then(() => {
               this.renderProgress();
-            });
+            }).catch(err => console.error('Failed to reload progress view:', err));
           } else if (this.currentView === 'pathway') {
             // Update pathway view as it also shows songs
             this.loadSongs().then(() => {
               this.renderPathway();
-            });
+            }).catch(err => console.error('Failed to reload pathway view:', err));
           } else if (this.currentView === 'submissions') {
             // Update submissions feed for teachers
             this.loadSubmissions().then(() => {
               this.showToast(toastMessage, 'info');
-            });
+            }).catch(err => console.error('Failed to reload submissions view:', err));
             // Also update background song data
-            this.loadSongs();
+            this.loadSongs().catch(err => console.error('Failed to reload background song data:', err));
           } else if (this.currentView === 'admin') {
             // Check if admin content moderation section is visible
             const contentSection = document.getElementById('content-section');
             if (contentSection && contentSection.classList.contains('active')) {
               this.loadContentModeration().then(() => {
                 this.showToast(toastMessage, 'info');
-              });
+              }).catch(err => console.error('Failed to reload content moderation:', err));
             }
             // Also update background song data
-            this.loadSongs();
+            this.loadSongs().catch(err => console.error('Failed to reload background song data:', err));
           } else {
             // Still update the data in background so it's fresh when they switch views
-            this.loadSongs();
+            this.loadSongs().catch(err => console.error('Failed to reload background song data:', err));
           }
         }
       )
