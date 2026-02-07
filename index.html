@@ -995,9 +995,15 @@
           <strong>Note:</strong> Your tutorial will be submitted for teacher approval before other students can see it.
         </div>
         <form id="add-tutorial-form" onsubmit="event.preventDefault(); console.log('Tutorial form submit'); app.submitTutorial(); return false;">
+          <p style="margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-secondary);">
+            Click the search button to find a tutorial, then copy the URL and paste it below.
+          </p>
           <div class="form-group">
             <label for="tutorial-url">Tutorial URL *</label>
-            <input type="text" id="tutorial-url" required placeholder="https://youtube.com/...">
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="text" id="tutorial-url" required placeholder="https://youtube.com/..." style="flex: 1;">
+              <button type="button" class="btn btn-secondary" id="search-tutorial-resource-btn" title="Search for tutorial">🔍</button>
+            </div>
           </div>
           <div class="form-group">
             <label for="tutorial-title">Title (optional)</label>

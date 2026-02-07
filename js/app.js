@@ -7656,16 +7656,22 @@ class CadenceApp {
       }
     }
 
-    // Open search to help user find tutorials (use the filter dropdown instrument)
-    const searchInstrumentId = document.getElementById('resources-instrument-filter')?.value || this.currentInstrument;
-    const instrumentName = this.instruments.find(i => i.id === searchInstrumentId)?.name || '';
-    const searchQuery = instrumentName
-      ? `${this.currentResourceSong.title} ${instrumentName} tutorial`
-      : `${this.currentResourceSong.title} tutorial`;
-    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
-    window.open(searchUrl, '_blank');
-
     document.getElementById('add-tutorial-modal').classList.remove('hidden');
+
+    // Wire up inline search button (matches grading modal pattern)
+    const searchBtn = document.getElementById('search-tutorial-resource-btn');
+    if (searchBtn) {
+      searchBtn.onclick = () => {
+        const searchInstrumentId = document.getElementById('tutorial-instrument')?.value ||
+          document.getElementById('resources-instrument-filter')?.value || this.currentInstrument;
+        const instrumentName = this.instruments.find(i => i.id === searchInstrumentId)?.name || '';
+        const searchQuery = instrumentName
+          ? `${this.currentResourceSong.title} ${instrumentName} tutorial`
+          : `${this.currentResourceSong.title} tutorial`;
+        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
+        window.open(searchUrl, '_blank');
+      };
+    }
   }
 
   async submitStudentResource() {
