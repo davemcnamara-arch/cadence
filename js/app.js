@@ -4868,7 +4868,8 @@ class CadenceApp {
             ...s,
             class_id: null,
             class_name: null,
-            joined_at: null
+            joined_at: null,
+            is_pending: false
           }));
         } catch (fallbackErr) {
           console.error('Error loading students for search:', fallbackErr);
@@ -4898,30 +4899,54 @@ class CadenceApp {
     }
 
     // Group results by student (a student may appear in multiple classes)
+    // Active students keyed by user_id, pending keyed by email
     const studentMap = new Map();
+    const pendingMap = new Map();
+
     filtered.forEach(row => {
-      if (!studentMap.has(row.user_id)) {
-        studentMap.set(row.user_id, {
-          user_id: row.user_id,
-          name: row.name,
-          email: row.email,
-          classes: []
-        });
-      }
-      if (row.class_name) {
-        studentMap.get(row.user_id).classes.push({
-          id: row.class_id,
-          name: row.class_name,
-          joined_at: row.joined_at
-        });
+      if (row.is_pending) {
+        const key = row.email.toLowerCase();
+        if (!pendingMap.has(key)) {
+          pendingMap.set(key, {
+            name: row.name,
+            email: row.email,
+            classes: []
+          });
+        }
+        if (row.class_name) {
+          pendingMap.get(key).classes.push({
+            id: row.class_id,
+            name: row.class_name
+          });
+        }
+      } else {
+        if (!studentMap.has(row.user_id)) {
+          studentMap.set(row.user_id, {
+            user_id: row.user_id,
+            name: row.name,
+            email: row.email,
+            classes: []
+          });
+        }
+        if (row.class_name) {
+          studentMap.get(row.user_id).classes.push({
+            id: row.class_id,
+            name: row.class_name,
+            joined_at: row.joined_at
+          });
+        }
       }
     });
 
-    const students = Array.from(studentMap.values()).sort((a, b) =>
+    const activeStudents = Array.from(studentMap.values()).sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
     );
 
-    const html = students.map(student => {
+    const pendingStudents = Array.from(pendingMap.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+    );
+
+    const activeHtml = activeStudents.map(student => {
       const classBadges = student.classes.map(c =>
         `<span class="class-code-badge" style="font-size: 0.75rem; cursor: pointer;" onclick="event.stopPropagation(); app.viewClass('${c.id}')">${this.escapeHtml(c.name)}</span>`
       ).join(' ');
@@ -4941,11 +4966,36 @@ class CadenceApp {
       `;
     }).join('');
 
+    const pendingHtml = pendingStudents.map(student => {
+      const classBadges = student.classes.map(c =>
+        `<span class="class-code-badge" style="font-size: 0.75rem; cursor: pointer;" onclick="event.stopPropagation(); app.viewClass('${c.id}')">${this.escapeHtml(c.name)}</span>`
+      ).join(' ');
+
+      return `
+        <div class="roster-item roster-item-pending">
+          <div class="roster-student-info" style="flex: 1;">
+            <div class="roster-student-name">
+              ${this.escapeHtml(student.name)}
+              <span class="roster-pending-badge">Pending</span>
+            </div>
+            <div class="roster-student-meta">
+              ${this.escapeHtml(student.email)}
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.375rem; flex-wrap: wrap; align-items: center;">
+            ${classBadges}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const totalCount = activeStudents.length + pendingStudents.length;
+
     resultsContainer.innerHTML = `
       <p style="color: var(--text-secondary); margin-bottom: 0.75rem; font-size: 0.875rem;">
-        ${students.length} student${students.length !== 1 ? 's' : ''} found
+        ${totalCount} student${totalCount !== 1 ? 's' : ''} found${pendingStudents.length > 0 ? ` (${pendingStudents.length} pending)` : ''}
       </p>
-      ${html}
+      ${activeHtml}${pendingHtml}
     `;
   }
 
