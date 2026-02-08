@@ -574,14 +574,12 @@ class CadenceApp {
   // ============================================
 
   async loadInstruments() {
-    // Use queryWithTimeout to prevent stalling on stale connections
-    const { data, error } = await this.queryWithTimeout(
-      supabase
-        .from('instruments')
-        .select('*')
-        .order('display_order'),
-      15000,
-      'instruments'
+    // Use direct fetch to bypass stale Supabase client connections
+    const { data, error } = await this.callSelectDirect(
+      'instruments',
+      '*',
+      {},
+      { order: 'display_order.asc' }
     );
 
     if (error) {
@@ -601,13 +599,10 @@ class CadenceApp {
     // Retry once on failure - a transient error here causes the app to think
     // the student has no instruments, skipping all song loading
     for (let attempt = 0; attempt < 2; attempt++) {
-      const { data, error } = await this.queryWithTimeout(
-        supabase
-          .from('student_progress')
-          .select('*')
-          .eq('user_id', userId),
-        15000,
-        'student progress'
+      const { data, error } = await this.callSelectDirect(
+        'student_progress',
+        '*',
+        { eq: { user_id: userId } }
       );
 
       if (!error) {
@@ -623,14 +618,11 @@ class CadenceApp {
   }
 
   async loadLevels(instrumentId) {
-    const { data, error } = await this.queryWithTimeout(
-      supabase
-        .from('levels')
-        .select('*')
-        .eq('instrument_id', instrumentId)
-        .order('level_number'),
-      15000,
-      'levels'
+    const { data, error } = await this.callSelectDirect(
+      'levels',
+      '*',
+      { eq: { instrument_id: instrumentId } },
+      { order: 'level_number.asc' }
     );
 
     if (error) {
@@ -655,27 +647,12 @@ class CadenceApp {
     this.loadingSongsStarted = Date.now();
 
     try {
-      // Use queryWithTimeout to prevent stalling on stale connections
-      const { data, error } = await this.queryWithTimeout(
-        supabase
-          .from('songs')
-          .select(`
-            *,
-            instruments (
-              id,
-              name,
-              icon
-            ),
-            song_ratings (
-              assessed_level,
-              instrument_id,
-              user_id
-            )
-          `)
-          .eq('approved', true)
-          .order('title', { ascending: true }),
-        15000,
-        'songs'
+      // Use direct fetch to bypass stale Supabase client connections
+      const { data, error } = await this.callSelectDirect(
+        'songs',
+        '*,instruments(id,name,icon),song_ratings(assessed_level,instrument_id,user_id)',
+        { eq: { approved: true } },
+        { order: 'title.asc' }
       );
 
       if (error) {
@@ -684,12 +661,9 @@ class CadenceApp {
       }
 
     // Load resource ratings separately and attach to songs
-    const { data: resourceRatings } = await this.queryWithTimeout(
-      supabase
-        .from('resource_ratings')
-        .select('*, student_songs!inner(song_id)'),
-      15000,
-      'resource ratings'
+    const { data: resourceRatings } = await this.callSelectDirect(
+      'resource_ratings',
+      '*,student_songs!inner(song_id)'
     );
 
     // Create a map of song_id to ratings
@@ -710,23 +684,10 @@ class CadenceApp {
     }
 
     // Load resource counts (tutorials + student resources)
-    const { data: tutorialCounts } = await this.queryWithTimeout(
-      supabase
-        .from('song_tutorials')
-        .select('song_id')
-        .eq('status', 'approved'),
-      15000,
-      'tutorial counts'
-    );
-
-    const { data: resourceCounts } = await this.queryWithTimeout(
-      supabase
-        .from('student_resources')
-        .select('song_id')
-        .eq('status', 'approved'),
-      15000,
-      'resource counts'
-    );
+    const [{ data: tutorialCounts }, { data: resourceCounts }] = await Promise.all([
+      this.callSelectDirect('song_tutorials', 'song_id', { eq: { status: 'approved' } }),
+      this.callSelectDirect('student_resources', 'song_id', { eq: { status: 'approved' } })
+    ]);
 
     // Create count maps
     const tutorialCountMap = {};
@@ -1386,13 +1347,10 @@ class CadenceApp {
     if (!this.previewMode.active) {
       const user = auth.getCurrentUser();
       if (user) {
-        const { data: studentSongs } = await this.queryWithTimeout(
-          supabase
-            .from('student_songs')
-            .select('*')
-            .eq('user_id', user.id),
-          15000,
-          'student songs'
+        const { data: studentSongs } = await this.callSelectDirect(
+          'student_songs',
+          '*',
+          { eq: { user_id: user.id } }
         );
         this.studentSongs = studentSongs || [];
       }
@@ -1833,17 +1791,11 @@ class CadenceApp {
     }
 
     // Fetch all ratings for this song (without user join due to RLS)
-    const { data: ratings, error } = await this.queryWithTimeout(
-      supabase
-        .from('song_ratings')
-        .select(`
-          *,
-          instruments (icon, name)
-        `)
-        .eq('song_id', songId)
-        .order('date_graded', { ascending: false }),
-      15000,
-      'song ratings'
+    const { data: ratings, error } = await this.callSelectDirect(
+      'song_ratings',
+      '*,instruments(icon,name)',
+      { eq: { song_id: songId } },
+      { order: 'date_graded.desc' }
     );
 
     if (error) {
@@ -3049,7 +3001,7 @@ class CadenceApp {
   }
 
   // Direct SELECT query using fetch to bypass stale Supabase client connections
-  // Use for simple queries; complex nested queries should use queryWithTimeout
+  // Supports nested selects (e.g. '*,songs(*)') and in filters (e.g. { in: { col: [v1,v2] } })
   async callSelectDirect(table, select = '*', filters = {}, options = {}, _isRetry = false) {
     // Use Supabase client to get a fresh session (auto-refreshes expired tokens)
     const { data: { session } } = await supabase.auth.getSession();
@@ -3062,10 +3014,14 @@ class CadenceApp {
     const params = new URLSearchParams();
     params.set('select', select);
 
-    // Add filters (e.g., { eq: { column: value }, neq: { column: value } })
+    // Add filters (e.g., { eq: { column: value }, in: { column: [v1, v2] } })
     for (const [op, conditions] of Object.entries(filters)) {
       for (const [column, value] of Object.entries(conditions)) {
-        params.append(column, `${op}.${value}`);
+        if (op === 'in' && Array.isArray(value)) {
+          params.append(column, `in.(${value.join(',')})`);
+        } else {
+          params.append(column, `${op}.${value}`);
+        }
       }
     }
 
@@ -3146,30 +3102,21 @@ class CadenceApp {
       // Load fresh data for current user
       const userId = user.id;
 
-      // Load student songs with timeout to prevent stalling on stale connections
-      const { data: studentSongs } = await this.queryWithTimeout(
-        supabase
-          .from('student_songs')
-          .select(`
-            *,
-            songs (*)
-          `)
-          .eq('user_id', userId)
-          .order('date_started', { ascending: false }),
-        15000,
-        'student songs progress'
+      // Use direct fetch to bypass stale Supabase client connections
+      const { data: studentSongs } = await this.callSelectDirect(
+        'student_songs',
+        '*,songs(*)',
+        { eq: { user_id: userId } },
+        { order: 'date_started.desc' }
       );
 
       // Load resource ratings for these student songs
       const studentSongIds = studentSongs?.map(s => s.id) || [];
       const { data: resourceRatings } = studentSongIds.length > 0
-        ? await this.queryWithTimeout(
-            supabase
-              .from('resource_ratings')
-              .select('*')
-              .in('student_song_id', studentSongIds),
-            15000,
-            'resource ratings'
+        ? await this.callSelectDirect(
+            'resource_ratings',
+            '*',
+            { in: { student_song_id: studentSongIds } }
           )
         : { data: [] };
 
@@ -5382,20 +5329,12 @@ class CadenceApp {
       studentMap[s.user_id] = { name: s.name, email: s.email };
     });
 
-    // Get submissions from those students with timeout to prevent stalling
-    const { data, error } = await this.queryWithTimeout(
-      supabase
-        .from('song_ratings')
-        .select(`
-          *,
-          songs!inner (title, artist),
-          instruments (icon, name)
-        `)
-        .in('user_id', studentIds)
-        .order('date_graded', { ascending: false })
-        .limit(50),
-      15000,
-      'submissions'
+    // Use direct fetch to bypass stale Supabase client connections
+    const { data, error } = await this.callSelectDirect(
+      'song_ratings',
+      '*,songs!inner(title,artist),instruments(icon,name)',
+      { in: { user_id: studentIds } },
+      { order: 'date_graded.desc', limit: 50 }
     );
 
     if (error) {
@@ -5533,62 +5472,27 @@ class CadenceApp {
 
   async loadFlaggedRatings() {
     // Always load pending links, tutorials, and resources first (independent of student data)
-    // Use queryWithTimeout to prevent stalling on stale connections
-    const { data: pendingLinks, error: pendingError } = await this.queryWithTimeout(
-      supabase
-        .from('pending_links')
-        .select(`
-          id,
-          song_id,
-          link_type,
-          url,
-          submitted_at,
-          submitted_by_user_id,
-          songs!inner (title, artist),
-          users!pending_links_submitted_by_user_id_fkey (name)
-        `)
-        .eq('status', 'pending')
-        .order('submitted_at', { ascending: false }),
-      15000,
-      'pending links'
-    );
-
-    const { data: pendingTutorials } = await this.queryWithTimeout(
-      supabase
-        .from('song_tutorials')
-        .select(`
-          id,
-          song_id,
-          url,
-          title,
-          created_at,
-          submitted_by_user_id,
-          songs!inner (title, artist)
-        `)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false }),
-      15000,
-      'pending tutorials'
-    );
-
-    const { data: pendingResources } = await this.queryWithTimeout(
-      supabase
-        .from('student_resources')
-        .select(`
-          id,
-          song_id,
-          title,
-          file_url,
-          file_type,
-          created_at,
-          user_id,
-          songs!inner (title, artist)
-        `)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false }),
-      15000,
-      'pending resources'
-    );
+    // Use direct fetch to bypass stale Supabase client connections
+    const [{ data: pendingLinks, error: pendingError }, { data: pendingTutorials }, { data: pendingResources }] = await Promise.all([
+      this.callSelectDirect(
+        'pending_links',
+        'id,song_id,link_type,url,submitted_at,submitted_by_user_id,songs!inner(title,artist),users!pending_links_submitted_by_user_id_fkey(name)',
+        { eq: { status: 'pending' } },
+        { order: 'submitted_at.desc' }
+      ),
+      this.callSelectDirect(
+        'song_tutorials',
+        'id,song_id,url,title,created_at,submitted_by_user_id,songs!inner(title,artist)',
+        { eq: { status: 'pending' } },
+        { order: 'created_at.desc' }
+      ),
+      this.callSelectDirect(
+        'student_resources',
+        'id,song_id,title,file_url,file_type,created_at,user_id,songs!inner(title,artist)',
+        { eq: { status: 'pending' } },
+        { order: 'created_at.desc' }
+      )
+    ]);
 
     // Store pending data
     this.pendingLinks = pendingLinks || [];
@@ -5635,13 +5539,10 @@ class CadenceApp {
     const studentIds = allStudents.map(s => s.user_id);
 
     // First, get all song IDs that have been rated by class students
-    const { data: studentRatings, error: studentError } = await this.queryWithTimeout(
-      supabase
-        .from('song_ratings')
-        .select('song_id')
-        .in('user_id', studentIds),
-      15000,
-      'student ratings'
+    const { data: studentRatings, error: studentError } = await this.callSelectDirect(
+      'song_ratings',
+      'song_id',
+      { in: { user_id: studentIds } }
     );
 
     if (studentError) {
@@ -5664,20 +5565,10 @@ class CadenceApp {
     if (songIds.length > 0) {
       // Now get ALL ratings for these songs (including teacher ratings)
       // Don't use inner join on users to avoid RLS issues
-      const { data, error } = await this.queryWithTimeout(
-        supabase
-          .from('song_ratings')
-          .select(`
-            song_id,
-            instrument_id,
-            assessed_level,
-            user_id,
-            songs!inner (title, artist, suggested_level),
-            instruments (icon, name)
-          `)
-          .in('song_id', songIds),
-        15000,
-        'all song ratings'
+      const { data, error } = await this.callSelectDirect(
+        'song_ratings',
+        'song_id,instrument_id,assessed_level,user_id,songs!inner(title,artist,suggested_level),instruments(icon,name)',
+        { in: { song_id: songIds } }
       );
 
       if (error) {
@@ -5716,24 +5607,11 @@ class CadenceApp {
       }
 
       // Also load new ratings that need teacher review
-      const { data: unreviewedRatings, error: unreviewedError } = await this.queryWithTimeout(
-        supabase
-          .from('song_ratings')
-          .select(`
-            id,
-            song_id,
-            instrument_id,
-            assessed_level,
-            user_id,
-            date_graded,
-            songs!inner (title, artist),
-            instruments (icon, name)
-          `)
-          .in('user_id', studentIds)
-          .eq('teacher_reviewed', false)
-          .order('date_graded', { ascending: false }),
-        15000,
-        'unreviewed ratings'
+      const { data: unreviewedRatings, error: unreviewedError } = await this.callSelectDirect(
+        'song_ratings',
+        'id,song_id,instrument_id,assessed_level,user_id,date_graded,songs!inner(title,artist),instruments(icon,name)',
+        { in: { user_id: studentIds }, eq: { teacher_reviewed: false } },
+        { order: 'date_graded.desc' }
       );
 
       // Format unreviewed ratings for display
@@ -6402,24 +6280,12 @@ class CadenceApp {
     const user = auth.getCurrentUser();
     const container = document.getElementById('student-classes-list');
 
-    // Load classes the student has joined with timeout to prevent stalling
-    const { data: memberships, error } = await this.queryWithTimeout(
-      supabase
-        .from('class_members')
-        .select(`
-          *,
-          classes (
-            id,
-            name,
-            class_code,
-            year_level,
-            created_at
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('joined_at', { ascending: false }),
-      15000,
-      'student classes'
+    // Use direct fetch to bypass stale Supabase client connections
+    const { data: memberships, error } = await this.callSelectDirect(
+      'class_members',
+      '*,classes(id,name,class_code,year_level,created_at)',
+      { eq: { user_id: user.id } },
+      { order: 'joined_at.desc' }
     );
 
     if (error) {
@@ -6474,23 +6340,12 @@ class CadenceApp {
 
     const userId = user.id;
 
-    // Load classes the student has joined with timeout to prevent stalling
-    const { data: memberships, error } = await this.queryWithTimeout(
-      supabase
-        .from('class_members')
-        .select(`
-          *,
-          classes (
-            id,
-            name,
-            class_code,
-            year_level
-          )
-        `)
-        .eq('user_id', userId)
-        .order('joined_at', { ascending: false }),
-      15000,
-      'student classes header'
+    // Use direct fetch to bypass stale Supabase client connections
+    const { data: memberships, error } = await this.callSelectDirect(
+      'class_members',
+      '*,classes(id,name,class_code,year_level)',
+      { eq: { user_id: userId } },
+      { order: 'joined_at.desc' }
     );
 
     if (error) {
@@ -7240,14 +7095,12 @@ class CadenceApp {
   }
 
   async loadPendingTeacherAccounts() {
-    // Use queryWithTimeout to prevent stalling on stale connections
-    const { data, error } = await this.queryWithTimeout(
-      supabase
-        .from('pre_registered_accounts')
-        .select('*')
-        .order('created_at', { ascending: false }),
-      15000,
-      'pending teacher accounts'
+    // Use direct fetch to bypass stale Supabase client connections
+    const { data, error } = await this.callSelectDirect(
+      'pre_registered_accounts',
+      '*',
+      {},
+      { order: 'created_at.desc' }
     );
 
     if (error) {
