@@ -4804,7 +4804,7 @@ class CadenceApp {
           </div>
           <div class="roster-student-instruments" style="color: var(--text-secondary); font-size: 0.875rem;">Awaiting login</div>
           <div class="roster-actions" style="display: flex; gap: 0.5rem; margin-left: 1rem;">
-            <button class="btn-text" style="font-size: 0.75rem; color: var(--error-color);" onclick="event.stopPropagation(); app.removePendingEnrollment(${enrollment.id})">Remove</button>
+            <button class="btn-text" style="font-size: 0.75rem; color: var(--error-color);" onclick="event.stopPropagation(); app.removePendingEnrollment('${enrollment.id}')">Remove</button>
           </div>
         </div>
       `;
