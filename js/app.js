@@ -130,6 +130,12 @@ class CadenceApp {
       if (document.visibilityState === 'visible') {
         // Small delay to let browser wake up
         await new Promise(resolve => setTimeout(resolve, 100));
+        // Refresh auth session to ensure token is valid after tab was hidden
+        try {
+          await supabase.auth.getSession();
+        } catch (e) {
+          console.warn('Failed to refresh session on visibility change:', e.message);
+        }
         await pingConnection();
       }
     });
@@ -2961,21 +2967,15 @@ class CadenceApp {
   }
 
   // Direct RPC call using fetch to bypass stale Supabase client connections
-  async callRpcDirect(functionName, params) {
-    // Get fresh token from localStorage
-    const sessionKey = 'sb-dgwtihpiqgkhokkkxuzo-auth-token';
-    const sessionData = localStorage.getItem(sessionKey);
+  async callRpcDirect(functionName, params, _isRetry = false) {
+    // Use Supabase client to get a fresh session (auto-refreshes expired tokens)
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-    if (!sessionData) {
+    if (sessionError || !session?.access_token) {
       throw new Error('Not authenticated - please refresh the page and log in again');
     }
 
-    const session = JSON.parse(sessionData);
     const accessToken = session.access_token;
-
-    if (!accessToken) {
-      throw new Error('No access token - please refresh the page and log in again');
-    }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -2996,6 +2996,15 @@ class CadenceApp {
       );
 
       clearTimeout(timeoutId);
+
+      // On 401, force-refresh the token and retry once
+      if (response.status === 401 && !_isRetry) {
+        const { data: { session: refreshed } } = await supabase.auth.refreshSession();
+        if (refreshed?.access_token) {
+          return this.callRpcDirect(functionName, params, true);
+        }
+        throw new Error('Session expired - please log in again');
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -3041,11 +3050,9 @@ class CadenceApp {
 
   // Direct SELECT query using fetch to bypass stale Supabase client connections
   // Use for simple queries; complex nested queries should use queryWithTimeout
-  async callSelectDirect(table, select = '*', filters = {}, options = {}) {
-    const sessionKey = 'sb-dgwtihpiqgkhokkkxuzo-auth-token';
-    const sessionData = localStorage.getItem(sessionKey);
-
-    const session = sessionData ? JSON.parse(sessionData) : null;
+  async callSelectDirect(table, select = '*', filters = {}, options = {}, _isRetry = false) {
+    // Use Supabase client to get a fresh session (auto-refreshes expired tokens)
+    const { data: { session } } = await supabase.auth.getSession();
     const accessToken = session?.access_token;
 
     const controller = new AbortController();
@@ -3091,6 +3098,14 @@ class CadenceApp {
       );
 
       clearTimeout(timeoutId);
+
+      // On 401, force-refresh the token and retry once
+      if (response.status === 401 && !_isRetry) {
+        const { data: { session: refreshed } } = await supabase.auth.refreshSession();
+        if (refreshed?.access_token) {
+          return this.callSelectDirect(table, select, filters, options, true);
+        }
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
