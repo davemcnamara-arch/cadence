@@ -26,6 +26,7 @@ class CadenceApp {
     this.classes = [];
     this.currentClass = null;
     this.classStudents = [];
+    this.allTeacherStudents = null;
     this.submissions = [];
     this.flaggedRatings = [];
 
@@ -274,6 +275,12 @@ class CadenceApp {
     const classSearchInput = document.getElementById('class-search');
     if (classSearchInput) {
       classSearchInput.addEventListener('input', () => this.filterClasses());
+    }
+
+    // Student search (across all classes)
+    const studentSearchInput = document.getElementById('student-search');
+    if (studentSearchInput) {
+      studentSearchInput.addEventListener('input', () => this.filterStudents());
     }
 
     // Teacher: Create class
@@ -4621,6 +4628,16 @@ class CadenceApp {
     const modal = document.getElementById('student-detail-modal');
     if (modal) modal.classList.add('hidden');
 
+    // Clear student search state
+    const studentSearch = document.getElementById('student-search');
+    if (studentSearch) studentSearch.value = '';
+    const studentResults = document.getElementById('student-search-results');
+    if (studentResults) {
+      studentResults.classList.add('hidden');
+      studentResults.innerHTML = '';
+    }
+    this.allTeacherStudents = null;
+
     // Hide classes list, show class detail
     document.getElementById('classes-list').classList.add('hidden');
     document.getElementById('class-detail-view').classList.remove('hidden');
@@ -4656,6 +4673,15 @@ class CadenceApp {
 
     document.getElementById('class-detail-view').classList.add('hidden');
     document.getElementById('classes-list').classList.remove('hidden');
+    // Clear student search state
+    const studentSearch = document.getElementById('student-search');
+    if (studentSearch) studentSearch.value = '';
+    const studentResults = document.getElementById('student-search-results');
+    if (studentResults) {
+      studentResults.classList.add('hidden');
+      studentResults.innerHTML = '';
+    }
+    this.allTeacherStudents = null;
     this.currentClass = null;
     this.classStudents = [];
   }
@@ -4813,6 +4839,116 @@ class CadenceApp {
     container.innerHTML = activeStudentsHtml + pendingStudentsHtml;
   }
 
+  async filterStudents() {
+    const searchTerm = document.getElementById('student-search')?.value.toLowerCase() || '';
+    const resultsContainer = document.getElementById('student-search-results');
+    const classesListContainer = document.getElementById('classes-list');
+    if (!resultsContainer || !classesListContainer) return;
+
+    // When search is empty, hide results and show classes list
+    if (!searchTerm) {
+      resultsContainer.classList.add('hidden');
+      resultsContainer.innerHTML = '';
+      classesListContainer.classList.remove('hidden');
+      this.allTeacherStudents = null;
+      return;
+    }
+
+    // Lazy-load all students on first search
+    if (!this.allTeacherStudents) {
+      try {
+        const result = await this.callRpcDirect('search_teacher_students', {});
+        this.allTeacherStudents = result.data || [];
+      } catch (err) {
+        // Fallback to the simpler RPC if the new one isn't deployed yet
+        console.warn('search_teacher_students not available, falling back:', err);
+        try {
+          const fallback = await this.callRpcDirect('get_all_teacher_students', {});
+          this.allTeacherStudents = (fallback.data || []).map(s => ({
+            ...s,
+            class_id: null,
+            class_name: null,
+            joined_at: null
+          }));
+        } catch (fallbackErr) {
+          console.error('Error loading students for search:', fallbackErr);
+          this.allTeacherStudents = [];
+        }
+      }
+    }
+
+    // Filter by search term
+    const filtered = this.allTeacherStudents.filter(s =>
+      s.name.toLowerCase().includes(searchTerm) ||
+      (s.email && s.email.toLowerCase().includes(searchTerm))
+    );
+
+    // Hide classes list and show results
+    classesListContainer.classList.add('hidden');
+    resultsContainer.classList.remove('hidden');
+
+    if (filtered.length === 0) {
+      resultsContainer.innerHTML = `
+        <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+          <p style="font-size: 1.125rem; margin-bottom: 0.5rem;">No students found</p>
+          <p>Try a different search term</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Group results by student (a student may appear in multiple classes)
+    const studentMap = new Map();
+    filtered.forEach(row => {
+      if (!studentMap.has(row.user_id)) {
+        studentMap.set(row.user_id, {
+          user_id: row.user_id,
+          name: row.name,
+          email: row.email,
+          classes: []
+        });
+      }
+      if (row.class_name) {
+        studentMap.get(row.user_id).classes.push({
+          id: row.class_id,
+          name: row.class_name,
+          joined_at: row.joined_at
+        });
+      }
+    });
+
+    const students = Array.from(studentMap.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+    );
+
+    const html = students.map(student => {
+      const classBadges = student.classes.map(c =>
+        `<span class="class-code-badge" style="font-size: 0.75rem; cursor: pointer;" onclick="event.stopPropagation(); app.viewClass('${c.id}')">${this.escapeHtml(c.name)}</span>`
+      ).join(' ');
+
+      return `
+        <div class="roster-item" onclick="app.viewStudentDetail('${student.user_id}')" style="cursor: pointer;">
+          <div class="roster-student-info" style="flex: 1;">
+            <div class="roster-student-name">${this.escapeHtml(student.name)}</div>
+            <div class="roster-student-meta">
+              ${this.escapeHtml(student.email || '')}
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.375rem; flex-wrap: wrap; align-items: center;">
+            ${classBadges}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    resultsContainer.innerHTML = `
+      <p style="color: var(--text-secondary); margin-bottom: 0.75rem; font-size: 0.875rem;">
+        ${students.length} student${students.length !== 1 ? 's' : ''} found
+      </p>
+      ${html}
+    `;
+  }
+
   async renderProgressHeatmap() {
     // Close any open modals to prevent showing students from other classes
     const modal = document.getElementById('student-detail-modal');
@@ -4923,7 +5059,14 @@ class CadenceApp {
     const progressData = data.progress || [];
     const songsData = data.songs || [];
 
-    const student = this.classStudents.find(m => m.user_id === studentId)?.users;
+    let student = this.classStudents.find(m => m.user_id === studentId)?.users;
+    // Fallback: look up from cross-class search results cache
+    if (!student && this.allTeacherStudents) {
+      const match = this.allTeacherStudents.find(s => s.user_id === studentId);
+      if (match) {
+        student = { id: match.user_id, name: match.name, email: match.email };
+      }
+    }
     if (!student) return;
 
     // Build student detail modal content
