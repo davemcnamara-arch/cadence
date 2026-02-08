@@ -210,10 +210,15 @@
 
         <div class="song-filters">
           <input type="text" id="class-search" placeholder="Search classes..." class="search-input">
+          <input type="text" id="student-search" placeholder="Search all students..." class="search-input">
           <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
             <input type="checkbox" id="show-archived-classes" style="cursor: pointer;">
             <span>Show archived classes</span>
           </label>
+        </div>
+
+        <div id="student-search-results" class="class-roster hidden">
+          <!-- Populated by JS when student search is active -->
         </div>
 
         <div id="classes-list" class="classes-grid">
