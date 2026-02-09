@@ -130,13 +130,27 @@ class CadenceApp {
       if (document.visibilityState === 'visible') {
         // Small delay to let browser wake up
         await new Promise(resolve => setTimeout(resolve, 100));
-        // Refresh auth session to ensure token is valid after tab was hidden
+        // Force-refresh auth session (getSession only returns cached token)
         try {
-          await supabase.auth.getSession();
+          await supabase.auth.refreshSession();
         } catch (e) {
           console.warn('Failed to refresh session on visibility change:', e.message);
         }
         await pingConnection();
+
+        // Re-establish realtime subscription if WebSocket died while hidden
+        try {
+          if (this.songUpdatesSubscription) {
+            const state = this.songUpdatesSubscription.state;
+            if (state === 'errored' || state === 'closed') {
+              console.log('Realtime subscription lost, re-establishing...');
+              await this.songUpdatesSubscription.unsubscribe();
+              this.setupSongUpdatesSubscription();
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to re-establish realtime subscription:', e.message);
+        }
       }
     });
   }
@@ -2918,12 +2932,32 @@ class CadenceApp {
     }
   }
 
+  // Get auth session with timeout protection - getSession can hang if Supabase client is stale
+  async getSessionWithTimeout() {
+    try {
+      const result = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('SESSION_TIMEOUT')), 5000))
+      ]);
+      return result.data?.session;
+    } catch (e) {
+      if (e.message === 'SESSION_TIMEOUT') {
+        // getSession hung - try refreshSession as fallback
+        const refreshResult = await Promise.race([
+          supabase.auth.refreshSession(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('REFRESH_TIMEOUT')), 5000))
+        ]);
+        return refreshResult.data?.session;
+      }
+      throw e;
+    }
+  }
+
   // Direct RPC call using fetch to bypass stale Supabase client connections
   async callRpcDirect(functionName, params, _isRetry = false) {
-    // Use Supabase client to get a fresh session (auto-refreshes expired tokens)
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const session = await this.getSessionWithTimeout();
 
-    if (sessionError || !session?.access_token) {
+    if (!session?.access_token) {
       throw new Error('Not authenticated - please refresh the page and log in again');
     }
 
@@ -3003,8 +3037,7 @@ class CadenceApp {
   // Direct SELECT query using fetch to bypass stale Supabase client connections
   // Supports nested selects (e.g. '*,songs(*)') and in filters (e.g. { in: { col: [v1,v2] } })
   async callSelectDirect(table, select = '*', filters = {}, options = {}, _isRetry = false) {
-    // Use Supabase client to get a fresh session (auto-refreshes expired tokens)
-    const { data: { session } } = await supabase.auth.getSession();
+    const session = await this.getSessionWithTimeout();
     const accessToken = session?.access_token;
 
     const controller = new AbortController();
@@ -3516,12 +3549,12 @@ class CadenceApp {
     const currentLevel = progress.current_level;
 
     // Count mastered songs at current level for this instrument
-    const { data: masteredSongs, error: queryError } = await supabase
-      .from('student_songs')
-      .select('*, songs!inner(*)')
-      .eq('user_id', userId)
-      .eq('instrument_id', instrumentId)
-      .eq('status', 'mastered');
+    // Use direct fetch to avoid stale Supabase client after idle/background
+    const { data: masteredSongs, error: queryError } = await this.callSelectDirect(
+      'student_songs',
+      '*, songs!inner(*)',
+      { eq: { user_id: userId, instrument_id: instrumentId, status: 'mastered' } }
+    );
 
     if (queryError) {
       console.error('Error querying mastered songs:', queryError);
@@ -3537,11 +3570,8 @@ class CadenceApp {
       // Advance to next level!
       const newLevel = currentLevel + 1;
 
-      const { error } = await supabase
-        .from('student_progress')
-        .update({ current_level: newLevel })
-        .eq('user_id', userId)
-        .eq('instrument_id', instrumentId);
+      // Use direct fetch to avoid stale Supabase client after idle/background
+      const { error } = await this.rawUpdate('student_progress', progress.id, { current_level: newLevel });
 
       if (!error) {
         // Reload student progress from database to ensure all instruments have correct levels
@@ -7856,7 +7886,7 @@ class CadenceApp {
 
   // Helper for raw fetch updates (workaround for Supabase JS client bug)
   async rawUpdate(table, id, data, _isRetry = false) {
-    const { data: { session } } = await supabase.auth.getSession();
+    const session = await this.getSessionWithTimeout();
     const token = session?.access_token;
 
     const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}?id=eq.${id}`, {
