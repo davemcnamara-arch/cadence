@@ -7823,8 +7823,8 @@ class CadenceApp {
   }
 
   // Helper for raw fetch inserts (workaround for Supabase JS client bug)
-  async rawInsert(table, data) {
-    const session = JSON.parse(localStorage.getItem('sb-dgwtihpiqgkhokkkxuzo-auth-token'));
+  async rawInsert(table, data, _isRetry = false) {
+    const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
 
     const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}`, {
@@ -7838,6 +7838,14 @@ class CadenceApp {
       body: JSON.stringify(data)
     });
 
+    // On 401, force-refresh the token and retry once
+    if (response.status === 401 && !_isRetry) {
+      const { data: { session: refreshed } } = await supabase.auth.refreshSession();
+      if (refreshed?.access_token) {
+        return this.rawInsert(table, data, true);
+      }
+    }
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Insert failed: ${response.status} ${errorText}`);
@@ -7847,8 +7855,8 @@ class CadenceApp {
   }
 
   // Helper for raw fetch updates (workaround for Supabase JS client bug)
-  async rawUpdate(table, id, data) {
-    const session = JSON.parse(localStorage.getItem('sb-dgwtihpiqgkhokkkxuzo-auth-token'));
+  async rawUpdate(table, id, data, _isRetry = false) {
+    const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
 
     const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}?id=eq.${id}`, {
@@ -7862,6 +7870,14 @@ class CadenceApp {
       body: JSON.stringify(data)
     });
 
+    // On 401, force-refresh the token and retry once
+    if (response.status === 401 && !_isRetry) {
+      const { data: { session: refreshed } } = await supabase.auth.refreshSession();
+      if (refreshed?.access_token) {
+        return this.rawUpdate(table, id, data, true);
+      }
+    }
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Update failed: ${response.status} ${errorText}`);
@@ -7871,8 +7887,8 @@ class CadenceApp {
   }
 
   // Helper for raw fetch deletes (workaround for Supabase JS client bug)
-  async rawDelete(table, id) {
-    const session = JSON.parse(localStorage.getItem('sb-dgwtihpiqgkhokkkxuzo-auth-token'));
+  async rawDelete(table, id, _isRetry = false) {
+    const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
 
     const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}?id=eq.${id}`, {
@@ -7884,6 +7900,14 @@ class CadenceApp {
       }
     });
 
+    // On 401, force-refresh the token and retry once
+    if (response.status === 401 && !_isRetry) {
+      const { data: { session: refreshed } } = await supabase.auth.refreshSession();
+      if (refreshed?.access_token) {
+        return this.rawDelete(table, id, true);
+      }
+    }
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Delete failed: ${response.status} ${errorText}`);
@@ -7893,8 +7917,9 @@ class CadenceApp {
   }
 
   // Helper for raw fetch selects (workaround for Supabase JS client issues after raw inserts)
-  async rawSelect(table, query = '') {
-    const session = JSON.parse(localStorage.getItem('sb-dgwtihpiqgkhokkkxuzo-auth-token'));
+  async rawSelect(table, query = '', _isRetry = false) {
+    // Use Supabase client to get a fresh session (auto-refreshes expired tokens)
+    const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
 
     const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}?${query}`, {
@@ -7905,6 +7930,14 @@ class CadenceApp {
         'Accept': 'application/json'
       }
     });
+
+    // On 401, force-refresh the token and retry once
+    if (response.status === 401 && !_isRetry) {
+      const { data: { session: refreshed } } = await supabase.auth.refreshSession();
+      if (refreshed?.access_token) {
+        return this.rawSelect(table, query, true);
+      }
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
