@@ -1,5 +1,7 @@
 // Authentication Module
-import { supabase, SUPABASE_URL } from './config.js';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+
+const AUTH_TIMEOUT_MS = 8000;
 
 export class AuthManager {
   constructor() {
@@ -9,9 +11,174 @@ export class AuthManager {
     this.pendingAuthUser = null; // Stores auth user data while waiting for role selection
   }
 
+  // Timeout-wrapped Supabase auth call to prevent hanging on stale connections
+  async withTimeout(promise, timeoutMs = AUTH_TIMEOUT_MS, context = 'auth') {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const result = await Promise.race([
+        promise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`${context} timed out after ${timeoutMs}ms`)), timeoutMs)
+        )
+      ]);
+      clearTimeout(timeoutId);
+      return result;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      throw err;
+    }
+  }
+
+  // Direct fetch wrapper for Supabase select queries (bypasses stale client)
+  async fetchDirect(table, select = '*', filters = {}, options = {}) {
+    const params = new URLSearchParams();
+    params.set('select', select);
+    for (const [op, conditions] of Object.entries(filters)) {
+      for (const [column, value] of Object.entries(conditions)) {
+        params.append(column, `${op}.${value}`);
+      }
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
+
+    try {
+      // Get access token from localStorage
+      const storageKey = Object.keys(localStorage).find(key =>
+        key.startsWith('sb-') && key.endsWith('-auth-token')
+      );
+      const tokenData = storageKey ? JSON.parse(localStorage.getItem(storageKey)) : null;
+      const headers = {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY
+      };
+      if (tokenData?.access_token) {
+        headers['Authorization'] = `Bearer ${tokenData.access_token}`;
+      }
+
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/${table}?${params.toString()}`,
+        { method: 'GET', headers, signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return { data: null, error: { message: errorData.message || `HTTP ${response.status}`, code: errorData.code } };
+      }
+
+      const data = await response.json();
+      return { data, error: null };
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        return { data: null, error: { message: 'Connection timeout' } };
+      }
+      return { data: null, error: { message: err.message } };
+    }
+  }
+
+  // Direct fetch wrapper for Supabase RPC calls (bypasses stale client)
+  async rpcDirect(functionName, params) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
+
+    try {
+      const storageKey = Object.keys(localStorage).find(key =>
+        key.startsWith('sb-') && key.endsWith('-auth-token')
+      );
+      const tokenData = storageKey ? JSON.parse(localStorage.getItem(storageKey)) : null;
+      const headers = {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY
+      };
+      if (tokenData?.access_token) {
+        headers['Authorization'] = `Bearer ${tokenData.access_token}`;
+      }
+
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/rpc/${functionName}`,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(params),
+          signal: controller.signal
+        }
+      );
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return { data: null, error: { message: errorData.message || `HTTP ${response.status}` } };
+      }
+
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : null;
+      return { data, error: null };
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        return { data: null, error: { message: 'Connection timeout' } };
+      }
+      return { data: null, error: { message: err.message } };
+    }
+  }
+
+  // Direct fetch wrapper for Supabase INSERT (bypasses stale client)
+  async insertDirect(table, rows) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
+
+    try {
+      const storageKey = Object.keys(localStorage).find(key =>
+        key.startsWith('sb-') && key.endsWith('-auth-token')
+      );
+      const tokenData = storageKey ? JSON.parse(localStorage.getItem(storageKey)) : null;
+      const headers = {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Prefer': 'return=representation'
+      };
+      if (tokenData?.access_token) {
+        headers['Authorization'] = `Bearer ${tokenData.access_token}`;
+      }
+
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/${table}`,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(rows),
+          signal: controller.signal
+        }
+      );
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return { data: null, error: { message: errorData.message || `HTTP ${response.status}` } };
+      }
+
+      const data = await response.json();
+      // Return first item to match .single() behavior
+      return { data: Array.isArray(data) ? data[0] : data, error: null };
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        return { data: null, error: { message: 'Connection timeout' } };
+      }
+      return { data: null, error: { message: err.message } };
+    }
+  }
+
   // Initialize auth and check session
   async init() {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await this.withTimeout(
+      supabase.auth.getSession(),
+      AUTH_TIMEOUT_MS,
+      'getSession'
+    );
 
     // Clean up OAuth hash fragment from URL after Supabase has read it.
     // Without this, the #access_token=... URL stays in browser history
@@ -138,22 +305,29 @@ export class AuthManager {
 
   // Handle successful authentication
   async handleAuthSuccess(authUser) {
-    // Check if user exists in our users table
-    const { data: existingUser, error: fetchError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', authUser.id)
-      .single();
+    // Check if user exists in our users table (using direct fetch to avoid stale connections)
+    const { data: usersArray, error: fetchError } = await this.fetchDirect(
+      'users',
+      '*',
+      { eq: { id: authUser.id } }
+    );
+
+    // fetchDirect returns an array; .single() equivalent
+    const existingUser = usersArray && usersArray.length > 0 ? usersArray[0] : null;
 
     if (fetchError && fetchError.code !== 'PGRST116') {
       console.error('Error fetching user:', fetchError);
+      // CRITICAL: Don't silently return - notify callback so UI shows login screen instead of loading forever
+      if (this.onAuthStateChange) {
+        this.onAuthStateChange(null);
+      }
       return;
     }
 
     // If user doesn't exist, check for pre-registration before showing role selection
     if (!existingUser) {
       try {
-        const { data: preReg, error: preRegError } = await supabase.rpc('check_pre_registration', {
+        const { data: preReg, error: preRegError } = await this.rpcDirect('check_pre_registration', {
           p_email: authUser.email
         });
 
@@ -206,18 +380,14 @@ export class AuthManager {
     }
 
     try {
-      // Create user with selected role
-      const { data: newUser, error: insertError } = await supabase
-        .from('users')
-        .insert([{
-          id: authUser.id,
-          email: authUser.email,
-          name: nameOverride || authUser.user_metadata?.full_name || authUser.email.split('@')[0],
-          google_id: authUser.user_metadata?.sub,
-          role: role
-        }])
-        .select()
-        .single();
+      // Create user with selected role (using direct fetch to avoid stale connections)
+      const { data: newUser, error: insertError } = await this.insertDirect('users', [{
+        id: authUser.id,
+        email: authUser.email,
+        name: nameOverride || authUser.user_metadata?.full_name || authUser.email.split('@')[0],
+        google_id: authUser.user_metadata?.sub,
+        role: role
+      }]);
 
       if (insertError) {
         console.error('Error creating user:', insertError);
@@ -250,7 +420,7 @@ export class AuthManager {
   // Process pending enrollments for a user (called on login/signup)
   async processPendingEnrollments(userId) {
     try {
-      const { data, error } = await supabase.rpc('process_pending_enrollments', {
+      const { data, error } = await this.rpcDirect('process_pending_enrollments', {
         p_user_id: userId
       });
 
@@ -273,7 +443,7 @@ export class AuthManager {
   // Transfer classes that were pre-assigned to a pending teacher
   async transferPendingClasses(email) {
     try {
-      const { data, error } = await supabase.rpc('complete_pending_teacher_setup', {
+      const { data, error } = await this.rpcDirect('complete_pending_teacher_setup', {
         p_email: email
       });
 

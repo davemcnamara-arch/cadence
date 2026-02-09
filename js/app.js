@@ -59,6 +59,7 @@ class CadenceApp {
           await this.onUserSignedIn(user);
         } catch (error) {
           console.error('Error in onUserSignedIn:', error);
+          this.showToast('Failed to load your account. Please refresh the page.', 'error');
         }
       } else {
         this.showLoginScreen();
@@ -74,6 +75,7 @@ class CadenceApp {
       await auth.init();
     } catch (error) {
       console.error('Auth init error:', error);
+      this.showLoginScreen();
     }
 
     // Set up event listeners
@@ -671,6 +673,7 @@ class CadenceApp {
 
       if (error) {
         console.error('Error loading songs:', error);
+        this.showToast('Failed to load songs. Please try again.', 'error');
         return;
       }
 
@@ -769,41 +772,46 @@ class CadenceApp {
           }
 
           // Reload and re-render based on current view
+          const handleReloadError = (context) => (err) => {
+            console.error(`Failed to reload ${context}:`, err);
+            this.showToast('Failed to sync latest changes. Try refreshing.', 'error');
+          };
+
           if (this.currentView === 'songs') {
             this.loadSongs().then(() => {
               this.filterSongs();
               this.showToast(toastMessage, 'info');
-            }).catch(err => console.error('Failed to reload songs view:', err));
+            }).catch(handleReloadError('songs view'));
           } else if (this.currentView === 'progress') {
             // Also update progress view if it shows songs
             this.loadSongs().then(() => {
               this.renderProgress();
-            }).catch(err => console.error('Failed to reload progress view:', err));
+            }).catch(handleReloadError('progress view'));
           } else if (this.currentView === 'pathway') {
             // Update pathway view as it also shows songs
             this.loadSongs().then(() => {
               this.renderPathway();
-            }).catch(err => console.error('Failed to reload pathway view:', err));
+            }).catch(handleReloadError('pathway view'));
           } else if (this.currentView === 'submissions') {
             // Update submissions feed for teachers
             this.loadSubmissions().then(() => {
               this.showToast(toastMessage, 'info');
-            }).catch(err => console.error('Failed to reload submissions view:', err));
+            }).catch(handleReloadError('submissions view'));
             // Also update background song data
-            this.loadSongs().catch(err => console.error('Failed to reload background song data:', err));
+            this.loadSongs().catch(handleReloadError('background song data'));
           } else if (this.currentView === 'admin') {
             // Check if admin content moderation section is visible
             const contentSection = document.getElementById('content-section');
             if (contentSection && contentSection.classList.contains('active')) {
               this.loadContentModeration().then(() => {
                 this.showToast(toastMessage, 'info');
-              }).catch(err => console.error('Failed to reload content moderation:', err));
+              }).catch(handleReloadError('content moderation'));
             }
             // Also update background song data
-            this.loadSongs().catch(err => console.error('Failed to reload background song data:', err));
+            this.loadSongs().catch(handleReloadError('background song data'));
           } else {
             // Still update the data in background so it's fresh when they switch views
-            this.loadSongs().catch(err => console.error('Failed to reload background song data:', err));
+            this.loadSongs().catch(handleReloadError('background song data'));
           }
         }
       )
@@ -1303,6 +1311,10 @@ class CadenceApp {
       history.pushState({ cadenceView: viewName }, '', window.location.pathname + window.location.search);
     }
 
+    // Increment switch counter to detect stale async results
+    this._viewSwitchId = (this._viewSwitchId || 0) + 1;
+    const switchId = this._viewSwitchId;
+
     // Update nav tabs
     document.querySelectorAll('.nav-tab').forEach(tab => {
       tab.classList.toggle('active', tab.dataset.view === viewName);
@@ -1319,29 +1331,41 @@ class CadenceApp {
       targetView.classList.remove('hidden');
       this.currentView = viewName;
 
+      // Helper: run an async view loader, but discard results if user switched away
+      const loadViewAsync = async (fn) => {
+        try {
+          await fn();
+        } catch (err) {
+          // Only show error if user is still on this view
+          if (this._viewSwitchId === switchId) {
+            console.error(`Error loading ${viewName} view:`, err);
+          }
+        }
+      };
+
       // Load data for the view if needed
       if (viewName === 'pathway') {
         this.renderPathway();
       } else if (viewName === 'songs') {
         // Update instrument dropdown before rendering songs
         this.updateInstrumentDropdown();
-        this.renderSongs();
+        loadViewAsync(() => this.renderSongs());
       } else if (viewName === 'progress') {
-        this.renderProgress();
+        loadViewAsync(() => this.renderProgress());
       } else if (viewName === 'classes') {
         this.renderClassesList();
       } else if (viewName === 'submissions') {
         // Load submissions when first opened
         if (this.classes.length > 0) {
-          this.loadSubmissions();
+          loadViewAsync(() => this.loadSubmissions());
         }
       } else if (viewName === 'flagged') {
         // Load flagged ratings
         if (this.classes.length > 0) {
-          this.loadFlaggedRatings();
+          loadViewAsync(() => this.loadFlaggedRatings());
         }
       } else if (viewName === 'accounts') {
-        this.loadAccountsData();
+        loadViewAsync(() => this.loadAccountsData());
       } else if (viewName === 'admin') {
         // Load admin data
         this.renderAdminStats(this.adminStats || {students: 0, teachers: 0, songs: 0, classes: 0});
@@ -1814,6 +1838,7 @@ class CadenceApp {
 
     if (error) {
       console.error('Error loading song ratings:', error);
+      this.showToast('Failed to load song ratings', 'error');
       return;
     }
 
@@ -1922,28 +1947,18 @@ class CadenceApp {
     this.showToast('Song added to Currently Learning!', 'success');
 
     // Reload data and re-render current view
+    // Note: renderSongs/renderProgress load fresh data internally, so no separate loadSongs() needed
     if (this.previewMode.active) {
-      // If in student preview, refresh the student's data first
       await this.loadStudentPreviewData(this.previewMode.studentId);
-      // Then re-render the current view
-      if (this.currentView === 'songs') {
-        this.renderSongs();
-      } else if (this.currentView === 'progress') {
-        this.renderProgress();
-      } else if (this.currentView === 'pathway') {
-        this.renderPathway();
-      }
-    } else {
-      // Reload own songs if not in preview mode
+    }
+
+    if (this.currentView === 'songs') {
+      await this.renderSongs();
+    } else if (this.currentView === 'progress') {
+      await this.renderProgress();
+    } else if (this.currentView === 'pathway') {
       await this.loadSongs();
-      // Re-render current view to update button states
-      if (this.currentView === 'songs') {
-        this.renderSongs();
-      } else if (this.currentView === 'progress') {
-        this.renderProgress();
-      } else if (this.currentView === 'pathway') {
-        this.renderPathway();
-      }
+      this.renderPathway();
     }
   }
 
@@ -1953,10 +1968,7 @@ class CadenceApp {
       return;
     }
 
-    const { error } = await supabase
-      .from('songs')
-      .delete()
-      .eq('id', songId);
+    const { error } = await this.callDeleteDirect('songs', { eq: { id: songId } });
 
     if (error) {
       console.error('Error deleting song:', error);
@@ -1966,9 +1978,8 @@ class CadenceApp {
 
     this.showToast('Song deleted successfully', 'success');
 
-    // Reload the song library to reflect the deletion
-    await this.loadSongs();
-    this.renderSongs();
+    // Re-render songs view (renderSongs loads fresh data internally)
+    await this.renderSongs();
   }
 
   // ============================================
@@ -2354,7 +2365,7 @@ class CadenceApp {
     }
 
     try {
-      const { data, error } = await supabase.rpc('find_similar_songs', {
+      const { data, error } = await this.callRpcDirect('find_similar_songs', {
         p_title: title,
         p_artist: artist,
         p_threshold: 0.3,
@@ -2881,6 +2892,7 @@ class CadenceApp {
         } catch (tutErr) {
           // Don't fail the grading if tutorial insert fails (e.g. duplicate)
           console.warn('Could not save tutorial to song_tutorials:', tutErr);
+          this.showToast('Tutorial link could not be saved, but grading succeeded.', 'warning');
         }
       }
 
@@ -2889,23 +2901,18 @@ class CadenceApp {
       this.showToast('Song graded successfully!', 'success');
 
       // Refresh data and re-render current view
-      await this.loadSongs();
-
+      // Note: renderSongs/renderProgress load fresh data internally, so no separate loadSongs() needed
       if (this.previewMode.active) {
-        // If in student preview, refresh the student's data first
         await this.loadStudentPreviewData(this.previewMode.studentId);
-        // Then re-render the current view
-        if (this.currentView === 'songs') {
-          this.renderSongs();
-        } else if (this.currentView === 'progress') {
-          this.renderProgress();
-        } else if (this.currentView === 'pathway') {
-          this.renderPathway();
-        }
-      } else if (this.currentView === 'songs') {
-        this.renderSongs();
+      }
+
+      if (this.currentView === 'songs') {
+        await this.renderSongs();
       } else if (this.currentView === 'progress') {
-        this.renderProgress();
+        await this.renderProgress();
+      } else if (this.currentView === 'pathway') {
+        await this.loadSongs();
+        this.renderPathway();
       } else if (this.currentView === 'submissions') {
         // Refresh submissions feed to show the new graded song
         await this.loadSubmissions();
@@ -3109,6 +3116,72 @@ class CadenceApp {
 
       const data = await response.json();
       return { data, error: null };
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        this.showToast('Connection lost. Retrying...', 'error');
+        return { data: null, error: { message: 'Connection timeout' } };
+      }
+      return { data: null, error: { message: err.message } };
+    }
+  }
+
+  // Direct DELETE query using fetch to bypass stale Supabase client connections
+  async callDeleteDirect(table, filters = {}, options = {}, _isRetry = false) {
+    const session = await this.getSessionWithTimeout();
+    const accessToken = session?.access_token;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), options.timeout || 15000);
+
+    // Build query string from filters
+    const params = new URLSearchParams();
+    for (const [op, conditions] of Object.entries(filters)) {
+      for (const [column, value] of Object.entries(conditions)) {
+        params.append(column, `${op}.${value}`);
+      }
+    }
+
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo'
+      };
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch(
+        `https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}?${params.toString()}`,
+        {
+          method: 'DELETE',
+          headers,
+          signal: controller.signal
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      // On 401, force-refresh the token and retry once
+      if (response.status === 401 && !_isRetry) {
+        const { data: { session: refreshed } } = await supabase.auth.refreshSession();
+        if (refreshed?.access_token) {
+          return this.callDeleteDirect(table, filters, options, true);
+        }
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return {
+          data: null,
+          error: {
+            message: errorData.message || `HTTP ${response.status}`,
+            details: errorData.details
+          }
+        };
+      }
+
+      return { data: null, error: null };
     } catch (err) {
       clearTimeout(timeoutId);
       if (err.name === 'AbortError') {
@@ -3488,6 +3561,7 @@ class CadenceApp {
         });
       } catch (error) {
         console.error('Error saving ratings:', error);
+        this.showToast('Resource ratings could not be saved, but your progress was updated.', 'warning');
         // Continue anyway - don't block mastering due to rating error
       }
     }
@@ -6553,11 +6627,12 @@ class CadenceApp {
 
   async loadAdminStats() {
     // Get system-wide statistics using data length for reliability
+    // Use callSelectDirect to bypass stale Supabase client connections
     const [usersRes, songsRes, ratingsRes, classesRes] = await Promise.all([
-      supabase.from('users').select('id, role'),
-      supabase.from('songs').select('id'),
-      supabase.from('song_ratings').select('id'),
-      supabase.from('classes').select('id')
+      this.callSelectDirect('users', 'id, role'),
+      this.callSelectDirect('songs', 'id'),
+      this.callSelectDirect('song_ratings', 'id'),
+      this.callSelectDirect('classes', 'id')
     ]);
 
     const users = usersRes.data || [];
@@ -6634,14 +6709,16 @@ class CadenceApp {
   // ============================================
 
   async loadAdminLevels() {
-    const { data, error } = await supabase
-      .from('levels')
-      .select('*, instruments(name, icon)')
-      .order('instrument_id')
-      .order('level_number');
+    const { data, error } = await this.callSelectDirect(
+      'levels',
+      '*, instruments(name, icon)',
+      {},
+      { order: 'instrument_id.asc,level_number.asc' }
+    );
 
     if (error) {
       console.error('Error loading levels:', error);
+      this.showToast('Failed to load levels', 'error');
       return;
     }
 
