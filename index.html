@@ -14,8 +14,34 @@
   <!-- Loading Screen -->
   <div id="loading-screen" class="loading-screen">
     <div class="loading-spinner"></div>
-    <p>Loading Cadence...</p>
+    <p id="loading-message">Loading Cadence...</p>
   </div>
+  <!-- Fallback timeout: if app hasn't loaded after 15s, show error with retry -->
+  <script>
+    (function() {
+      var timeout = setTimeout(function() {
+        var screen = document.getElementById('loading-screen');
+        if (screen && !screen.classList.contains('hidden')) {
+          var msg = document.getElementById('loading-message');
+          if (msg) {
+            msg.innerHTML = 'Taking longer than expected&hellip;<br><br><a href="javascript:location.reload()" style="color:#6366f1;text-decoration:underline;">Tap here to retry</a>';
+          }
+        }
+      }, 15000);
+      // Clear the timeout once the app hides the loading screen
+      var obs = new MutationObserver(function(mutations) {
+        var screen = document.getElementById('loading-screen');
+        if (screen && screen.classList.contains('hidden')) {
+          clearTimeout(timeout);
+          obs.disconnect();
+        }
+      });
+      document.addEventListener('DOMContentLoaded', function() {
+        var screen = document.getElementById('loading-screen');
+        if (screen) obs.observe(screen, { attributes: true, attributeFilter: ['class'] });
+      });
+    })();
+  </script>
 
   <!-- Login Screen -->
   <div id="login-screen" class="login-screen hidden">
