@@ -2016,7 +2016,8 @@ class CadenceApp {
         const title = document.getElementById('song-title').value;
         const artist = document.getElementById('song-artist').value;
         if (title && artist) {
-          const searchQuery = `${title} ${artist} chords`;
+          const searchTerm = this.getChordsSearchTerm();
+          const searchQuery = `${title} ${artist} ${searchTerm}`;
           const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
           window.open(searchUrl, '_blank');
         } else {
@@ -2071,6 +2072,12 @@ class CadenceApp {
       });
     }
 
+    // Update chords label/button when instrument changes
+    const gradingInstrumentSelect = document.getElementById('grading-instrument');
+    if (gradingInstrumentSelect) {
+      gradingInstrumentSelect.addEventListener('change', () => this.updateChordsLabel());
+    }
+
     // Navigation buttons
     if (nextBtn) {
       nextBtn.addEventListener('click', () => this.nextGradingStep());
@@ -2087,6 +2094,32 @@ class CadenceApp {
         this.submitSongGrading();
       });
     }
+  }
+
+  getChordsSearchTerm() {
+    const instrumentId = document.getElementById('grading-instrument').value;
+    const instrument = this.instruments.find(i => i.id === instrumentId);
+    const name = instrument ? instrument.name.toLowerCase() : '';
+    if (name.includes('bass')) return 'bass tab';
+    if (name.includes('drum')) return 'drum notation';
+    return 'chords';
+  }
+
+  getChordsLabel() {
+    const instrumentId = document.getElementById('grading-instrument').value;
+    const instrument = this.instruments.find(i => i.id === instrumentId);
+    const name = instrument ? instrument.name.toLowerCase() : '';
+    if (name.includes('bass')) return 'Bass Tab';
+    if (name.includes('drum')) return 'Drum Notation';
+    return 'Chords';
+  }
+
+  updateChordsLabel() {
+    const label = this.getChordsLabel();
+    const chordsLabel = document.querySelector('label[for="song-chords"]');
+    const searchChordsBtn = document.getElementById('search-chords-btn');
+    if (chordsLabel) chordsLabel.textContent = `${label} URL (optional)`;
+    if (searchChordsBtn) searchChordsBtn.title = `Search for ${label.toLowerCase()}`;
   }
 
   setupEditResourceModal() {
@@ -2346,6 +2379,7 @@ class CadenceApp {
     document.getElementById('song-grading-modal').classList.remove('hidden');
     document.getElementById('song-grading-form').reset();
     document.getElementById('similar-songs-container').classList.add('hidden'); // Hide suggestions
+    this.updateChordsLabel(); // Update label based on selected instrument
     this.updateGradingStep();
   }
 
