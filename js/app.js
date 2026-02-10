@@ -1660,6 +1660,7 @@ class CadenceApp {
 
     const instrumentName = instrument?.name || '';
     const instrumentIcon = instrument?.icon || '';
+    const chordsLabel = this.getChordsLabelForInstrument(instrumentName);
 
     // Get resource ratings for chords
     const chordsRating = this.formatResourceRating(song.resource_ratings?.chords);
@@ -1735,12 +1736,12 @@ class CadenceApp {
         <div class="song-actions">
           ${song.chords_url ? `
             <div class="resource-link-group">
-              <a href="${song.chords_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">Chords</a>
+              <a href="${song.chords_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">${chordsLabel}</a>
               ${chordsRating}
-              <button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'chords_url', '${song.chords_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit chords link">✎</button>
+              <button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'chords_url', '${song.chords_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit ${chordsLabel.toLowerCase()} link">✎</button>
             </div>
           ` : `
-            <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add chords link">+ Chords</button>
+            <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add ${chordsLabel.toLowerCase()} link">+ ${chordsLabel}</button>
           `}
           <button class="btn btn-secondary btn-resources ${(song.tutorial_count + song.resource_count) > 0 ? 'has-resources' : ''}" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}')" title="View tutorials & student resources">
             Resources${(song.tutorial_count + song.resource_count) > 0 ? ` <span class="resource-count">${song.tutorial_count + song.resource_count}</span>` : ''}
@@ -2096,22 +2097,23 @@ class CadenceApp {
     }
   }
 
+  getChordsLabelForInstrument(instrumentName) {
+    const name = (instrumentName || '').toLowerCase();
+    if (name.includes('bass')) return 'Bass Tab';
+    if (name.includes('drum')) return 'Drum Notation';
+    return 'Chords';
+  }
+
   getChordsSearchTerm() {
     const instrumentId = document.getElementById('grading-instrument').value;
     const instrument = this.instruments.find(i => i.id === instrumentId);
-    const name = instrument ? instrument.name.toLowerCase() : '';
-    if (name.includes('bass')) return 'bass tab';
-    if (name.includes('drum')) return 'drum notation';
-    return 'chords';
+    return this.getChordsLabelForInstrument(instrument?.name).toLowerCase();
   }
 
   getChordsLabel() {
     const instrumentId = document.getElementById('grading-instrument').value;
     const instrument = this.instruments.find(i => i.id === instrumentId);
-    const name = instrument ? instrument.name.toLowerCase() : '';
-    if (name.includes('bass')) return 'Bass Tab';
-    if (name.includes('drum')) return 'Drum Notation';
-    return 'Chords';
+    return this.getChordsLabelForInstrument(instrument?.name);
   }
 
   updateChordsLabel() {
@@ -2215,11 +2217,14 @@ class CadenceApp {
       currentValue
     };
 
+    // Get instrument-specific chords label
+    const chordsLabel = this.getChordsLabelForInstrument(instrumentName);
+
     // If adding a new link (not editing), open a search to help user find it
     if (!currentValue) {
       let searchQuery = '';
       if (fieldName === 'chords_url') {
-        searchQuery = `${title} ultimate guitar`;
+        searchQuery = `${title} ${artist} ${chordsLabel.toLowerCase()}`;
       } else if (fieldName === 'tutorial_url') {
         searchQuery = instrumentName ? `${title} ${instrumentName} tutorial` : `${title} tutorial`;
       } else if (fieldName === 'youtube_url') {
@@ -2234,7 +2239,7 @@ class CadenceApp {
 
     // Update modal UI
     const fieldLabels = {
-      'chords_url': 'Chords URL',
+      'chords_url': `${chordsLabel} URL`,
       'tutorial_url': 'Tutorial URL',
       'youtube_url': 'YouTube URL'
     };
@@ -3404,6 +3409,13 @@ class CadenceApp {
     const firstInstrumentName = firstInstrument?.name || '';
     const chordsRating = this.formatResourceRating(firstStudentSong.resource_ratings?.chords);
 
+    // Build instrument-specific chords label (e.g. "Chords / Bass Tab / Drum Notation")
+    const uniqueChordsLabels = [...new Set(sortedInstruments.map(si => {
+      const inst = this.instruments.find(i => i.id === si.instrument_id);
+      return this.getChordsLabelForInstrument(inst?.name);
+    }))];
+    const chordsLabel = uniqueChordsLabels.join(' / ');
+
     // Build actions for each instrument
     const instrumentActions = sortedInstruments.map(studentSong => {
       const instrument = this.instruments.find(i => i.id === studentSong.instrument_id);
@@ -3441,12 +3453,12 @@ class CadenceApp {
           <div class="song-links" style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
             ${song.chords_url ? `
               <span style="display: inline-flex; align-items: center; gap: 2px;">
-                <a href="${song.chords_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">Chords</a>
+                <a href="${song.chords_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">${chordsLabel}</a>
                 ${chordsRating}
-                <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'chords_url', '${song.chords_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Edit chords link">✎</button>
+                <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'chords_url', '${song.chords_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Edit ${chordsLabel.toLowerCase()} link">✎</button>
               </span>
             ` : `
-              <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Add chords link">+ Chords</button>
+              <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Add ${chordsLabel.toLowerCase()} link">+ ${chordsLabel}</button>
             `}
             ${song.youtube_url ? `
               <span style="display: inline-flex; align-items: center; gap: 2px;">
@@ -3472,6 +3484,7 @@ class CadenceApp {
     const instrument = this.instruments.find(i => i.id === studentSong.instrument_id);
     const instrumentName = instrument?.name || '';
     const instrumentIcon = instrument?.icon || '';
+    const chordsLabel = this.getChordsLabelForInstrument(instrumentName);
 
     // Get resource ratings
     const chordsRating = this.formatResourceRating(studentSong.resource_ratings?.chords);
@@ -3485,12 +3498,12 @@ class CadenceApp {
           <div class="song-links" style="margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
             ${song.chords_url ? `
               <span style="display: inline-flex; align-items: center; gap: 2px;">
-                <a href="${song.chords_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">Chords</a>
+                <a href="${song.chords_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">${chordsLabel}</a>
                 ${chordsRating}
-                <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'chords_url', '${song.chords_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit chords link">✎</button>
+                <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'chords_url', '${song.chords_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit ${chordsLabel.toLowerCase()} link">✎</button>
               </span>
             ` : `
-              <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add chords link">+ Chords</button>
+              <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add ${chordsLabel.toLowerCase()} link">+ ${chordsLabel}</button>
             `}
             ${song.youtube_url ? `
               <span style="display: inline-flex; align-items: center; gap: 2px;">
@@ -7026,7 +7039,7 @@ class CadenceApp {
         <div><strong>Instrument:</strong> ${song.instruments?.icon || ''} ${song.instruments?.name || 'N/A'}</div>
         <div><strong>Added by:</strong> ${song.users?.name || 'Unknown'}</div>
         <div><strong>Status:</strong> ${song.approved ? 'Approved' : 'Pending'}</div>
-        ${song.chords_url ? `<div><strong>Chords:</strong> <a href="${song.chords_url}" target="_blank">Link</a></div>` : ''}
+        ${song.chords_url ? `<div><strong>${this.getChordsLabelForInstrument(song.instruments?.name)}:</strong> <a href="${song.chords_url}" target="_blank">Link</a></div>` : ''}
         ${song.tutorial_url ? `<div><strong>Tutorial:</strong> <a href="${song.tutorial_url}" target="_blank">Link</a></div>` : ''}
         ${song.youtube_url ? `<div><strong>YouTube:</strong> <a href="${song.youtube_url}" target="_blank">Link</a></div>` : ''}
       </div>
