@@ -5256,8 +5256,8 @@ class CadenceApp {
     let songsData = data?.songs || [];
 
     // Fallback: if RPC returned no progress, use data already loaded from classStudents
+    const member = this.classStudents.find(m => m.user_id === studentId);
     if (progressData.length === 0) {
-      const member = this.classStudents.find(m => m.user_id === studentId);
       const memberProgress = member?.student_progress || [];
       if (memberProgress.length > 0) {
         progressData = memberProgress.map(p => {
@@ -5269,6 +5269,20 @@ class CadenceApp {
             instruments: inst ? { id: inst.id, name: inst.name, icon: inst.icon } : { id: p.instrument_id, name: 'Unknown', icon: '🎵' }
           };
         });
+      }
+    }
+
+    // Fallback: if RPC returned no songs, fetch them directly
+    if (songsData.length === 0) {
+      try {
+        const { data: fallbackSongs } = await this.callSelectDirect(
+          'student_songs',
+          'id,song_id,instrument_id,status,date_started,date_completed,songs(id,title,artist)',
+          { eq: { user_id: studentId } }
+        );
+        songsData = fallbackSongs || [];
+      } catch (err) {
+        console.error('Fallback songs fetch failed:', err);
       }
     }
 
