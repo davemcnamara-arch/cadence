@@ -2900,25 +2900,28 @@ class CadenceApp {
       document.getElementById('song-grading-modal').classList.add('hidden');
       this.showToast('Song graded successfully!', 'success');
 
-      // Refresh data and re-render current view
-      // Note: renderSongs/renderProgress load fresh data internally, so no separate loadSongs() needed
-      if (this.previewMode.active) {
-        await this.loadStudentPreviewData(this.previewMode.studentId);
-      }
+      // Refresh data and re-render current view in a separate try/catch
+      // so a stale-connection refresh failure doesn't mask the successful grading
+      try {
+        if (this.previewMode.active) {
+          await this.loadStudentPreviewData(this.previewMode.studentId);
+        }
 
-      if (this.currentView === 'songs') {
-        await this.renderSongs();
-      } else if (this.currentView === 'progress') {
-        await this.renderProgress();
-      } else if (this.currentView === 'pathway') {
-        await this.loadSongs();
-        this.renderPathway();
-      } else if (this.currentView === 'submissions') {
-        // Refresh submissions feed to show the new graded song
-        await this.loadSubmissions();
-      } else if (this.currentView === 'flagged') {
-        // Refresh flagged ratings in case the grading affects them
-        await this.loadFlaggedRatings();
+        if (this.currentView === 'songs') {
+          await this.renderSongs();
+        } else if (this.currentView === 'progress') {
+          await this.renderProgress();
+        } else if (this.currentView === 'pathway') {
+          await this.loadSongs();
+          this.renderPathway();
+        } else if (this.currentView === 'submissions') {
+          await this.loadSubmissions();
+        } else if (this.currentView === 'flagged') {
+          await this.loadFlaggedRatings();
+        }
+      } catch (refreshErr) {
+        console.warn('Post-grading view refresh failed:', refreshErr.message);
+        this.showToast('Song was graded — refresh the page to see it in the list', 'warning');
       }
     } catch (error) {
       console.error('🎯 Error submitting grading:', error);
