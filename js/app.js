@@ -5781,13 +5781,13 @@ class CadenceApp {
       ),
       this.callSelectDirect(
         'song_tutorials',
-        'id,song_id,url,title,created_at,submitted_by_user_id,songs!inner(title,artist)',
+        'id,song_id,url,title,created_at,submitted_by_user_id,instrument_id,songs!inner(title,artist),instruments(icon,name)',
         { eq: { status: 'pending' } },
         { order: 'created_at.desc' }
       ),
       this.callSelectDirect(
         'student_resources',
-        'id,song_id,title,file_url,file_type,created_at,user_id,songs!inner(title,artist)',
+        'id,song_id,title,file_url,file_type,created_at,user_id,instrument_id,songs!inner(title,artist),instruments(icon,name)',
         { eq: { status: 'pending' } },
         { order: 'created_at.desc' }
       )
@@ -5797,6 +5797,30 @@ class CadenceApp {
     this.pendingLinks = pendingLinks || [];
     this.pendingTutorials = pendingTutorials || [];
     this.pendingResources = pendingResources || [];
+
+    // Enrich pending links with instrument context from song_ratings
+    if (this.pendingLinks.length > 0) {
+      const linkSongIds = [...new Set(this.pendingLinks.map(l => l.song_id))];
+      const linkUserIds = [...new Set(this.pendingLinks.map(l => l.submitted_by_user_id).filter(Boolean))];
+      const { data: linkRatings } = await this.callSelectDirect(
+        'song_ratings',
+        'song_id,user_id,instrument_id,instruments(icon,name)',
+        { in: { song_id: linkSongIds, user_id: linkUserIds } }
+      );
+      if (linkRatings) {
+        const ratingInstrumentMap = {};
+        linkRatings.forEach(r => {
+          const key = `${r.song_id}-${r.user_id}`;
+          if (!ratingInstrumentMap[key] && r.instruments) {
+            ratingInstrumentMap[key] = r.instruments;
+          }
+        });
+        this.pendingLinks.forEach(link => {
+          const key = `${link.song_id}-${link.submitted_by_user_id}`;
+          link.instrument = ratingInstrumentMap[key] || null;
+        });
+      }
+    }
 
     // Get all students from all the teacher's classes using direct RPC call
     let allStudents;
@@ -6040,13 +6064,14 @@ class CadenceApp {
             const linkLabel = linkTypeLabels[link.link_type] || link.link_type;
             const submittedDate = new Date(link.submitted_at).toLocaleDateString();
             const submitterName = link.users?.name || 'Unknown';
+            const instrumentLabel = link.instrument ? `${link.instrument.icon} ${link.instrument.name}` : '';
 
             return `
               <div class="flagged-card" style="border-left: 4px solid #ffc107;">
                 <div class="flagged-header">
                   <div>
                     <div class="flagged-song-title">${link.songs.title}</div>
-                    <div class="flagged-song-meta">${link.songs.artist} • ${linkLabel}</div>
+                    <div class="flagged-song-meta">${link.songs.artist} • ${linkLabel}${instrumentLabel ? ` • ${instrumentLabel}` : ''}</div>
                   </div>
                   <div style="text-align: right; font-size: 0.875rem; color: var(--text-secondary);">
                     <div>Submitted by ${submitterName}</div>
@@ -6092,13 +6117,14 @@ class CadenceApp {
           <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Pending Tutorial Approvals (${this.pendingTutorials.length})</h3>
           ${this.pendingTutorials.map(tutorial => {
             const submittedDate = new Date(tutorial.created_at).toLocaleDateString();
+            const tutorialInstrumentLabel = tutorial.instruments ? `${tutorial.instruments.icon} ${tutorial.instruments.name}` : '';
 
             return `
               <div class="flagged-card" style="border-left: 4px solid #9c27b0;">
                 <div class="flagged-header">
                   <div>
                     <div class="flagged-song-title">${tutorial.songs.title}</div>
-                    <div class="flagged-song-meta">${tutorial.songs.artist} • Tutorial Video</div>
+                    <div class="flagged-song-meta">${tutorial.songs.artist} • Tutorial Video${tutorialInstrumentLabel ? ` • ${tutorialInstrumentLabel}` : ''}</div>
                   </div>
                   <div style="text-align: right; font-size: 0.875rem; color: var(--text-secondary);">
                     <div>${submittedDate}</div>
@@ -6138,13 +6164,14 @@ class CadenceApp {
           ${this.pendingResources.map(resource => {
             const submittedDate = new Date(resource.created_at).toLocaleDateString();
             const typeLabel = fileTypeLabels[resource.file_type] || resource.file_type;
+            const resourceInstrumentLabel = resource.instruments ? `${resource.instruments.icon} ${resource.instruments.name}` : '';
 
             return `
               <div class="flagged-card" style="border-left: 4px solid #ff9800;">
                 <div class="flagged-header">
                   <div>
                     <div class="flagged-song-title">${resource.songs.title}</div>
-                    <div class="flagged-song-meta">${resource.songs.artist} • ${typeLabel}</div>
+                    <div class="flagged-song-meta">${resource.songs.artist} • ${typeLabel}${resourceInstrumentLabel ? ` • ${resourceInstrumentLabel}` : ''}</div>
                   </div>
                   <div style="text-align: right; font-size: 0.875rem; color: var(--text-secondary);">
                     <div>${submittedDate}</div>
