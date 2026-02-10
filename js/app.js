@@ -523,6 +523,15 @@ class CadenceApp {
       auth.lastEnrollmentResult = null; // Clear after showing
     }
 
+    // Restore saved view from sessionStorage (if valid for this role)
+    const savedView = sessionStorage.getItem('cadence_currentView');
+    const validViews = {
+      student: ['pathway', 'songs', 'progress'],
+      teacher: ['songs', 'classes', 'submissions', 'flagged', 'accounts'],
+      admin: ['songs', 'classes', 'submissions', 'flagged', 'accounts', 'admin']
+    };
+    const restoredView = savedView && validViews[user.role]?.includes(savedView) ? savedView : null;
+
     // Show/hide tabs and features based on role
     if (user.role === 'student') {
       // Show student tabs and features
@@ -539,8 +548,8 @@ class CadenceApp {
       document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.remove('hidden'));
       await this.loadTeacherData();
 
-      // Switch to teacher's default view
-      this.switchView('classes');
+      // Switch to saved view or teacher's default view
+      this.switchView(restoredView || 'classes');
     } else if (user.role === 'admin') {
       // Hide student-only features for admins
       document.querySelectorAll('.student-tab').forEach(tab => tab.classList.add('hidden'));
@@ -557,8 +566,8 @@ class CadenceApp {
       await this.loadAdminData();
       await this.loadClasses();
 
-      // Switch to admin view as default for admins
-      this.switchView('admin');
+      // Switch to saved view or admin view as default for admins
+      this.switchView(restoredView || 'admin');
     }
 
     // Check if user has selected instruments (students only)
@@ -573,6 +582,11 @@ class CadenceApp {
         this.updatePathwayInstrument();
         this.renderPathway();
         this.updateInstrumentDropdown();
+
+        // Restore saved view if different from default pathway
+        if (restoredView && restoredView !== 'pathway') {
+          this.switchView(restoredView);
+        }
       }
     }
     } finally {
@@ -1330,6 +1344,9 @@ class CadenceApp {
       targetView.classList.add('active');
       targetView.classList.remove('hidden');
       this.currentView = viewName;
+
+      // Persist current view so it survives page refresh
+      sessionStorage.setItem('cadence_currentView', viewName);
 
       // Helper: run an async view loader, but discard results if user switched away
       const loadViewAsync = async (fn) => {
@@ -4053,6 +4070,7 @@ class CadenceApp {
     this.currentView = 'pathway';
     this.classes = [];
     this.currentClass = null;
+    sessionStorage.removeItem('cadence_currentView');
     this.classStudents = [];
     this.submissions = [];
     this.flaggedRatings = [];
