@@ -3409,12 +3409,27 @@ class CadenceApp {
     const firstInstrumentName = firstInstrument?.name || '';
     const chordsRating = this.formatResourceRating(firstStudentSong.resource_ratings?.chords);
 
-    // Build instrument-specific chords label (e.g. "Chords / Bass Tab / Drum Notation")
-    const uniqueChordsLabels = [...new Set(sortedInstruments.map(si => {
+    // Build separate chords/tab/notation links for each unique instrument resource type
+    const seenLabels = new Set();
+    const chordsLinks = sortedInstruments.map(si => {
       const inst = this.instruments.find(i => i.id === si.instrument_id);
-      return this.getChordsLabelForInstrument(inst?.name);
-    }))];
-    const chordsLabel = uniqueChordsLabels.join(' / ');
+      const instName = inst?.name || '';
+      const label = this.getChordsLabelForInstrument(instName);
+      if (seenLabels.has(label)) return '';
+      seenLabels.add(label);
+      const isFirst = seenLabels.size === 1;
+      if (song.chords_url) {
+        return `
+          <span style="display: inline-flex; align-items: center; gap: 2px;">
+            <a href="${song.chords_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">${label}</a>
+            ${isFirst ? chordsRating : ''}
+            <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'chords_url', '${song.chords_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instName.replace(/'/g, "\\'")}')" title="Edit ${label.toLowerCase()} link">✎</button>
+          </span>`;
+      } else {
+        return `
+          <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instName.replace(/'/g, "\\'")}')" title="Add ${label.toLowerCase()} link">+ ${label}</button>`;
+      }
+    }).filter(Boolean).join('\n            ');
 
     // Build actions for each instrument
     const instrumentActions = sortedInstruments.map(studentSong => {
@@ -3451,15 +3466,7 @@ class CadenceApp {
             ${instrumentBadges}
           </div>
           <div class="song-links" style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-            ${song.chords_url ? `
-              <span style="display: inline-flex; align-items: center; gap: 2px;">
-                <a href="${song.chords_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">${chordsLabel}</a>
-                ${chordsRating}
-                <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'chords_url', '${song.chords_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Edit ${chordsLabel.toLowerCase()} link">✎</button>
-              </span>
-            ` : `
-              <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'chords_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Add ${chordsLabel.toLowerCase()} link">+ ${chordsLabel}</button>
-            `}
+            ${chordsLinks}
             ${song.youtube_url ? `
               <span style="display: inline-flex; align-items: center; gap: 2px;">
                 <a href="${song.youtube_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">YouTube</a>
