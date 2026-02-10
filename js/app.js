@@ -2929,8 +2929,8 @@ class CadenceApp {
         code: error.code
       });
 
-      // If it's a timeout, suggest refreshing the page
-      if (error.message?.includes('timed out') || error.message?.includes('timeout')) {
+      // If it's a timeout, suggest refreshing the page (case-insensitive to catch REFRESH_TIMEOUT, SESSION_TIMEOUT, etc.)
+      if (error.message?.toLowerCase().includes('timed out') || error.message?.toLowerCase().includes('timeout')) {
         this.showToast('Connection lost - please refresh the page and try again', 'error');
       } else {
         const errorMsg = error.message || error.details || 'Failed to submit grading';
@@ -2950,11 +2950,26 @@ class CadenceApp {
     } catch (e) {
       if (e.message === 'SESSION_TIMEOUT') {
         // getSession hung - try refreshSession as fallback
-        const refreshResult = await Promise.race([
-          supabase.auth.refreshSession(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('REFRESH_TIMEOUT')), 5000))
-        ]);
-        return refreshResult.data?.session;
+        try {
+          const refreshResult = await Promise.race([
+            supabase.auth.refreshSession(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('REFRESH_TIMEOUT')), 5000))
+          ]);
+          return refreshResult.data?.session;
+        } catch (refreshErr) {
+          if (refreshErr.message === 'REFRESH_TIMEOUT') {
+            // Both Supabase client methods hung - read token directly from localStorage as last resort
+            console.warn('Supabase client stale, falling back to localStorage token');
+            const storageKey = Object.keys(localStorage).find(key =>
+              key.startsWith('sb-') && key.endsWith('-auth-token')
+            );
+            const tokenData = storageKey ? JSON.parse(localStorage.getItem(storageKey)) : null;
+            if (tokenData?.access_token) {
+              return { access_token: tokenData.access_token };
+            }
+          }
+          throw refreshErr;
+        }
       }
       throw e;
     }
