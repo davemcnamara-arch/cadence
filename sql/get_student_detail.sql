@@ -74,6 +74,8 @@ BEGIN
             'title', s.title,
             'artist', s.artist,
             'chords_url', s.chords_url,
+            'bass_tab_url', s.bass_tab_url,
+            'drum_notation_url', s.drum_notation_url,
             'tutorial_url', s.tutorial_url,
             'youtube_url', s.youtube_url
           ),
