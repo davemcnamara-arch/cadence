@@ -5225,21 +5225,7 @@ class CadenceApp {
   }
 
   async viewStudentDetail(studentId) {
-    // Use direct RPC call to bypass stale connections and RLS
-    let data;
-    try {
-      const result = await this.callRpcDirect('get_student_detail', {
-        p_student_id: studentId
-      });
-      data = result.data;
-    } catch (error) {
-      console.error('Error loading student detail:', error);
-      return;
-    }
-
-    const progressData = data.progress || [];
-    const songsData = data.songs || [];
-
+    // Find student info first from already-loaded data
     let student = this.classStudents.find(m => m.user_id === studentId)?.users;
     // Fallback: look up from cross-class search results cache
     if (!student && this.allTeacherStudents) {
@@ -5250,6 +5236,42 @@ class CadenceApp {
     }
     if (!student) return;
 
+    // Show modal immediately with loading state
+    document.getElementById('student-detail-name').textContent = student.name;
+    document.getElementById('student-detail-content').innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">Loading student data...</p>';
+    document.getElementById('student-detail-modal').classList.remove('hidden');
+
+    // Use direct RPC call to bypass stale connections and RLS
+    let data;
+    try {
+      const result = await this.callRpcDirect('get_student_detail', {
+        p_student_id: studentId
+      });
+      data = result.data;
+    } catch (error) {
+      console.error('Error loading student detail:', error);
+    }
+
+    let progressData = data?.progress || [];
+    let songsData = data?.songs || [];
+
+    // Fallback: if RPC returned no progress, use data already loaded from classStudents
+    if (progressData.length === 0) {
+      const member = this.classStudents.find(m => m.user_id === studentId);
+      const memberProgress = member?.student_progress || [];
+      if (memberProgress.length > 0) {
+        progressData = memberProgress.map(p => {
+          const inst = this.instruments.find(i => i.id === p.instrument_id);
+          return {
+            instrument_id: p.instrument_id,
+            current_level: p.current_level,
+            current_branch: p.current_branch,
+            instruments: inst ? { id: inst.id, name: inst.name, icon: inst.icon } : { id: p.instrument_id, name: 'Unknown', icon: '🎵' }
+          };
+        });
+      }
+    }
+
     // Build student detail modal content
     let html = '';
 
@@ -5259,7 +5281,7 @@ class CadenceApp {
       html = '<div class="student-instruments-grid">';
 
       progressData.forEach(progress => {
-        const inst = progress.instruments;
+        const inst = progress.instruments || { icon: '🎵', name: 'Unknown' };
         const studentSongs = songsData.filter(s => s.instrument_id === progress.instrument_id);
         const learning = studentSongs.filter(s => s.status === 'learning');
         const mastered = studentSongs.filter(s => s.status === 'mastered');
@@ -5280,7 +5302,7 @@ class CadenceApp {
                 <strong style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary);">Currently Learning:</strong>
                 ${learning.map(s => `
                   <div class="student-song-item" style="color: var(--primary-color);">
-                    ${s.songs.title} - ${s.songs.artist}
+                    ${s.songs?.title || 'Unknown'} - ${s.songs?.artist || 'Unknown'}
                   </div>
                 `).join('')}
               </div>
@@ -5289,7 +5311,7 @@ class CadenceApp {
               <div class="student-songs-list" style="margin-top: ${learning.length > 0 ? '0.75rem' : '0'};">
                 <strong style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary);">Mastered:</strong>
                 ${mastered.map(s => `
-                  <div class="student-song-item">${s.songs.title} - ${s.songs.artist}</div>
+                  <div class="student-song-item">${s.songs?.title || 'Unknown'} - ${s.songs?.artist || 'Unknown'}</div>
                 `).join('')}
               </div>
             ` : ''}
@@ -5300,7 +5322,7 @@ class CadenceApp {
       html += '</div>';
     }
 
-    document.getElementById('student-detail-name').textContent = student.name;
+    // Update modal content (modal is already visible from loading state above)
     document.getElementById('student-detail-content').innerHTML = html;
 
     // Add preview button if it doesn't exist
@@ -5329,8 +5351,6 @@ class CadenceApp {
         this.enterStudentPreview(studentId, student.name);
       });
     }
-
-    document.getElementById('student-detail-modal').classList.remove('hidden');
   }
 
   async enterStudentPreview(studentId, studentName) {
