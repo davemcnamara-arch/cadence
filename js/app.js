@@ -1736,6 +1736,7 @@ class CadenceApp {
           <span class="song-tag level" data-song-id="${song.id}">${levelLabel}</span>
         </div>
         <div class="song-actions">
+          <span class="chords-link-container" data-song-id="${song.id}">
           ${chordsUrl ? `
             <div class="resource-link-group">
               <a href="${chordsUrl}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">${chordsLabel}</a>
@@ -1745,6 +1746,7 @@ class CadenceApp {
           ` : `
             <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', '${chordsUrlField}', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add ${chordsLabel.toLowerCase()} link">+ ${chordsLabel}</button>
           `}
+          </span>
           <button class="btn btn-secondary btn-resources ${(song.tutorial_count + song.resource_count) > 0 ? 'has-resources' : ''}" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}')" title="View tutorials & student resources">
             Resources${(song.tutorial_count + song.resource_count) > 0 ? ` <span class="resource-count">${song.tutorial_count + song.resource_count}</span>` : ''}
           </button>
@@ -1804,6 +1806,35 @@ class CadenceApp {
     const levelTag = card?.querySelector('.song-tag.level');
     if (levelTag) {
       levelTag.textContent = levelLabel;
+    }
+
+    // Update the chords/bass tab/drum notation link for the new instrument
+    if (card && song) {
+      const instrument = this.instruments.find(i => i.id === instrumentId);
+      const instName = instrument?.name || '';
+      const label = this.getChordsLabelForInstrument(instName);
+      const urlField = this.getChordsUrlField(instName);
+      const url = song[urlField] || '';
+      const escapedTitle = song.title.replace(/'/g, "\\'");
+      const escapedArtist = song.artist.replace(/'/g, "\\'");
+      const escapedInstName = instName.replace(/'/g, "\\'");
+      const chordsRating = this.formatResourceRating(song.resource_ratings?.chords);
+
+      const container = card.querySelector('.chords-link-container');
+      if (container) {
+        if (url) {
+          const escapedUrl = url.replace(/'/g, "\\'");
+          container.innerHTML = `
+            <div class="resource-link-group">
+              <a href="${url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">${label}</a>
+              ${chordsRating}
+              <button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', '${urlField}', '${escapedUrl}', '${escapedTitle}', '${escapedArtist}', '${escapedInstName}')" title="Edit ${label.toLowerCase()} link">✎</button>
+            </div>`;
+        } else {
+          container.innerHTML = `
+            <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', '${urlField}', '', '${escapedTitle}', '${escapedArtist}', '${escapedInstName}')" title="Add ${label.toLowerCase()} link">+ ${label}</button>`;
+        }
+      }
     }
   }
 
