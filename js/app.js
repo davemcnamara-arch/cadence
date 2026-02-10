@@ -5153,13 +5153,13 @@ class CadenceApp {
     // Add student rows
     this.classStudents.forEach(member => {
       const student = member.users;
-      html += `<tr><td>${student.name}</td>`;
+      html += `<tr><td style="cursor: pointer;" onclick="app.viewStudentDetail('${student.id}')">${student.name}</td>`;
 
       this.instruments.forEach(inst => {
         const progress = member.student_progress?.find(p => p.instrument_id === inst.id);
         if (progress) {
           const level = progress.current_level;
-          html += `<td class="heatmap-cell level-${level}">Level ${level}</td>`;
+          html += `<td class="heatmap-cell level-${level}" style="cursor: pointer;" onclick="app.viewStudentDetail('${student.id}')">Level ${level}</td>`;
         } else {
           html += `<td class="heatmap-cell">-</td>`;
         }
@@ -5275,10 +5275,20 @@ class CadenceApp {
             <div class="student-progress-info">
               ${learning.length} learning • ${mastered.length} mastered
             </div>
-            ${mastered.length > 0 ? `
+            ${learning.length > 0 ? `
               <div class="student-songs-list">
-                <strong style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary);">Recently Mastered:</strong>
-                ${mastered.slice(0, 5).map(s => `
+                <strong style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary);">Currently Learning:</strong>
+                ${learning.map(s => `
+                  <div class="student-song-item" style="color: var(--primary-color);">
+                    ${s.songs.title} - ${s.songs.artist}
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+            ${mastered.length > 0 ? `
+              <div class="student-songs-list" style="margin-top: ${learning.length > 0 ? '0.75rem' : '0'};">
+                <strong style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary);">Mastered:</strong>
+                ${mastered.map(s => `
                   <div class="student-song-item">${s.songs.title} - ${s.songs.artist}</div>
                 `).join('')}
               </div>
@@ -5921,9 +5931,18 @@ class CadenceApp {
                     <div>${submittedDate}</div>
                   </div>
                 </div>
-                <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 4px; margin: 1rem 0;">
+                <div id="pending-link-url-${link.id}" style="padding: 1rem; background: var(--bg-secondary); border-radius: 4px; margin: 1rem 0;">
                   <div style="font-weight: 500; margin-bottom: 0.5rem; color: var(--text-primary);">Submitted URL:</div>
-                  <a href="${link.url}" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color); word-break: break-all;">${link.url}</a>
+                  <div id="pending-link-display-${link.id}">
+                    <a href="${link.url}" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color); word-break: break-all;">${link.url}</a>
+                  </div>
+                  <div id="pending-link-edit-${link.id}" class="hidden" style="margin-top: 0.5rem;">
+                    <input type="url" id="pending-link-input-${link.id}" value="${link.url}" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.875rem; background: var(--bg-primary); color: var(--text-primary);" />
+                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                      <button class="btn btn-primary" style="font-size: 0.75rem;" onclick="app.savePendingLinkUrl('${link.id}')">Save URL</button>
+                      <button class="btn btn-secondary" style="font-size: 0.75rem;" onclick="app.cancelEditPendingLink('${link.id}')">Cancel</button>
+                    </div>
+                  </div>
                 </div>
                 <div class="flagged-resolve">
                   <button class="btn btn-primary" onclick="app.approvePendingLink('${link.id}')">
@@ -5931,6 +5950,9 @@ class CadenceApp {
                   </button>
                   <button class="btn btn-secondary" onclick="app.rejectPendingLink('${link.id}')" style="margin-left: 0.5rem;">
                     <span style="margin-right: 0.5rem;">✗</span> Reject
+                  </button>
+                  <button class="btn btn-secondary" onclick="app.editPendingLinkUrl('${link.id}')" style="margin-left: 0.5rem;">
+                    <span style="margin-right: 0.5rem;">&#9998;</span> Edit URL
                   </button>
                 </div>
               </div>
@@ -6237,6 +6259,51 @@ class CadenceApp {
     } catch (error) {
       console.error('Exception in rejectPendingLink:', error);
       this.showToast('Failed to reject link', 'error');
+    }
+  }
+
+  editPendingLinkUrl(linkId) {
+    const displayEl = document.getElementById(`pending-link-display-${linkId}`);
+    const editEl = document.getElementById(`pending-link-edit-${linkId}`);
+    if (displayEl) displayEl.classList.add('hidden');
+    if (editEl) editEl.classList.remove('hidden');
+  }
+
+  cancelEditPendingLink(linkId) {
+    const displayEl = document.getElementById(`pending-link-display-${linkId}`);
+    const editEl = document.getElementById(`pending-link-edit-${linkId}`);
+    if (displayEl) displayEl.classList.remove('hidden');
+    if (editEl) editEl.classList.add('hidden');
+    // Reset input value
+    const link = this.pendingLinks?.find(l => l.id === linkId);
+    const input = document.getElementById(`pending-link-input-${linkId}`);
+    if (link && input) input.value = link.url;
+  }
+
+  async savePendingLinkUrl(linkId) {
+    const input = document.getElementById(`pending-link-input-${linkId}`);
+    if (!input) return;
+
+    const newUrl = input.value.trim();
+    if (!newUrl) {
+      this.showToast('URL cannot be empty', 'error');
+      return;
+    }
+
+    try {
+      await this.rawUpdate('pending_links', linkId, { url: newUrl });
+
+      // Update local data
+      const link = this.pendingLinks?.find(l => l.id === linkId);
+      if (link) link.url = newUrl;
+
+      this.showToast('URL updated successfully', 'success');
+
+      // Re-render to show updated URL
+      await this.loadFlaggedRatings();
+    } catch (error) {
+      console.error('Exception in savePendingLinkUrl:', error);
+      this.showToast('Failed to update URL', 'error');
     }
   }
 
