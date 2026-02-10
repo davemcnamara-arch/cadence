@@ -2533,100 +2533,22 @@ class CadenceApp {
     const instrument = this.instruments.find(i => i.id === instrumentId);
     const instrumentName = instrument ? instrument.name : 'this instrument';
 
-    // Create a comprehensive questionnaire that works across all levels and instruments
-    // Written to be approachable for 12-16 year olds
-    const comprehensiveQuestions = {
-      "How many chords or notes does this song use?": [
-        "Just a few simple ones — 1-3 basic chords/notes",
-        "A handful to learn — 4-5 simple chords/progressions",
-        "A decent amount — 6-8 chords with some variety",
-        "Quite a lot, some trickier combos — 8-10 chords with extensions",
-        "Lots to keep track of — 10+ chords or very advanced harmony"
-      ],
-      "What kind of chords or notes are they?": [
-        "The standard ones everyone learns first — basic major/minor only",
-        "A few fancier ones mixed in — includes 7ths or sus chords",
-        "Some pretty complex chords — includes extensions (9ths, 11ths, 13ths)",
-        "Really unusual chord shapes — includes alterations or jazz voicings",
-        "This doesn't apply to my instrument — n/a - melody/rhythm instrument only"
-      ],
-      "How many different playing patterns does the song have?": [
-        "One pattern the whole time — single simple pattern throughout",
-        "Switches it up a bit — 2-3 different patterns or techniques",
-        "Quite a few changes — varied patterns with some complexity",
-        "Lots of tricky stuff — complex patterns with advanced articulation",
-        "Everything at once — very advanced - multiple techniques integrated"
-      ],
-      "What techniques does the song use?": [
-        "Simple stuff — Basic: strumming, block chords, basic rhythms, straight tone",
-        "A step up — Intermediate: fingerpicking/arpeggios, ghost notes, basic fills, dynamics",
-        "Getting serious — Advanced: slap/pop, syncopation, polyrhythms, vibrato, runs/riffs",
-        "Really complex — Expert: tapping, double bass, advanced coordination, melisma, improvisation"
-      ],
-      "How is the song laid out?": [
-        "Same part over and over — single section or simple repeat",
-        "Two main parts that alternate — verse/chorus (2 sections)",
-        "Three different parts — verse/chorus/bridge (3 sections)",
-        "Lots of different parts — multiple sections (4+) or complex form"
-      ],
-      "How much do your hands/limbs need to do different things at the same time?": [
-        "Just one thing at a time — single element",
-        "Both hands/limbs doing something basic together — two elements - simple",
-        "Hands/limbs doing their own thing — moderate coordination",
-        "Really tricky to keep everything going at once — high independence",
-        "Full control of everything separately — mastered independence"
-      ],
-      "How hard does this song feel overall?": [
-        "Most people could pick this up pretty quickly — beginner friendly",
-        "Takes a bit of practice — some challenges for beginners",
-        "You need to know what you're doing — intermediate - moderately challenging",
-        "Even experienced players need to practice this — advanced - quite challenging",
-        "Only for people who've been playing a long time — expert - very challenging"
-      ],
-      "How tricky is the rhythm?": [
-        "Easy to tap your foot to — simple steady rhythm (4/4, straight)",
-        "A few surprises in the rhythm — some variation or off-beats",
-        "The rhythm has a bounce or groove to it — syncopated or swing feel",
-        "The beat shifts around — complex rhythms or time signature changes",
-        "Multiple rhythms layered together — polyrhythmic or very advanced timing"
-      ],
-      "How much does the volume and feeling change during the song?": [
-        "Stays pretty much the same the whole time — minimal",
-        "Gets louder and softer in places — basic dynamic changes (loud/soft)",
-        "Noticeable ups and downs in feeling — moderate expression and phrasing",
-        "Lots of emotion and detail — highly expressive with nuanced control",
-        "Really deep, performance-level expression — exceptional artistry and interpretation"
-      ],
-      "How would you learn this song?": [
-        "Just follow the chord names — chord symbols/charts only",
-        "Basic written music or tablature — simple notation or tab",
-        "Regular sheet music — standard notation - moderate",
-        "Detailed written music — complex notation or score reading",
-        "Listen and figure it out — can play by ear or memory"
-      ],
-      "Does the song let you add your own flair or make stuff up?": [
-        "Stick to what's on the page — none - play exactly as written",
-        "A little room to add small touches — minimal decoration or simple fills",
-        "Sections where you can freestyle a bit — some structured improvisation",
-        "Big parts where you make it your own — significant improvised sections",
-        "Lots of room to go off-script — free improvisation or extensive soloing"
-      ]
-    };
+    // Get instrument-specific questions (shared with scoring)
+    const questionSets = this.getInstrumentQuestions();
+    const questions = questionSets[instrumentName] || questionSets['Guitar'];
 
     const container = document.getElementById('grading-checklist');
 
     container.innerHTML = `
-      <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">
-        Tell us about this song for <strong>${instrumentName}</strong>. Just pick the answer that sounds closest — there are no wrong answers!
-      </p>
-      ${Object.entries(comprehensiveQuestions).map(([question, options], index) => `
+      <p class="grading-intro">Pick the closest answer for each — no wrong answers!</p>
+      ${Object.entries(questions).map(([question, options], index) => `
         <div class="checklist-item">
           <div class="checklist-question">${question}</div>
-          <div class="checklist-options">
+          <div class="checklist-options checklist-options-chips">
             ${options.map((option, optIndex) => `
-              <label>
+              <label class="chip-option">
                 <input type="radio" name="question-${index}" value="${option}" required>
-                ${option}
+                <span class="chip-label">${option}</span>
               </label>
             `).join('')}
           </div>
@@ -2751,178 +2673,226 @@ class CadenceApp {
   calculateLevelFromResponses() {
     const responses = this.gradingData.checklistResponses;
     if (!responses || Object.keys(responses).length === 0) {
-      return 1; // Default to Level 1 if no responses
+      return 1;
     }
 
-    // Get the current instrument
+    // Get current instrument's question set to map answer positions to levels
     const instrument = this.instruments.find(i => i.id === this.gradingData.instrument);
     if (!instrument) return 1;
 
-    // Initialize scores for each level (1-5)
-    const levelScores = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    let totalQuestions = 0;
+    const questionSets = this.getInstrumentQuestions();
+    const questions = questionSets[instrument.name] || questionSets['Guitar'];
 
-    // Process each response with the universal comprehensive questions
+    // Each question has 5 ordered answers (index 0 = Level 1, index 4 = Level 5).
+    // Find which index was selected for each question and average the levels.
+    let totalLevel = 0;
+    let answered = 0;
+
     Object.entries(responses).forEach(([question, answer]) => {
-      totalQuestions++;
-      const answerLower = answer.toLowerCase();
-      const questionLower = question.toLowerCase();
-
-      // Map answers to levels based on new universal questionnaire
-
-      // Harmonic complexity (chords/notes)
-      if (answerLower.includes('1-3 basic')) {
-        levelScores[1] += 5;
-      } else if (answerLower.includes('4-5 simple')) {
-        levelScores[1] += 2; levelScores[2] += 5;
-      } else if (answerLower.includes('6-8 chords')) {
-        levelScores[2] += 2; levelScores[3] += 5;
-      } else if (answerLower.includes('8-10 chords') || answerLower.includes('extensions')) {
-        levelScores[3] += 2; levelScores[4] += 5;
-      } else if (answerLower.includes('10+') || answerLower.includes('very advanced')) {
-        levelScores[4] += 2; levelScores[5] += 5;
-      }
-
-      // Chord/harmony types
-      else if (answerLower.includes('basic major/minor')) {
-        levelScores[1] += 5;
-      } else if (answerLower.includes('includes 7ths') || answerLower.includes('sus chords')) {
-        levelScores[2] += 2; levelScores[3] += 5;
-      } else if (answerLower.includes('extensions') || answerLower.includes('9ths')) {
-        levelScores[4] += 2; levelScores[5] += 5;
-      } else if (answerLower.includes('alterations') || answerLower.includes('jazz voicings')) {
-        levelScores[5] += 5;
-      } else if (answerLower.includes('n/a')) {
-        // Neutral - doesn't affect score much
-        levelScores[1] += 1; levelScores[2] += 1; levelScores[3] += 1;
-      }
-
-      // Playing patterns and articulation
-      else if (answerLower.includes('single simple pattern')) {
-        levelScores[1] += 5;
-      } else if (answerLower.includes('2-3 different')) {
-        levelScores[2] += 5;
-      } else if (answerLower.includes('varied patterns')) {
-        levelScores[3] += 5;
-      } else if (answerLower.includes('complex patterns')) {
-        levelScores[4] += 5;
-      } else if (answerLower.includes('very advanced') && answerLower.includes('integrated')) {
-        levelScores[5] += 5;
-      }
-
-      // Technique examples
-      else if (answerLower.includes('basic:')) {
-        levelScores[1] += 5;
-      } else if (answerLower.includes('intermediate:')) {
-        levelScores[2] += 2; levelScores[3] += 5;
-      } else if (answerLower.includes('advanced:')) {
-        levelScores[3] += 1; levelScores[4] += 5;
-      } else if (answerLower.includes('expert:')) {
-        levelScores[5] += 5;
-      }
-
-      // Song structure
-      else if (answerLower.includes('single section') || answerLower.includes('simple repeat')) {
-        levelScores[1] += 5;
-      } else if (answerLower.includes('verse/chorus (2')) {
-        levelScores[2] += 5;
-      } else if (answerLower.includes('verse/chorus/bridge (3')) {
-        levelScores[3] += 5;
-      } else if (answerLower.includes('multiple sections (4+)') || answerLower.includes('complex form')) {
-        levelScores[4] += 2; levelScores[5] += 5;
-      }
-
-      // Coordination/independence
-      else if (answerLower.includes('single element')) {
-        levelScores[1] += 5;
-      } else if (answerLower.includes('two elements - simple')) {
-        levelScores[1] += 2; levelScores[2] += 5;
-      } else if (answerLower.includes('moderate coordination')) {
-        levelScores[2] += 1; levelScores[3] += 5;
-      } else if (answerLower.includes('high independence')) {
-        levelScores[3] += 1; levelScores[4] += 5;
-      } else if (answerLower.includes('mastered independence')) {
-        levelScores[5] += 5;
-      }
-
-      // Overall technical difficulty
-      else if (answerLower.includes('beginner friendly')) {
-        levelScores[1] += 5;
-      } else if (answerLower.includes('some challenges for beginners')) {
-        levelScores[2] += 5;
-      } else if (answerLower.includes('intermediate')) {
-        levelScores[3] += 5;
-      } else if (answerLower.includes('advanced -')) {
-        levelScores[4] += 5;
-      } else if (answerLower.includes('expert -')) {
-        levelScores[5] += 5;
-      }
-
-      // Rhythm complexity
-      else if (answerLower.includes('simple steady')) {
-        levelScores[1] += 5;
-      } else if (answerLower.includes('some variation') || answerLower.includes('off-beats')) {
-        levelScores[2] += 5;
-      } else if (answerLower.includes('syncopated') || answerLower.includes('swing')) {
-        levelScores[3] += 2; levelScores[4] += 5;
-      } else if (answerLower.includes('complex rhythms') || answerLower.includes('time signature')) {
-        levelScores[4] += 1; levelScores[5] += 5;
-      } else if (answerLower.includes('polyrhythmic')) {
-        levelScores[5] += 5;
-      }
-
-      // Dynamics and expression
-      else if (answerLower.includes('minimal')) {
-        levelScores[1] += 5;
-      } else if (answerLower.includes('basic dynamic')) {
-        levelScores[2] += 5;
-      } else if (answerLower.includes('moderate expression')) {
-        levelScores[3] += 5;
-      } else if (answerLower.includes('highly expressive')) {
-        levelScores[4] += 2; levelScores[5] += 5;
-      } else if (answerLower.includes('exceptional artistry')) {
-        levelScores[5] += 5;
-      }
-
-      // Note reading requirement
-      else if (answerLower.includes('chord symbols')) {
-        levelScores[1] += 3; levelScores[2] += 3;
-      } else if (answerLower.includes('simple notation') || answerLower.includes('tab')) {
-        levelScores[2] += 3;
-      } else if (answerLower.includes('standard notation - moderate')) {
-        levelScores[3] += 3;
-      } else if (answerLower.includes('complex notation') || answerLower.includes('score reading')) {
-        levelScores[4] += 3; levelScores[5] += 3;
-      } else if (answerLower.includes('play by ear')) {
-        levelScores[2] += 2; levelScores[3] += 3; levelScores[4] += 3;
-      }
-
-      // Improvisation/embellishment
-      else if (answerLower.includes('none') && answerLower.includes('exactly')) {
-        levelScores[1] += 3; levelScores[2] += 3;
-      } else if (answerLower.includes('minimal decoration')) {
-        levelScores[2] += 2; levelScores[3] += 5;
-      } else if (answerLower.includes('some structured')) {
-        levelScores[3] += 2; levelScores[4] += 5;
-      } else if (answerLower.includes('significant improvised')) {
-        levelScores[4] += 3; levelScores[5] += 5;
-      } else if (answerLower.includes('free improvisation') || answerLower.includes('extensive soloing')) {
-        levelScores[5] += 5;
+      const options = questions[question];
+      if (!options) return;
+      const idx = options.indexOf(answer);
+      if (idx >= 0) {
+        totalLevel += (idx + 1); // 1-based level
+        answered++;
       }
     });
 
-    // Find the level with the highest score
-    let maxScore = 0;
-    let suggestedLevel = 1;
+    if (answered === 0) return 1;
 
-    for (let level = 1; level <= 5; level++) {
-      if (levelScores[level] > maxScore) {
-        maxScore = levelScores[level];
-        suggestedLevel = level;
+    // Round to nearest level
+    return Math.round(totalLevel / answered);
+  }
+
+  // Shared instrument question definitions used by both checklist generation and scoring
+  getInstrumentQuestions() {
+    return {
+      'Guitar': {
+        "Chords": [
+          "1-3 open chords",
+          "4-5 chords, maybe a barre",
+          "Barre chords + 7ths/sus",
+          "Extensions, jazz voicings",
+          "Complex harmony throughout"
+        ],
+        "Strumming & picking": [
+          "Simple downstrokes",
+          "Basic up/down patterns",
+          "Fingerpicking or arpeggios",
+          "Mixed techniques (hybrid, percussive)",
+          "Tapping, harmonics, or advanced techniques"
+        ],
+        "Rhythm": [
+          "Steady and simple",
+          "Some off-beats or syncopation",
+          "Swing or shuffle feel",
+          "Odd time or frequent changes",
+          "Polyrhythmic or very complex"
+        ],
+        "Song structure": [
+          "One repeating section",
+          "Verse + chorus",
+          "Verse, chorus + bridge",
+          "Multiple distinct sections",
+          "Complex or unusual form"
+        ],
+        "Overall difficulty": [
+          "Beginner — easy to pick up",
+          "Beginner+ — needs a bit of practice",
+          "Intermediate — solid skills needed",
+          "Advanced — experienced players",
+          "Expert — very challenging"
+        ]
+      },
+      'Bass Guitar': {
+        "Note complexity": [
+          "Root notes only",
+          "Roots + 5ths, simple patterns",
+          "Scalar runs, some fills",
+          "Chromatic lines, complex patterns",
+          "Advanced harmony, chordal bass"
+        ],
+        "Technique": [
+          "Basic fingerstyle",
+          "Alternating fingers, simple muting",
+          "Slap/pop or pick technique",
+          "Ghost notes, hammer-ons, slides",
+          "Tapping, advanced slap, harmonics"
+        ],
+        "Groove & rhythm": [
+          "Straight and simple",
+          "Slightly syncopated",
+          "Funky or swing feel",
+          "Complex syncopation, odd time",
+          "Polyrhythmic or very advanced"
+        ],
+        "Fretboard range": [
+          "First 4 frets only",
+          "Up to 7th fret",
+          "Full neck, some position shifts",
+          "Wide range with fast shifts",
+          "Entire fretboard, all positions"
+        ],
+        "Overall difficulty": [
+          "Beginner — easy to pick up",
+          "Beginner+ — needs a bit of practice",
+          "Intermediate — solid skills needed",
+          "Advanced — experienced players",
+          "Expert — very challenging"
+        ]
+      },
+      'Piano/Keyboard': {
+        "Harmony": [
+          "Single notes or simple triads",
+          "Basic chords, both hands",
+          "7ths, inversions, some extensions",
+          "Complex voicings, key changes",
+          "Advanced jazz or classical harmony"
+        ],
+        "Hand independence": [
+          "Hands play together or one at a time",
+          "Simple left hand, melody in right",
+          "Both hands with different patterns",
+          "Complex independence required",
+          "Full polyphonic independence"
+        ],
+        "Technique": [
+          "Single fingers, block chords",
+          "Basic scales, arpeggios",
+          "Runs, crossovers, pedal use",
+          "Octaves, fast passages, dynamics",
+          "Virtuosic — trills, leaps, speed"
+        ],
+        "Rhythm": [
+          "Steady and simple",
+          "Some syncopation",
+          "Swing, shuffle, or mixed meter",
+          "Complex rhythms between hands",
+          "Polyrhythmic or very advanced"
+        ],
+        "Overall difficulty": [
+          "Beginner — easy to pick up",
+          "Beginner+ — needs a bit of practice",
+          "Intermediate — solid skills needed",
+          "Advanced — experienced players",
+          "Expert — very challenging"
+        ]
+      },
+      'Drums': {
+        "Beat complexity": [
+          "Basic rock/pop beat",
+          "Variations with simple fills",
+          "Groove patterns (funk, shuffle)",
+          "Complex patterns, odd time",
+          "Advanced polyrhythmic grooves"
+        ],
+        "Limb independence": [
+          "Hi-hat + kick + snare basics",
+          "Adding simple variations",
+          "Each limb doing its own thing",
+          "High independence required",
+          "Full 4-way independence"
+        ],
+        "Fills & transitions": [
+          "No fills or very basic",
+          "Simple 1-bar fills",
+          "Multi-bar fills, some flair",
+          "Technical fills, odd groupings",
+          "Blazing or very complex fills"
+        ],
+        "Dynamics & feel": [
+          "One volume, straight feel",
+          "Basic loud/soft changes",
+          "Ghost notes, accents, groove",
+          "Nuanced touch and expression",
+          "Full dynamic mastery"
+        ],
+        "Overall difficulty": [
+          "Beginner — easy to pick up",
+          "Beginner+ — needs a bit of practice",
+          "Intermediate — solid skills needed",
+          "Advanced — experienced players",
+          "Expert — very challenging"
+        ]
+      },
+      'Vocals': {
+        "Melody & range": [
+          "Small range, simple melody",
+          "Moderate range, stepwise motion",
+          "Wide range with some leaps",
+          "Demanding range, big intervals",
+          "Extreme range or very complex melody"
+        ],
+        "Vocal technique": [
+          "Straight singing, no extras",
+          "Basic dynamics and breath control",
+          "Vibrato, runs, or belt",
+          "Melisma, mixed voice, advanced control",
+          "Whistle tones, vocal percussion, extreme technique"
+        ],
+        "Rhythm & phrasing": [
+          "Follows the beat simply",
+          "Some syncopation or swing",
+          "Complex phrasing, behind/ahead of beat",
+          "Rapid-fire or intricate rhythms",
+          "Free rhythm or very advanced phrasing"
+        ],
+        "Expression": [
+          "Minimal dynamic change",
+          "Basic loud and soft sections",
+          "Noticeable emotional shaping",
+          "Highly expressive performance",
+          "Deep artistry and interpretation"
+        ],
+        "Overall difficulty": [
+          "Beginner — easy to pick up",
+          "Beginner+ — needs a bit of practice",
+          "Intermediate — solid skills needed",
+          "Advanced — experienced players",
+          "Expert — very challenging"
+        ]
       }
-    }
-
-    return suggestedLevel;
+    };
   }
 
   showLevelSuggestion() {
