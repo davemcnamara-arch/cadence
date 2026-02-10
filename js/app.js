@@ -1047,7 +1047,13 @@ class CadenceApp {
       }).join('');
     }
 
-    if (dropdown) dropdown.innerHTML = html;
+    if (dropdown) {
+      dropdown.innerHTML = html;
+      // Restore selection to the currently active instrument
+      if (this.currentInstrument && dropdown.querySelector(`option[value="${this.currentInstrument}"]`)) {
+        dropdown.value = this.currentInstrument;
+      }
+    }
 
     // Update filter dropdown with all instruments
     if (filterDropdown) {
@@ -1088,6 +1094,10 @@ class CadenceApp {
         gradingDropdown.innerHTML = allInstrumentsHtml;
       } else {
         gradingDropdown.innerHTML = html;
+      }
+      // Pre-select the user's currently active instrument
+      if (this.currentInstrument && gradingDropdown.querySelector(`option[value="${this.currentInstrument}"]`)) {
+        gradingDropdown.value = this.currentInstrument;
       }
     }
   }
@@ -2444,9 +2454,9 @@ class CadenceApp {
     this.currentStep = 1;
     this.gradingData = {};
     this.similarSongsDismissed = false; // Reset dismissal state
-    this.updateInstrumentDropdown(); // Populate instrument dropdown
+    document.getElementById('song-grading-form').reset(); // Reset form first, before populating dropdowns
+    this.updateInstrumentDropdown(); // Populate instrument dropdown (sets current instrument)
     document.getElementById('song-grading-modal').classList.remove('hidden');
-    document.getElementById('song-grading-form').reset();
     document.getElementById('similar-songs-container').classList.add('hidden'); // Hide suggestions
     this.updateChordsLabel(); // Update label based on selected instrument
     this.updateGradingStep();
