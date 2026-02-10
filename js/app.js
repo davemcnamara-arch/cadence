@@ -575,8 +575,12 @@ class CadenceApp {
       if (this.studentProgress.length === 0) {
         this.showInstrumentSelection();
       } else {
-        // Select first instrument
-        this.currentInstrument = this.studentProgress[0].instrument_id;
+        // Keep current instrument if it's still valid, otherwise select first
+        const validInstrument = this.currentInstrument &&
+          this.studentProgress.some(p => p.instrument_id === this.currentInstrument);
+        if (!validInstrument) {
+          this.currentInstrument = this.studentProgress[0].instrument_id;
+        }
         await this.loadLevels(this.currentInstrument);
         await this.loadSongs();
         this.updatePathwayInstrument();
@@ -1087,6 +1091,9 @@ class CadenceApp {
     // Update grading dropdown
     // Teachers can grade for any instrument, students only for their own
     if (gradingDropdown) {
+      // Save current selection before rebuilding (preserves choice when modal is open)
+      const gradingSelection = gradingDropdown.value;
+
       if (user.role === 'teacher' || user.role === 'admin') {
         const allInstrumentsHtml = this.instruments.map(i =>
           `<option value="${i.id}">${i.icon} ${i.name}</option>`
@@ -1095,8 +1102,12 @@ class CadenceApp {
       } else {
         gradingDropdown.innerHTML = html;
       }
-      // Pre-select the user's currently active instrument
-      if (this.currentInstrument && gradingDropdown.querySelector(`option[value="${this.currentInstrument}"]`)) {
+
+      // Restore previous selection if the modal is open and the option still exists,
+      // otherwise default to the user's currently active instrument
+      if (gradingSelection && gradingDropdown.querySelector(`option[value="${gradingSelection}"]`)) {
+        gradingDropdown.value = gradingSelection;
+      } else if (this.currentInstrument && gradingDropdown.querySelector(`option[value="${this.currentInstrument}"]`)) {
         gradingDropdown.value = this.currentInstrument;
       }
     }
