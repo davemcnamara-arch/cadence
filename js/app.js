@@ -2126,7 +2126,10 @@ class CadenceApp {
     // Update chords label/button when instrument changes
     const gradingInstrumentSelect = document.getElementById('grading-instrument');
     if (gradingInstrumentSelect) {
-      gradingInstrumentSelect.addEventListener('change', () => this.updateChordsLabel());
+      gradingInstrumentSelect.addEventListener('change', () => {
+        this.updateChordsLabel();
+        this.populateSimilarSongLinks();
+      });
     }
 
     // Navigation buttons
@@ -2444,6 +2447,8 @@ class CadenceApp {
     this.currentStep = 1;
     this.gradingData = {};
     this.similarSongsDismissed = false; // Reset dismissal state
+    this.selectedSimilarSong = null; // Reset stored similar song links
+    this.selectedSimilarSongTutorials = null;
     this.updateInstrumentDropdown(); // Populate instrument dropdown
     document.getElementById('song-grading-modal').classList.remove('hidden');
     document.getElementById('song-grading-form').reset();
@@ -2512,9 +2517,10 @@ class CadenceApp {
     }
   }
 
-  selectSimilarSong(item) {
+  async selectSimilarSong(item) {
     const title = item.dataset.title;
     const artist = item.dataset.artist;
+    const songId = item.dataset.songId;
 
     // Populate the form fields with the selected song's data
     document.getElementById('song-title').value = title;
@@ -2523,7 +2529,64 @@ class CadenceApp {
     // Hide the suggestions
     document.getElementById('similar-songs-container').classList.add('hidden');
 
+    // Fetch the existing song's approved links to pre-populate URL fields
+    try {
+      const { data: songs } = await this.rawSelect('songs',
+        `select=youtube_url,chords_url,bass_tab_url,drum_notation_url,tutorial_url&id=eq.${songId}`
+      );
+
+      const song = songs?.[0];
+      if (song) {
+        this.selectedSimilarSong = song;
+
+        // Fetch approved tutorials for this song
+        const { data: tutorials } = await this.rawSelect('song_tutorials',
+          `select=url,instrument_id&song_id=eq.${songId}&status=eq.approved&order=created_at.asc`
+        );
+        this.selectedSimilarSongTutorials = tutorials || [];
+
+        // Populate URL fields based on current instrument
+        this.populateSimilarSongLinks();
+      }
+    } catch (err) {
+      console.warn('Could not fetch existing song links:', err);
+    }
+
     this.showToast(`Selected "${title}" by ${artist}`, 'success');
+  }
+
+  populateSimilarSongLinks() {
+    const song = this.selectedSimilarSong;
+    if (!song) return;
+
+    const instrumentId = document.getElementById('grading-instrument').value;
+    const instrument = this.instruments.find(i => i.id === instrumentId);
+
+    // YouTube URL is universal - always pre-populate
+    document.getElementById('song-youtube').value = song.youtube_url || '';
+
+    // Chords/Tab/Notation is instrument-specific
+    // getChordsUrlField maps: Bass→bass_tab_url, Drums→drum_notation_url, others→chords_url
+    const chordsField = this.getChordsUrlField(instrument?.name);
+    document.getElementById('song-chords').value = song[chordsField] || '';
+
+    // Tutorial: prefer instrument-specific, then universal, then legacy fallback
+    const tutorials = this.selectedSimilarSongTutorials || [];
+    const instrumentTutorial = instrumentId
+      ? tutorials.find(t => t.instrument_id === instrumentId)
+      : null;
+    const universalTutorial = tutorials.find(t => !t.instrument_id);
+
+    if (instrumentTutorial) {
+      document.getElementById('song-tutorial').value = instrumentTutorial.url;
+    } else if (universalTutorial) {
+      document.getElementById('song-tutorial').value = universalTutorial.url;
+    } else if (tutorials.length === 0 && song.tutorial_url) {
+      // Legacy fallback: only use if no per-instrument tutorials exist at all
+      document.getElementById('song-tutorial').value = song.tutorial_url;
+    } else {
+      document.getElementById('song-tutorial').value = '';
+    }
   }
 
   generateComprehensiveChecklist() {
