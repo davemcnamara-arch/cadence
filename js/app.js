@@ -5272,17 +5272,28 @@ class CadenceApp {
       }
     }
 
-    // Fallback: if RPC returned no songs, fetch them directly
-    if (songsData.length === 0) {
+    // Fallback: if RPC returned no songs, use get_class_timeline (known working SECURITY DEFINER RPC)
+    if (songsData.length === 0 && this.currentClass) {
       try {
-        const { data: fallbackSongs } = await this.callSelectDirect(
-          'student_songs',
-          'id,song_id,instrument_id,status,date_started,date_completed,songs(id,title,artist)',
-          { eq: { user_id: studentId } }
-        );
-        songsData = fallbackSongs || [];
+        const { data: timelineData } = await this.callRpcDirect('get_class_timeline', {
+          p_class_id: this.currentClass.id
+        });
+        if (timelineData && timelineData.length > 0) {
+          // Filter for this student and reshape to match expected song format
+          songsData = timelineData
+            .filter(t => t.user_id === studentId)
+            .map(t => ({
+              id: t.id,
+              song_id: t.song_id,
+              instrument_id: t.instrument_id,
+              status: t.status,
+              date_started: t.date_started,
+              date_completed: t.date_completed,
+              songs: { id: t.song_id, title: t.song_title, artist: t.song_artist }
+            }));
+        }
       } catch (err) {
-        console.error('Fallback songs fetch failed:', err);
+        console.error('Timeline songs fallback failed:', err);
       }
     }
 
