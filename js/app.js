@@ -6289,6 +6289,7 @@ class CadenceApp {
           ${this.pendingTutorials.map(tutorial => {
             const submittedDate = new Date(tutorial.created_at).toLocaleDateString();
             const tutorialInstrumentLabel = tutorial.instruments ? `${tutorial.instruments.icon} ${tutorial.instruments.name}` : '';
+            const tutorialSubmitterName = tutorial.users?.name || 'Unknown';
 
             return `
               <div class="flagged-card" style="border-left: 4px solid #9c27b0;">
@@ -6298,6 +6299,7 @@ class CadenceApp {
                     <div class="flagged-song-meta">${tutorial.songs.artist} • Tutorial Video${tutorialInstrumentLabel ? ` • ${tutorialInstrumentLabel}` : ''}</div>
                   </div>
                   <div style="text-align: right; font-size: 0.875rem; color: var(--text-secondary);">
+                    <div>Submitted by ${tutorialSubmitterName}</div>
                     <div>${submittedDate}</div>
                   </div>
                 </div>
@@ -6336,6 +6338,7 @@ class CadenceApp {
             const submittedDate = new Date(resource.created_at).toLocaleDateString();
             const typeLabel = fileTypeLabels[resource.file_type] || resource.file_type;
             const resourceInstrumentLabel = resource.instruments ? `${resource.instruments.icon} ${resource.instruments.name}` : '';
+            const resourceSubmitterName = resource.users?.name || 'Unknown';
 
             return `
               <div class="flagged-card" style="border-left: 4px solid #ff9800;">
@@ -6345,6 +6348,7 @@ class CadenceApp {
                     <div class="flagged-song-meta">${resource.songs.artist} • ${typeLabel}${resourceInstrumentLabel ? ` • ${resourceInstrumentLabel}` : ''}</div>
                   </div>
                   <div style="text-align: right; font-size: 0.875rem; color: var(--text-secondary);">
+                    <div>Submitted by ${resourceSubmitterName}</div>
                     <div>${submittedDate}</div>
                   </div>
                 </div>
