@@ -886,7 +886,7 @@
         <button class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
-        <p id="edit-song-details-info" style="margin-bottom: 16px; color: var(--text-secondary);">Correct any spelling mistakes in the song title or artist name.</p>
+        <p id="edit-song-details-info" style="margin-bottom: 16px; color: var(--text-secondary);">Edit song title, artist name, or set the official level.</p>
         <form id="edit-song-details-form">
           <div class="form-group">
             <label for="edit-song-title">Song Title *</label>
@@ -895,6 +895,17 @@
           <div class="form-group">
             <label for="edit-song-artist">Artist *</label>
             <input type="text" id="edit-song-artist" required placeholder="Enter artist name">
+          </div>
+          <div class="form-group">
+            <label for="edit-song-details-level">Level</label>
+            <select id="edit-song-details-level">
+              <option value="">No level set</option>
+              <option value="1">Level 1</option>
+              <option value="2">Level 2</option>
+              <option value="3">Level 3</option>
+              <option value="4">Level 4</option>
+              <option value="5">Level 5</option>
+            </select>
           </div>
           <div class="form-actions">
             <button type="button" class="btn btn-secondary modal-close">Cancel</button>
