@@ -5235,6 +5235,7 @@ class CadenceApp {
           </div>
           <div style="display: flex; gap: 0.375rem; flex-wrap: wrap; align-items: center;">
             ${classBadges}
+            <span style="font-size: 0.8rem; color: var(--primary-color); white-space: nowrap;">View progress →</span>
           </div>
         </div>
       `;
