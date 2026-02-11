@@ -1091,8 +1091,10 @@ class CadenceApp {
     // Update grading dropdown
     // Teachers can grade for any instrument, students only for their own
     if (gradingDropdown) {
-      // Save current selection before rebuilding (preserves choice when modal is open)
-      const gradingSelection = gradingDropdown.value;
+      // Only preserve selection if the grading modal is currently visible (background rebuild);
+      // when the modal is hidden (initial open), default to the user's active instrument
+      const modalOpen = !document.getElementById('song-grading-modal').classList.contains('hidden');
+      const gradingSelection = modalOpen ? gradingDropdown.value : null;
 
       if (user.role === 'teacher' || user.role === 'admin') {
         const allInstrumentsHtml = this.instruments.map(i =>
@@ -1103,8 +1105,7 @@ class CadenceApp {
         gradingDropdown.innerHTML = html;
       }
 
-      // Restore previous selection if the modal is open and the option still exists,
-      // otherwise default to the user's currently active instrument
+      // Restore previous selection if modal was open, otherwise default to active instrument
       if (gradingSelection && gradingDropdown.querySelector(`option[value="${gradingSelection}"]`)) {
         gradingDropdown.value = gradingSelection;
       } else if (this.currentInstrument && gradingDropdown.querySelector(`option[value="${this.currentInstrument}"]`)) {
