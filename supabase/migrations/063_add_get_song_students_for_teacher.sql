@@ -1,7 +1,10 @@
 -- Create a function for teachers to see which of their students are learning or have mastered a specific song
 -- Returns student name, status (learning/mastered), instrument, class info, and dates
 
-CREATE OR REPLACE FUNCTION get_song_students_for_teacher(p_song_id UUID)
+CREATE OR REPLACE FUNCTION get_song_students_for_teacher(
+  p_song_id UUID,
+  p_include_archived BOOLEAN DEFAULT false
+)
 RETURNS TABLE (
   user_id UUID,
   name TEXT,
@@ -43,17 +46,19 @@ BEGIN
   INNER JOIN classes c ON cm.class_id = c.id
   WHERE ss.song_id = p_song_id
     AND c.teacher_id = auth.uid()
-    AND c.archived IS NOT TRUE
+    AND (p_include_archived = true OR c.archived IS NOT TRUE)
   ORDER BY ss.user_id, ss.instrument_id, ss.date_started DESC;
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION get_song_students_for_teacher(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_song_students_for_teacher(UUID, BOOLEAN) TO authenticated;
 
 -- Create a function to get student counts per song for all songs tracked by a teacher's students
 -- Used to show badges on song cards in the Song Library view
 
-CREATE OR REPLACE FUNCTION get_teacher_student_song_counts()
+CREATE OR REPLACE FUNCTION get_teacher_student_song_counts(
+  p_include_archived BOOLEAN DEFAULT false
+)
 RETURNS TABLE (
   song_id UUID,
   learning_count BIGINT,
@@ -78,9 +83,9 @@ BEGIN
   INNER JOIN class_members cm ON ss.user_id = cm.user_id
   INNER JOIN classes c ON cm.class_id = c.id
   WHERE c.teacher_id = auth.uid()
-    AND c.archived IS NOT TRUE
+    AND (p_include_archived = true OR c.archived IS NOT TRUE)
   GROUP BY ss.song_id;
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION get_teacher_student_song_counts() TO authenticated;
+GRANT EXECUTE ON FUNCTION get_teacher_student_song_counts(BOOLEAN) TO authenticated;

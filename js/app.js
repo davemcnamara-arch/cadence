@@ -294,6 +294,11 @@ class CadenceApp {
       filterLevel.addEventListener('change', () => this.filterSongs());
     }
 
+    const filterIncludeArchived = document.getElementById('filter-include-archived');
+    if (filterIncludeArchived) {
+      filterIncludeArchived.addEventListener('change', () => this.renderSongs());
+    }
+
     // Class search
     const classSearchInput = document.getElementById('class-search');
     if (classSearchInput) {
@@ -547,6 +552,7 @@ class CadenceApp {
 
       // Show teacher tabs
       document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.remove('hidden'));
+      document.getElementById('include-archived-filter')?.classList.remove('hidden');
       await this.loadTeacherData();
 
       // Switch to saved view or teacher's default view
@@ -559,6 +565,7 @@ class CadenceApp {
 
       // Show admin tabs (includes Classes tab for managing all teachers' classes)
       document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('hidden'));
+      document.getElementById('include-archived-filter')?.classList.remove('hidden');
 
       // Change "My Classes" to "Classes" for admin view
       const classesTitle = document.getElementById('classes-view-title');
@@ -1439,7 +1446,8 @@ class CadenceApp {
         // Load student-song counts for teachers to show badges on song cards
         if (user.role === 'teacher' || user.role === 'admin') {
           try {
-            const result = await this.callRpcDirect('get_teacher_student_song_counts', {});
+            const includeArchived = document.getElementById('filter-include-archived')?.checked || false;
+            const result = await this.callRpcDirect('get_teacher_student_song_counts', { p_include_archived: includeArchived });
             this.teacherSongStudentCounts = {};
             if (result.data) {
               result.data.forEach(row => {
@@ -1930,9 +1938,10 @@ class CadenceApp {
     let songStudents = [];
     if (isTeacherOrAdmin) {
       try {
+        const includeArchived = document.getElementById('filter-include-archived')?.checked || false;
         const [studentsResult, songStudentsResult] = await Promise.all([
           this.callRpcDirect('get_all_teacher_students', {}),
-          this.callRpcDirect('get_song_students_for_teacher', { p_song_id: songId })
+          this.callRpcDirect('get_song_students_for_teacher', { p_song_id: songId, p_include_archived: includeArchived })
         ]);
         if (studentsResult.data) {
           studentsResult.data.forEach(s => {
