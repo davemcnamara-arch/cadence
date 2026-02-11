@@ -5465,7 +5465,7 @@ class CadenceApp {
               <div class="student-songs-list">
                 <strong style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary);">Currently Learning:</strong>
                 ${learning.map(s => `
-                  <div class="student-song-item" style="color: var(--primary-color);">
+                  <div class="student-song-item clickable-song" data-song-id="${s.song_id}" data-instrument-id="${s.instrument_id}" style="color: var(--primary-color);">
                     ${s.songs?.title || 'Unknown'} - ${s.songs?.artist || 'Unknown'}
                   </div>
                 `).join('')}
@@ -5475,7 +5475,7 @@ class CadenceApp {
               <div class="student-songs-list" style="margin-top: ${learning.length > 0 ? '0.75rem' : '0'};">
                 <strong style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary);">Mastered:</strong>
                 ${mastered.map(s => `
-                  <div class="student-song-item">${s.songs?.title || 'Unknown'} - ${s.songs?.artist || 'Unknown'}</div>
+                  <div class="student-song-item clickable-song" data-song-id="${s.song_id}" data-instrument-id="${s.instrument_id}">${s.songs?.title || 'Unknown'} - ${s.songs?.artist || 'Unknown'}</div>
                 `).join('')}
               </div>
             ` : ''}
@@ -5488,6 +5488,17 @@ class CadenceApp {
 
     // Update modal content (modal is already visible from loading state above)
     document.getElementById('student-detail-content').innerHTML = html;
+
+    // Attach click handlers to clickable song items
+    document.querySelectorAll('#student-detail-content .clickable-song').forEach(el => {
+      el.addEventListener('click', () => {
+        const songId = el.dataset.songId;
+        const instrumentId = el.dataset.instrumentId;
+        if (songId) {
+          this.openSongFromStudentDetail(songId, instrumentId);
+        }
+      });
+    });
 
     // Add preview button if it doesn't exist
     let previewBtn = document.getElementById('preview-student-btn');
@@ -5515,6 +5526,34 @@ class CadenceApp {
         this.enterStudentPreview(studentId, student.name);
       });
     }
+  }
+
+  async openSongFromStudentDetail(songId, instrumentId) {
+    // Ensure the song is in this.songs so showSongResourcesModal can find it
+    if (!this.songs || !this.songs.find(s => s.id === songId)) {
+      // Fetch the song directly from the database
+      const { data, error } = await this.callSelectDirect(
+        'songs',
+        '*,instruments(id,name,icon),song_ratings(assessed_level,instrument_id,user_id)',
+        { eq: { id: songId } }
+      );
+
+      if (error || !data || data.length === 0) {
+        this.showToast('Could not load song details', 'error');
+        return;
+      }
+
+      // Initialize songs array if needed and add the fetched song
+      if (!this.songs) this.songs = [];
+      this.songs.push(data[0]);
+    }
+
+    // Ensure instruments are loaded (needed by the resources modal filter)
+    if (!this.instruments || this.instruments.length === 0) {
+      await this.loadInstruments();
+    }
+
+    await this.showSongResourcesModal(songId, instrumentId);
   }
 
   async enterStudentPreview(studentId, studentName) {
