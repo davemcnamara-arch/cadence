@@ -5221,12 +5221,13 @@ class CadenceApp {
     );
 
     const activeHtml = activeStudents.map(student => {
+      const firstClassId = student.classes[0]?.id || '';
       const classBadges = student.classes.map(c =>
         `<span class="class-code-badge" style="font-size: 0.75rem; cursor: pointer;" onclick="event.stopPropagation(); app.viewClass('${c.id}')">${this.escapeHtml(c.name)}</span>`
       ).join(' ');
 
       return `
-        <div class="roster-item" onclick="app.viewStudentDetail('${student.user_id}')" style="cursor: pointer;">
+        <div class="roster-item" onclick="app.viewStudentFromSearch('${student.user_id}', '${firstClassId}')" style="cursor: pointer;">
           <div class="roster-student-info" style="flex: 1;">
             <div class="roster-student-name">${this.escapeHtml(student.name)}</div>
             <div class="roster-student-meta">
@@ -5426,27 +5427,6 @@ class CadenceApp {
       }
     }
 
-    // Fallback: fetch student_progress directly (e.g. when opened from search without a class loaded)
-    if (progressData.length === 0) {
-      try {
-        const { data: spData } = await this.callSelectDirect(
-          'student_progress',
-          '*, instruments(id, name, icon)',
-          { eq: { user_id: studentId } }
-        );
-        if (spData && spData.length > 0) {
-          progressData = spData.map(p => ({
-            instrument_id: p.instrument_id,
-            current_level: p.current_level,
-            current_branch: p.current_branch,
-            instruments: p.instruments || { id: p.instrument_id, name: 'Unknown', icon: '🎵' }
-          }));
-        }
-      } catch (err) {
-        console.error('Error fetching student progress:', err);
-      }
-    }
-
     // Fallback: if RPC returned no songs, use get_class_timeline (known working SECURITY DEFINER RPC)
     if (songsData.length === 0 && this.currentClass) {
       try {
@@ -5562,6 +5542,13 @@ class CadenceApp {
         this.enterStudentPreview(studentId, student.name);
       });
     }
+  }
+
+  async viewStudentFromSearch(studentId, classId) {
+    if (classId) {
+      await this.viewClass(classId);
+    }
+    await this.viewStudentDetail(studentId);
   }
 
   async openSongFromStudentDetail(songId, instrumentId) {
