@@ -5396,8 +5396,18 @@ class CadenceApp {
       console.error('Error loading student detail:', error);
     }
 
-    let progressData = data?.progress || [];
-    let songsData = data?.songs || [];
+    let progressData = [];
+    let songsData = [];
+
+    // Handle both RPC return formats:
+    // - Current (migration 060): flat array of student_songs
+    // - Legacy: { progress: [...], songs: [...] }
+    if (Array.isArray(data)) {
+      songsData = data;
+    } else if (data) {
+      progressData = data.progress || [];
+      songsData = data.songs || [];
+    }
 
     // Fallback: if RPC returned no progress, use data already loaded from classStudents
     const member = this.classStudents.find(m => m.user_id === studentId);
@@ -5413,6 +5423,27 @@ class CadenceApp {
             instruments: inst ? { id: inst.id, name: inst.name, icon: inst.icon } : { id: p.instrument_id, name: 'Unknown', icon: '🎵' }
           };
         });
+      }
+    }
+
+    // Fallback: fetch student_progress directly (e.g. when opened from search without a class loaded)
+    if (progressData.length === 0) {
+      try {
+        const { data: spData } = await this.callSelectDirect(
+          'student_progress',
+          '*, instruments(id, name, icon)',
+          { eq: { user_id: studentId } }
+        );
+        if (spData && spData.length > 0) {
+          progressData = spData.map(p => ({
+            instrument_id: p.instrument_id,
+            current_level: p.current_level,
+            current_branch: p.current_branch,
+            instruments: p.instruments || { id: p.instrument_id, name: 'Unknown', icon: '🎵' }
+          }));
+        }
+      } catch (err) {
+        console.error('Error fetching student progress:', err);
       }
     }
 
