@@ -1735,7 +1735,7 @@ class CadenceApp {
       actionButton = `
         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
           <button class="btn btn-danger" onclick="event.stopPropagation(); app.deleteSongFromLibrary('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Delete this song from the library">Delete Song</button>
-          <button class="btn btn-secondary" onclick="event.stopPropagation(); app.editSongDetails('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Edit song title and artist">Edit Details</button>
+          <button class="btn btn-secondary" onclick="event.stopPropagation(); app.editSongDetails('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', ${song.suggested_level || 'null'})" title="Edit song details">Edit Details</button>
         </div>`;
     }
 
@@ -6754,12 +6754,13 @@ class CadenceApp {
   }
 
   // Edit song title and artist (teachers only)
-  editSongDetails(songId, currentTitle, currentArtist) {
+  editSongDetails(songId, currentTitle, currentArtist, currentLevel) {
     // Store the song ID for the form handler
     this.editingSongId = songId;
 
     document.getElementById('edit-song-title').value = currentTitle;
     document.getElementById('edit-song-artist').value = currentArtist;
+    document.getElementById('edit-song-details-level').value = currentLevel || '';
     document.getElementById('edit-song-details-modal').classList.remove('hidden');
   }
 
@@ -6778,6 +6779,8 @@ class CadenceApp {
 
       const newTitle = document.getElementById('edit-song-title').value.trim();
       const newArtist = document.getElementById('edit-song-artist').value.trim();
+      const newLevelValue = document.getElementById('edit-song-details-level').value;
+      const newLevel = newLevelValue ? parseInt(newLevelValue) : null;
 
       if (!newTitle || !newArtist) {
         this.showToast('Please fill in both title and artist', 'warning');
@@ -6801,6 +6804,14 @@ class CadenceApp {
             code: error.code
           });
           throw error;
+        }
+
+        // Update level if changed
+        if (newLevel !== null) {
+          await this.callRpcDirect('update_song_suggested_level', {
+            p_song_id: this.editingSongId,
+            p_level: newLevel
+          });
         }
 
         document.getElementById('edit-song-details-modal').classList.add('hidden');
