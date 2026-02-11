@@ -1123,7 +1123,11 @@ class CadenceApp {
 
     // Handle case where no instrument is selected yet
     if (!this.currentInstrument || this.studentProgress.length === 0) {
-      container.innerHTML = '<p style="color: var(--text-secondary);">Loading pathway...</p>';
+      if (this.previewMode.active && this.previewMode.dataLoaded) {
+        container.innerHTML = '<p style="color: var(--text-secondary);">This student hasn\'t started any instruments yet.</p>';
+      } else {
+        container.innerHTML = '<p style="color: var(--text-secondary);">Loading pathway...</p>';
+      }
       return;
     }
 
@@ -5596,11 +5600,29 @@ class CadenceApp {
       if (btn) btn.classList.add('hidden');
     });
 
-    // Load student's data
-    await this.loadStudentPreviewData(studentId);
+    // Clear data before loading so pathway view shows loading state (not stale teacher data)
+    this.studentProgress = [];
+    this.instruments = [];
+    this.currentInstrument = null;
+    this.levels = [];
+    this.studentSongs = [];
+    this.previewMode.dataLoaded = false;
 
-    // Switch to pathway view to show student's perspective
+    // Switch to pathway view immediately so user sees loading state
     this.switchView('pathway');
+
+    // Load student's data
+    try {
+      await this.loadStudentPreviewData(studentId);
+    } catch (error) {
+      console.error('Error entering student preview:', error);
+      this.showToast('Failed to load student data. Please try again.', 'error');
+    }
+    this.previewMode.dataLoaded = true;
+
+    // Re-render pathway and instrument tabs now that data is loaded
+    this.updatePathwayInstrument();
+    this.renderPathway();
   }
 
   async loadStudentPreviewData(studentId) {
@@ -5613,18 +5635,58 @@ class CadenceApp {
       data = result.data;
     } catch (error) {
       console.error('Error loading student preview data:', error);
-      return;
     }
 
-    const progressData = data.progress || [];
-    const songsData = data.songs || [];
+    let progressData = data?.progress || [];
+    let songsData = data?.songs || [];
+
+    // Fallback: if RPC returned no progress, use data already loaded from classStudents
+    if (progressData.length === 0) {
+      const member = this.classStudents.find(m => m.user_id === studentId);
+      const memberProgress = member?.student_progress || [];
+      if (memberProgress.length > 0) {
+        progressData = memberProgress.map(p => {
+          const inst = this.instruments.find(i => i.id === p.instrument_id);
+          return {
+            instrument_id: p.instrument_id,
+            current_level: p.current_level,
+            current_branch: p.current_branch,
+            instruments: inst ? { id: inst.id, name: inst.name, icon: inst.icon } : { id: p.instrument_id, name: 'Unknown', icon: '🎵' }
+          };
+        });
+      }
+    }
+
+    // Fallback: if RPC returned no songs, try get_class_timeline
+    if (songsData.length === 0 && this.currentClass) {
+      try {
+        const { data: timelineData } = await this.callRpcDirect('get_class_timeline', {
+          p_class_id: this.currentClass.id
+        });
+        if (timelineData && timelineData.length > 0) {
+          songsData = timelineData
+            .filter(t => t.user_id === studentId)
+            .map(t => ({
+              id: t.id,
+              song_id: t.song_id,
+              instrument_id: t.instrument_id,
+              status: t.status,
+              date_started: t.date_started,
+              date_completed: t.date_completed,
+              songs: { id: t.song_id, title: t.song_title, artist: t.song_artist }
+            }));
+        }
+      } catch (err) {
+        console.error('Timeline songs fallback failed:', err);
+      }
+    }
 
     this.studentProgress = progressData;
 
     // Load instruments and set first as current
     if (progressData.length > 0) {
       this.instruments = progressData.map(p => p.instruments);
-      this.currentInstrument = progressData[0].instrument_id; // Use ID, not object!
+      this.currentInstrument = progressData[0].instrument_id;
 
       // Load levels for the student's instrument
       await this.loadLevels(this.currentInstrument);
@@ -5659,6 +5721,7 @@ class CadenceApp {
     this.previewMode.originalCurrentInstrument = null;
     this.previewMode.originalStudentSongs = null;
     this.previewMode.originalLevels = null;
+    this.previewMode.dataLoaded = false;
 
     // Hide preview banner
     const banner = document.getElementById('preview-banner');
