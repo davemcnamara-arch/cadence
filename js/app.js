@@ -575,8 +575,12 @@ class CadenceApp {
       if (this.studentProgress.length === 0) {
         this.showInstrumentSelection();
       } else {
-        // Select first instrument
-        this.currentInstrument = this.studentProgress[0].instrument_id;
+        // Keep current instrument if it's still valid, otherwise select first
+        const validInstrument = this.currentInstrument &&
+          this.studentProgress.some(p => p.instrument_id === this.currentInstrument);
+        if (!validInstrument) {
+          this.currentInstrument = this.studentProgress[0].instrument_id;
+        }
         await this.loadLevels(this.currentInstrument);
         await this.loadSongs();
         this.updatePathwayInstrument();
@@ -1047,7 +1051,13 @@ class CadenceApp {
       }).join('');
     }
 
-    if (dropdown) dropdown.innerHTML = html;
+    if (dropdown) {
+      dropdown.innerHTML = html;
+      // Restore selection to the currently active instrument
+      if (this.currentInstrument && dropdown.querySelector(`option[value="${this.currentInstrument}"]`)) {
+        dropdown.value = this.currentInstrument;
+      }
+    }
 
     // Update filter dropdown with all instruments
     if (filterDropdown) {
@@ -1081,6 +1091,11 @@ class CadenceApp {
     // Update grading dropdown
     // Teachers can grade for any instrument, students only for their own
     if (gradingDropdown) {
+      // Only preserve selection if the grading modal is currently visible (background rebuild);
+      // when the modal is hidden (initial open), default to the user's active instrument
+      const modalOpen = !document.getElementById('song-grading-modal').classList.contains('hidden');
+      const gradingSelection = modalOpen ? gradingDropdown.value : null;
+
       if (user.role === 'teacher' || user.role === 'admin') {
         const allInstrumentsHtml = this.instruments.map(i =>
           `<option value="${i.id}">${i.icon} ${i.name}</option>`
@@ -1088,6 +1103,13 @@ class CadenceApp {
         gradingDropdown.innerHTML = allInstrumentsHtml;
       } else {
         gradingDropdown.innerHTML = html;
+      }
+
+      // Restore previous selection if modal was open, otherwise default to active instrument
+      if (gradingSelection && gradingDropdown.querySelector(`option[value="${gradingSelection}"]`)) {
+        gradingDropdown.value = gradingSelection;
+      } else if (this.currentInstrument && gradingDropdown.querySelector(`option[value="${this.currentInstrument}"]`)) {
+        gradingDropdown.value = this.currentInstrument;
       }
     }
   }
@@ -2447,11 +2469,9 @@ class CadenceApp {
     this.currentStep = 1;
     this.gradingData = {};
     this.similarSongsDismissed = false; // Reset dismissal state
-    this.selectedSimilarSong = null; // Reset stored similar song links
-    this.selectedSimilarSongTutorials = null;
-    this.updateInstrumentDropdown(); // Populate instrument dropdown
+    document.getElementById('song-grading-form').reset(); // Reset form first, before populating dropdowns
+    this.updateInstrumentDropdown(); // Populate instrument dropdown (sets current instrument)
     document.getElementById('song-grading-modal').classList.remove('hidden');
-    document.getElementById('song-grading-form').reset();
     document.getElementById('similar-songs-container').classList.add('hidden'); // Hide suggestions
     this.updateChordsLabel(); // Update label based on selected instrument
     this.updateGradingStep();
