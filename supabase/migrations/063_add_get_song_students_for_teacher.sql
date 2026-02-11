@@ -43,6 +43,7 @@ BEGIN
   INNER JOIN classes c ON cm.class_id = c.id
   WHERE ss.song_id = p_song_id
     AND c.teacher_id = auth.uid()
+    AND c.archived IS NOT TRUE
   ORDER BY ss.user_id, ss.instrument_id, ss.date_started DESC;
 END;
 $$;
@@ -77,6 +78,7 @@ BEGIN
   INNER JOIN class_members cm ON ss.user_id = cm.user_id
   INNER JOIN classes c ON cm.class_id = c.id
   WHERE c.teacher_id = auth.uid()
+    AND c.archived IS NOT TRUE
   GROUP BY ss.song_id;
 END;
 $$;
