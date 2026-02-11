@@ -5936,25 +5936,59 @@ class CadenceApp {
   }
 
   async loadFlaggedRatings() {
-    // Always load pending links, tutorials, and resources first (independent of student data)
-    // Use direct fetch to bypass stale Supabase client connections
-    const [{ data: pendingLinks, error: pendingError }, { data: pendingTutorials }, { data: pendingResources }] = await Promise.all([
+    // Get all students from all the teacher's classes first, so we can filter everything
+    let allStudents;
+    let studentsError;
+    try {
+      const result = await this.callRpcDirect('get_all_teacher_students', {});
+      allStudents = result.data;
+    } catch (err) {
+      studentsError = err;
+    }
+
+    if (studentsError) {
+      console.error('Error loading teacher students:', studentsError);
+      this.pendingLinks = [];
+      this.pendingTutorials = [];
+      this.pendingResources = [];
+      this.flaggedRatings = [];
+      this.newRatings = [];
+      this.populateFlaggedFilters();
+      this.filterFlaggedRatings();
+      return;
+    }
+
+    if (!allStudents || allStudents.length === 0) {
+      this.pendingLinks = [];
+      this.pendingTutorials = [];
+      this.pendingResources = [];
+      this.flaggedRatings = [];
+      this.newRatings = [];
+      this.populateFlaggedFilters();
+      this.filterFlaggedRatings();
+      return;
+    }
+
+    const studentIds = allStudents.map(s => s.user_id);
+
+    // Load pending links, tutorials, and resources filtered to teacher's own students
+    const [{ data: pendingLinks }, { data: pendingTutorials }, { data: pendingResources }] = await Promise.all([
       this.callSelectDirect(
         'pending_links',
         'id,song_id,link_type,url,submitted_at,submitted_by_user_id,songs!inner(title,artist),users!pending_links_submitted_by_user_id_fkey(name)',
-        { eq: { status: 'pending' } },
+        { in: { submitted_by_user_id: studentIds }, eq: { status: 'pending' } },
         { order: 'submitted_at.desc' }
       ),
       this.callSelectDirect(
         'song_tutorials',
         'id,song_id,url,title,created_at,submitted_by_user_id,instrument_id,songs!inner(title,artist),instruments(icon,name)',
-        { eq: { status: 'pending' } },
+        { in: { submitted_by_user_id: studentIds }, eq: { status: 'pending' } },
         { order: 'created_at.desc' }
       ),
       this.callSelectDirect(
         'student_resources',
         'id,song_id,title,file_url,file_type,created_at,user_id,instrument_id,songs!inner(title,artist),instruments(icon,name)',
-        { eq: { status: 'pending' } },
+        { in: { user_id: studentIds }, eq: { status: 'pending' } },
         { order: 'created_at.desc' }
       )
     ]);
@@ -5988,33 +6022,6 @@ class CadenceApp {
       }
     }
 
-    // Get all students from all the teacher's classes using direct RPC call
-    let allStudents;
-    let studentsError;
-    try {
-      const result = await this.callRpcDirect('get_all_teacher_students', {});
-      allStudents = result.data;
-    } catch (err) {
-      studentsError = err;
-    }
-
-    if (studentsError) {
-      console.error('Error loading teacher students:', studentsError);
-      this.flaggedRatings = [];
-      this.newRatings = [];
-      this.populateFlaggedFilters();
-      this.filterFlaggedRatings();
-      return;
-    }
-
-    if (!allStudents || allStudents.length === 0) {
-      this.flaggedRatings = [];
-      this.newRatings = [];
-      this.populateFlaggedFilters();
-      this.filterFlaggedRatings();
-      return;
-    }
-
     // Create a user map for displaying names
     const userMap = {};
     allStudents.forEach(s => {
@@ -6024,8 +6031,6 @@ class CadenceApp {
     // Add current teacher to the map
     const user = auth.getCurrentUser();
     userMap[user.id] = user.name || 'Teacher';
-
-    const studentIds = allStudents.map(s => s.user_id);
 
     // First, get all song IDs that have been rated by class students
     const { data: studentRatings, error: studentError } = await this.callSelectDirect(
