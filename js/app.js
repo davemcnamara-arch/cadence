@@ -757,6 +757,22 @@ class CadenceApp {
       seen.add(song.id);
       return true;
     });
+
+    // Load student's own pending links so they can see what they've already submitted
+    if (auth.hasRole('student')) {
+      try {
+        const currentUser = auth.getCurrentUser();
+        const { data: myPending } = await this.callSelectDirect(
+          'pending_links',
+          'id,song_id,link_type,url,submitted_at,status',
+          { eq: { submitted_by_user_id: currentUser.id, status: 'pending' } }
+        );
+        this.myPendingLinks = myPending || [];
+      } catch (e) {
+        console.error('Error loading pending links:', e);
+        this.myPendingLinks = [];
+      }
+    }
     } finally {
       this.loadingSongs = false;
     }
@@ -1786,6 +1802,8 @@ class CadenceApp {
               ${chordsRating}
               <button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', '${chordsUrlField}', '${chordsUrl.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit ${chordsLabel.toLowerCase()} link">✎</button>
             </div>
+          ` : this.getMyPendingLink(song.id, chordsUrlField) ? `
+            <span class="btn btn-secondary btn-pending" onclick="event.stopPropagation()" title="Your ${chordsLabel.toLowerCase()} link is awaiting teacher approval" style="opacity: 0.7; cursor: default; font-style: italic;">⏳ ${chordsLabel} Pending</span>
           ` : `
             <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', '${chordsUrlField}', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add ${chordsLabel.toLowerCase()} link">+ ${chordsLabel}</button>
           `}
@@ -1798,6 +1816,8 @@ class CadenceApp {
               <a href="${song.youtube_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">YouTube</a>
               <button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'youtube_url', '${song.youtube_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit YouTube link">✎</button>
             </div>
+          ` : this.getMyPendingLink(song.id, 'youtube_url') ? `
+            <span class="btn btn-secondary btn-pending" onclick="event.stopPropagation()" title="Your YouTube link is awaiting teacher approval" style="opacity: 0.7; cursor: default; font-style: italic;">⏳ YouTube Pending</span>
           ` : `
             <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
           `}
@@ -2190,6 +2210,12 @@ class CadenceApp {
     return 'chords_url';
   }
 
+  // Find a student's own pending link for a given song and link type
+  getMyPendingLink(songId, linkType) {
+    if (!this.myPendingLinks) return null;
+    return this.myPendingLinks.find(l => l.song_id === songId && l.link_type === linkType);
+  }
+
   getChordsUrlForInstrument(song, instrumentName) {
     const field = this.getChordsUrlField(instrumentName);
     return song[field];
@@ -2411,11 +2437,28 @@ class CadenceApp {
           throw new Error(`Submission failed: ${response.status} ${errorText}`);
         }
 
+        // Add to local pending links so UI immediately shows pending state
+        if (!this.myPendingLinks) this.myPendingLinks = [];
+        this.myPendingLinks.push({
+          song_id: songId,
+          link_type: fieldName,
+          url: url,
+          status: 'pending',
+          submitted_at: new Date().toISOString()
+        });
+
         // Close modal
         document.getElementById('edit-resource-modal').classList.add('hidden');
 
         // Show success message
         this.showToast('Link submitted for teacher approval', 'success');
+
+        // Re-render current view so pending state is visible
+        if (this.currentView === 'songs') {
+          this.filterSongs();
+        } else if (this.currentView === 'progress') {
+          this.renderProgress();
+        }
       } else {
         // Teachers can update links directly
         const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/songs?id=eq.${songId}`, {
@@ -3557,6 +3600,9 @@ class CadenceApp {
             ${isFirst ? chordsRating : ''}
             <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', '${urlField}', '${url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instName.replace(/'/g, "\\'")}')" title="Edit ${label.toLowerCase()} link">✎</button>
           </span>`;
+      } else if (this.getMyPendingLink(song.id, urlField)) {
+        return `
+          <span style="display: inline-flex; align-items: center; gap: 2px; font-size: 12px; color: var(--text-secondary); font-style: italic;" title="Your ${label.toLowerCase()} link is awaiting teacher approval">⏳ ${label} Pending</span>`;
       } else {
         return `
           <button class="btn-link-add" onclick="app.editSongResource('${song.id}', '${urlField}', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instName.replace(/'/g, "\\'")}')" title="Add ${label.toLowerCase()} link">+ ${label}</button>`;
@@ -3604,6 +3650,8 @@ class CadenceApp {
                 <a href="${song.youtube_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">YouTube</a>
                 <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'youtube_url', '${song.youtube_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Edit YouTube link">✎</button>
               </span>
+            ` : this.getMyPendingLink(song.id, 'youtube_url') ? `
+              <span style="display: inline-flex; align-items: center; gap: 2px; font-size: 12px; color: var(--text-secondary); font-style: italic;" title="Your YouTube link is awaiting teacher approval">⏳ YouTube Pending</span>
             ` : `
               <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
             `}
@@ -3643,6 +3691,8 @@ class CadenceApp {
                 ${chordsRating}
                 <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', '${chordsUrlField}', '${chordsUrl.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit ${chordsLabel.toLowerCase()} link">✎</button>
               </span>
+            ` : this.getMyPendingLink(song.id, chordsUrlField) ? `
+              <span style="display: inline-flex; align-items: center; gap: 2px; font-size: 12px; color: var(--text-secondary); font-style: italic;" title="Your ${chordsLabel.toLowerCase()} link is awaiting teacher approval">⏳ ${chordsLabel} Pending</span>
             ` : `
               <button class="btn-link-add" onclick="app.editSongResource('${song.id}', '${chordsUrlField}', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add ${chordsLabel.toLowerCase()} link">+ ${chordsLabel}</button>
             `}
@@ -3651,6 +3701,8 @@ class CadenceApp {
                 <a href="${song.youtube_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">YouTube</a>
                 <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'youtube_url', '${song.youtube_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit YouTube link">✎</button>
               </span>
+            ` : this.getMyPendingLink(song.id, 'youtube_url') ? `
+              <span style="display: inline-flex; align-items: center; gap: 2px; font-size: 12px; color: var(--text-secondary); font-style: italic;" title="Your YouTube link is awaiting teacher approval">⏳ YouTube Pending</span>
             ` : `
               <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
             `}
