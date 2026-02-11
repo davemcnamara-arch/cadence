@@ -6492,9 +6492,19 @@ class CadenceApp {
                     <div>${submittedDate}</div>
                   </div>
                 </div>
-                <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 4px; margin: 1rem 0;">
+                <div id="pending-tutorial-url-${tutorial.id}" style="padding: 1rem; background: var(--bg-secondary); border-radius: 4px; margin: 1rem 0;">
                   ${tutorial.title ? `<div style="font-weight: 500; margin-bottom: 0.5rem; color: var(--text-primary);">${tutorial.title}</div>` : ''}
-                  <a href="${tutorial.url}" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color); word-break: break-all;">${tutorial.url}</a>
+                  <div style="font-weight: 500; margin-bottom: 0.5rem; color: var(--text-primary);">Submitted URL:</div>
+                  <div id="pending-tutorial-display-${tutorial.id}">
+                    <a href="${tutorial.url}" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color); word-break: break-all;">${tutorial.url}</a>
+                  </div>
+                  <div id="pending-tutorial-edit-${tutorial.id}" class="hidden" style="margin-top: 0.5rem;">
+                    <input type="url" id="pending-tutorial-input-${tutorial.id}" value="${tutorial.url}" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.875rem; background: var(--bg-primary); color: var(--text-primary);" />
+                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                      <button class="btn btn-primary" style="font-size: 0.75rem;" onclick="app.savePendingTutorialUrl('${tutorial.id}')">Save URL</button>
+                      <button class="btn btn-secondary" style="font-size: 0.75rem;" onclick="app.cancelEditPendingTutorial('${tutorial.id}')">Cancel</button>
+                    </div>
+                  </div>
                 </div>
                 <div class="flagged-resolve">
                   <button class="btn btn-primary" onclick="app.approvePendingTutorial('${tutorial.id}', '${tutorial.song_id}')">
@@ -6502,6 +6512,9 @@ class CadenceApp {
                   </button>
                   <button class="btn btn-danger" onclick="app.deletePendingTutorial('${tutorial.id}')" style="margin-left: 0.5rem;">
                     <span style="margin-right: 0.5rem;">✗</span> Delete
+                  </button>
+                  <button class="btn btn-secondary" onclick="app.editPendingTutorialUrl('${tutorial.id}')" style="margin-left: 0.5rem;">
+                    <span style="margin-right: 0.5rem;">&#9998;</span> Edit URL
                   </button>
                 </div>
               </div>
@@ -6854,6 +6867,51 @@ class CadenceApp {
     } catch (error) {
       console.error('Error deleting tutorial:', error);
       this.showToast('Failed to delete tutorial', 'error');
+    }
+  }
+
+  editPendingTutorialUrl(tutorialId) {
+    const displayEl = document.getElementById(`pending-tutorial-display-${tutorialId}`);
+    const editEl = document.getElementById(`pending-tutorial-edit-${tutorialId}`);
+    if (displayEl) displayEl.classList.add('hidden');
+    if (editEl) editEl.classList.remove('hidden');
+  }
+
+  cancelEditPendingTutorial(tutorialId) {
+    const displayEl = document.getElementById(`pending-tutorial-display-${tutorialId}`);
+    const editEl = document.getElementById(`pending-tutorial-edit-${tutorialId}`);
+    if (displayEl) displayEl.classList.remove('hidden');
+    if (editEl) editEl.classList.add('hidden');
+    // Reset input value
+    const tutorial = this.pendingTutorials?.find(t => t.id === tutorialId);
+    const input = document.getElementById(`pending-tutorial-input-${tutorialId}`);
+    if (tutorial && input) input.value = tutorial.url;
+  }
+
+  async savePendingTutorialUrl(tutorialId) {
+    const input = document.getElementById(`pending-tutorial-input-${tutorialId}`);
+    if (!input) return;
+
+    const newUrl = input.value.trim();
+    if (!newUrl) {
+      this.showToast('URL cannot be empty', 'error');
+      return;
+    }
+
+    try {
+      await this.rawUpdate('song_tutorials', tutorialId, { url: newUrl });
+
+      // Update local data
+      const tutorial = this.pendingTutorials?.find(t => t.id === tutorialId);
+      if (tutorial) tutorial.url = newUrl;
+
+      this.showToast('URL updated successfully', 'success');
+
+      // Re-render to show updated URL
+      await this.loadFlaggedRatings();
+    } catch (error) {
+      console.error('Exception in savePendingTutorialUrl:', error);
+      this.showToast('Failed to update URL', 'error');
     }
   }
 
