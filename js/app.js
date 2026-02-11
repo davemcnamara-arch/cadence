@@ -27,6 +27,7 @@ class CadenceApp {
     this.currentClass = null;
     this.classStudents = [];
     this.allTeacherStudents = null;
+    this.teacherSongStudentCounts = null;
     this.submissions = [];
     this.flaggedRatings = [];
 
@@ -1434,6 +1435,25 @@ class CadenceApp {
           { eq: { user_id: user.id } }
         );
         this.studentSongs = studentSongs || [];
+
+        // Load student-song counts for teachers to show badges on song cards
+        if (user.role === 'teacher' || user.role === 'admin') {
+          try {
+            const result = await this.callRpcDirect('get_teacher_student_song_counts', {});
+            this.teacherSongStudentCounts = {};
+            if (result.data) {
+              result.data.forEach(row => {
+                this.teacherSongStudentCounts[row.song_id] = {
+                  learning: parseInt(row.learning_count) || 0,
+                  mastered: parseInt(row.mastered_count) || 0
+                };
+              });
+            }
+          } catch (err) {
+            console.warn('Could not load student song counts:', err);
+            this.teacherSongStudentCounts = {};
+          }
+        }
       }
     }
 
@@ -1765,6 +1785,19 @@ class CadenceApp {
       instrumentDisplay = `<span class="song-tag instrument">${instrumentIcon} ${instrumentName}</span>`;
     }
 
+    // Build student count badge for teachers
+    let studentCountBadge = '';
+    if (this.teacherSongStudentCounts) {
+      const counts = this.teacherSongStudentCounts[song.id];
+      if (counts) {
+        const total = counts.learning + counts.mastered;
+        const parts = [];
+        if (counts.mastered > 0) parts.push(`${counts.mastered} mastered`);
+        if (counts.learning > 0) parts.push(`${counts.learning} learning`);
+        studentCountBadge = `<span class="song-tag students" title="${parts.join(', ')}">${total} student${total !== 1 ? 's' : ''}</span>`;
+      }
+    }
+
     return `
       <div class="song-card" data-song-id="${song.id}">
         <div class="song-header">
@@ -1777,6 +1810,7 @@ class CadenceApp {
         <div class="song-meta">
           ${instrumentDisplay}
           <span class="song-tag level" data-song-id="${song.id}">${levelLabel}</span>
+          ${studentCountBadge}
         </div>
         <div class="song-actions">
           <span class="chords-link-container" data-song-id="${song.id}">
@@ -1889,16 +1923,24 @@ class CadenceApp {
     }
 
     const user = auth.getCurrentUser();
+    const isTeacherOrAdmin = user.role === 'teacher' || user.role === 'admin';
 
     // Get list of students if user is a teacher (to show their names)
     let studentMap = {};
-    if (user.role === 'teacher') {
+    let songStudents = [];
+    if (isTeacherOrAdmin) {
       try {
-        const result = await this.callRpcDirect('get_all_teacher_students', {});
-        if (result.data) {
-          result.data.forEach(s => {
+        const [studentsResult, songStudentsResult] = await Promise.all([
+          this.callRpcDirect('get_all_teacher_students', {}),
+          this.callRpcDirect('get_song_students_for_teacher', { p_song_id: songId })
+        ]);
+        if (studentsResult.data) {
+          studentsResult.data.forEach(s => {
             studentMap[s.user_id] = s.name;
           });
+        }
+        if (songStudentsResult.data) {
+          songStudents = songStudentsResult.data;
         }
       } catch (err) {
         console.warn('Could not load teacher students:', err);
@@ -1929,8 +1971,61 @@ class CadenceApp {
     // Render content
     const content = document.getElementById('song-details-content');
 
+    // Build "Your Students" section for teachers
+    let studentSectionHTML = '';
+    if (isTeacherOrAdmin && songStudents.length > 0) {
+      const learning = songStudents.filter(s => s.status === 'learning');
+      const mastered = songStudents.filter(s => s.status === 'mastered');
+
+      studentSectionHTML = `
+        <div class="song-students-section" style="margin-bottom: 2rem;">
+          <h3>Your Students (${songStudents.length})</h3>
+          ${mastered.length > 0 ? `
+            <div style="margin-bottom: 1rem;">
+              <div class="song-students-status-label mastered">Mastered (${mastered.length})</div>
+              <div class="song-students-list">
+                ${mastered.map(s => `
+                  <div class="song-student-item" data-student-id="${s.user_id}" data-class-id="${s.class_id}">
+                    <div class="song-student-info">
+                      <strong>${s.name}</strong>
+                      <span class="song-student-meta">${s.instrument_icon} ${s.instrument_name} &middot; ${s.class_name}</span>
+                    </div>
+                    ${s.date_completed ? `<span class="song-student-date">${this.getTimeAgo(s.date_completed)}</span>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+          ${learning.length > 0 ? `
+            <div>
+              <div class="song-students-status-label learning">Currently Learning (${learning.length})</div>
+              <div class="song-students-list">
+                ${learning.map(s => `
+                  <div class="song-student-item" data-student-id="${s.user_id}" data-class-id="${s.class_id}">
+                    <div class="song-student-info">
+                      <strong>${s.name}</strong>
+                      <span class="song-student-meta">${s.instrument_icon} ${s.instrument_name} &middot; ${s.class_name}</span>
+                    </div>
+                    <span class="song-student-date">Started ${this.getTimeAgo(s.date_started)}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    } else if (isTeacherOrAdmin) {
+      studentSectionHTML = `
+        <div class="song-students-section" style="margin-bottom: 2rem;">
+          <h3>Your Students</h3>
+          <p style="color: var(--text-secondary); font-size: 0.875rem;">None of your students are currently learning or have mastered this song.</p>
+        </div>
+      `;
+    }
+
     if (!ratings || ratings.length === 0) {
       content.innerHTML = `
+        ${studentSectionHTML}
         <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">
           No ratings yet for this song.
         </p>
@@ -1939,6 +2034,7 @@ class CadenceApp {
       const avgLevel = (ratings.reduce((sum, r) => sum + r.assessed_level, 0) / ratings.length).toFixed(1);
 
       content.innerHTML = `
+        ${studentSectionHTML}
         <div style="margin-bottom: 2rem;">
           <h3>Overall</h3>
           <p><strong>Average Level:</strong> ${avgLevel} (based on ${ratings.length} rating${ratings.length !== 1 ? 's' : ''})</p>
@@ -1986,6 +2082,19 @@ class CadenceApp {
 
     // Show modal
     document.getElementById('song-details-modal').classList.remove('hidden');
+
+    // Attach click handlers for student items (teachers can click to view student detail)
+    if (isTeacherOrAdmin) {
+      content.querySelectorAll('.song-student-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const studentId = el.dataset.studentId;
+          if (studentId) {
+            document.getElementById('song-details-modal').classList.add('hidden');
+            this.viewStudentDetail(studentId);
+          }
+        });
+      });
+    }
   }
 
   async addSongToLearning(songId) {
