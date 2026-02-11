@@ -2188,6 +2188,16 @@ body {
   font-size: 0.875rem;
 }
 
+.student-song-item.clickable-song {
+  cursor: pointer;
+  transition: background 0.15s, text-decoration 0.15s;
+}
+
+.student-song-item.clickable-song:hover {
+  background: var(--bg-hover, #e8e8e8);
+  text-decoration: underline;
+}
+
 /* Admin Dashboard Styles */
 .admin-view {
   min-height: 600px;
