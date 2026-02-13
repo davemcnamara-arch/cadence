@@ -2633,6 +2633,8 @@ class CadenceApp {
   showSongGradingModal() {
     this.currentStep = 1;
     this.gradingData = {};
+    this.selectedSimilarSong = null; // Reset so we don't skip URLs for a different song
+    this.selectedSimilarSongTutorials = [];
     this.similarSongsDismissed = false; // Reset dismissal state
     document.getElementById('song-grading-form').reset(); // Reset form first, before populating dropdowns
     this.updateInstrumentDropdown(); // Populate instrument dropdown (sets current instrument)
@@ -2855,16 +2857,25 @@ class CadenceApp {
       this.gradingData.title = title;
       this.gradingData.artist = artist;
       this.gradingData.instrument = instrument;
-      this.gradingData.youtube_url = document.getElementById('song-youtube').value;
-      this.gradingData.tutorial_url = document.getElementById('song-tutorial').value;
+
+      // Get URLs from form, but skip any that already match the existing
+      // song's approved values — sending them again just creates unnecessary
+      // pending approval requests for the teacher.
+      const existingSong = this.selectedSimilarSong;
+      const youtubeVal = document.getElementById('song-youtube').value;
+      const tutorialVal = document.getElementById('song-tutorial').value;
+      this.gradingData.youtube_url = (existingSong && youtubeVal === (existingSong.youtube_url || '')) ? null : youtubeVal;
+      this.gradingData.tutorial_url = (existingSong && tutorialVal === (existingSong.tutorial_url || '')) ? null : tutorialVal;
 
       // Save chords URL to the correct field based on instrument
       const inst = this.instruments.find(i => i.id === instrument);
       const chordsUrlField = this.getChordsUrlField(inst?.name);
       const chordsValue = document.getElementById('song-chords').value;
-      this.gradingData.chords_url = chordsUrlField === 'chords_url' ? chordsValue : null;
-      this.gradingData.bass_tab_url = chordsUrlField === 'bass_tab_url' ? chordsValue : null;
-      this.gradingData.drum_notation_url = chordsUrlField === 'drum_notation_url' ? chordsValue : null;
+      const existingChordsVal = existingSong ? (existingSong[chordsUrlField] || '') : '';
+      const skipChords = existingSong && chordsValue === existingChordsVal;
+      this.gradingData.chords_url = chordsUrlField === 'chords_url' ? (skipChords ? null : chordsValue) : null;
+      this.gradingData.bass_tab_url = chordsUrlField === 'bass_tab_url' ? (skipChords ? null : chordsValue) : null;
+      this.gradingData.drum_notation_url = chordsUrlField === 'drum_notation_url' ? (skipChords ? null : chordsValue) : null;
 
       // Generate the comprehensive checklist for step 2
       this.currentStep++;
