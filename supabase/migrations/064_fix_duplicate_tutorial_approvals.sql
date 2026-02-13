@@ -10,6 +10,12 @@
 -- Tutorials are now managed exclusively via the song_tutorials table,
 -- which supports per-instrument tutorials.
 
+-- Clean up existing duplicate entries: delete all pending tutorial_url entries
+-- from pending_links since those tutorials already exist in song_tutorials.
+DELETE FROM pending_links
+WHERE link_type = 'tutorial_url'
+  AND status = 'pending';
+
 -- Drop existing function signature before recreating
 DROP FUNCTION IF EXISTS grade_song(uuid, text, text, uuid, integer, jsonb, text, text, text, boolean, text, text, text);
 
