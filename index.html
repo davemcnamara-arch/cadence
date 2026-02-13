@@ -919,7 +919,7 @@
   <div id="song-resources-modal" class="modal hidden">
     <div class="modal-content modal-large">
       <div class="modal-header">
-        <h2 id="song-resources-title">Student Resources</h2>
+        <h2 id="song-resources-title">Resources</h2>
         <button class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
@@ -933,25 +933,14 @@
           </select>
         </div>
 
-        <!-- Tutorials Section -->
+        <!-- Unified Resources Section -->
         <div class="resources-section">
           <div class="resources-section-header">
-            <h3>Tutorial Videos</h3>
-            <button class="btn btn-secondary btn-sm" onclick="app.showAddTutorialModal()">+ Add Tutorial</button>
-          </div>
-          <div id="song-tutorials-list" class="resources-list">
-            <!-- Populated by JS -->
-          </div>
-        </div>
-
-        <!-- Student Resources Section -->
-        <div class="resources-section" style="margin-top: 1.5rem;">
-          <div class="resources-section-header">
-            <h3>Student Shared Resources</h3>
-            <button class="btn btn-secondary btn-sm" onclick="app.showAddResourceModal()">+ Share Resource</button>
+            <h3>All Resources</h3>
+            <button class="btn btn-secondary btn-sm" onclick="app.showAddResourceModal()">+ Add Resource</button>
           </div>
           <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">
-            Helpful drawings, notes, tips, or links shared by students learning this song
+            Tutorials, drawings, notes, tips, or links shared for this song
           </p>
           <div id="student-resources-list" class="resources-list">
             <!-- Populated by JS -->
@@ -961,11 +950,11 @@
     </div>
   </div>
 
-  <!-- Modal for Adding Student Resource -->
+  <!-- Modal for Adding Resource -->
   <div id="add-resource-modal" class="modal hidden">
     <div class="modal-content modal-small">
       <div class="modal-header">
-        <h2>Share a Resource</h2>
+        <h2 id="add-resource-modal-title">Add Resource</h2>
         <button class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
@@ -975,14 +964,25 @@
         </div>
         <form id="add-resource-form" onsubmit="event.preventDefault(); app.submitStudentResource();">
           <div class="form-group">
+            <label for="resource-type">Type</label>
+            <select id="resource-type" onchange="app.onResourceTypeChange()">
+              <option value="tutorial">Tutorial Video</option>
+              <option value="link">Link</option>
+              <option value="file">File (Image/PDF)</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label for="resource-title">Title</label>
-            <input type="text" id="resource-title" required placeholder="e.g., Chord fingering diagram, Practice tips">
+            <input type="text" id="resource-title" required placeholder="e.g., Beginner-friendly tutorial">
           </div>
-          <div class="form-group">
-            <label for="resource-link">URL</label>
-            <input type="url" id="resource-link" placeholder="https://...">
+          <div class="form-group" id="resource-link-group">
+            <label for="resource-link" id="resource-link-label">URL</label>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="url" id="resource-link" placeholder="https://..." style="flex: 1;">
+              <button type="button" class="btn btn-secondary" id="search-resource-btn" title="Search for tutorial" style="display: none;">🔍</button>
+            </div>
           </div>
-          <div class="form-group">
+          <div class="form-group hidden" id="resource-file-group">
             <label for="resource-file">Upload File</label>
             <input type="file" id="resource-file" accept="image/*,.pdf">
             <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Max 5MB. Images or PDFs.</p>
@@ -995,57 +995,13 @@
             </select>
             <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Select which instrument this resource is for, or leave as "All" if it applies to everyone.</p>
           </div>
-          <div class="form-group">
+          <div class="form-group" id="resource-description-group">
             <label for="resource-description">Description</label>
             <textarea id="resource-description" rows="2" placeholder="Brief description of what this resource helps with"></textarea>
           </div>
           <div class="form-actions">
             <button type="button" class="btn btn-secondary modal-close">Cancel</button>
             <button type="submit" class="btn btn-primary">Submit Resource</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal for Adding Tutorial -->
-  <div id="add-tutorial-modal" class="modal hidden">
-    <div class="modal-content modal-small">
-      <div class="modal-header">
-        <h2>Add Tutorial Video</h2>
-        <button class="modal-close">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p id="add-tutorial-song-info" style="margin-bottom: 1rem; color: var(--text-secondary);"></p>
-        <div id="tutorial-pending-notice" class="hidden" style="margin-bottom: 1rem; padding: 12px; background-color: #fff3cd; border-left: 4px solid #ffc107; color: #856404; border-radius: 4px;">
-          <strong>Note:</strong> Your tutorial will be submitted for teacher approval before other students can see it.
-        </div>
-        <form id="add-tutorial-form" onsubmit="event.preventDefault(); console.log('Tutorial form submit'); app.submitTutorial(); return false;">
-          <p style="margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-secondary);">
-            Click the search button to find a tutorial, then copy the URL and paste it below.
-          </p>
-          <div class="form-group">
-            <label for="tutorial-url">Tutorial URL *</label>
-            <div style="display: flex; gap: 0.5rem;">
-              <input type="text" id="tutorial-url" required placeholder="https://youtube.com/..." style="flex: 1;">
-              <button type="button" class="btn btn-secondary" id="search-tutorial-resource-btn" title="Search for tutorial">🔍</button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="tutorial-title">Title (optional)</label>
-            <input type="text" id="tutorial-title" placeholder="e.g., Beginner-friendly tutorial, Fingerpicking version">
-          </div>
-          <div class="form-group">
-            <label for="tutorial-instrument">Instrument</label>
-            <select id="tutorial-instrument">
-              <option value="">All Instruments (Universal)</option>
-              <!-- Populated by JS -->
-            </select>
-            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Select which instrument this tutorial is for, or leave as "All" if it applies to everyone.</p>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
-            <button type="submit" class="btn btn-primary" onclick="console.log('Submit button clicked')">Submit Tutorial</button>
           </div>
         </form>
       </div>
