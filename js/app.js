@@ -28,7 +28,6 @@ class CadenceApp {
     this.classStudents = [];
     this.allTeacherStudents = null;
     this.teacherSongStudentCounts = null;
-    this.submissions = [];
     this.flaggedRatings = [];
 
     // Guard against double initialization
@@ -388,7 +387,6 @@ class CadenceApp {
     this.setupEditStudentForm();
     this.setupEditSongLevelForm();
     this.setupEditSongDetailsForm();
-    this.setupSubmissionsFilters();
     this.setupFlaggedFilters();
 
     // Teacher: Confirm remove student
@@ -533,8 +531,8 @@ class CadenceApp {
     const savedView = sessionStorage.getItem('cadence_currentView');
     const validViews = {
       student: ['pathway', 'songs', 'progress'],
-      teacher: ['songs', 'classes', 'submissions', 'flagged', 'accounts'],
-      admin: ['songs', 'classes', 'submissions', 'flagged', 'accounts', 'admin']
+      teacher: ['songs', 'classes', 'flagged', 'accounts'],
+      admin: ['songs', 'classes', 'flagged', 'accounts', 'admin']
     };
     const restoredView = savedView && validViews[user.role]?.includes(savedView) ? savedView : null;
 
@@ -834,13 +832,6 @@ class CadenceApp {
             this.loadSongs().then(() => {
               this.renderPathway();
             }).catch(handleReloadError('pathway view'));
-          } else if (this.currentView === 'submissions') {
-            // Update submissions feed for teachers
-            this.loadSubmissions().then(() => {
-              this.showToast(toastMessage, 'info');
-            }).catch(handleReloadError('submissions view'));
-            // Also update background song data
-            this.loadSongs().catch(handleReloadError('background song data'));
           } else if (this.currentView === 'admin') {
             // Check if admin content moderation section is visible
             const contentSection = document.getElementById('content-section');
@@ -1421,11 +1412,6 @@ class CadenceApp {
         loadViewAsync(() => this.renderProgress());
       } else if (viewName === 'classes') {
         this.renderClassesList();
-      } else if (viewName === 'submissions') {
-        // Load submissions when first opened
-        if (this.classes.length > 0) {
-          loadViewAsync(() => this.loadSubmissions());
-        }
       } else if (viewName === 'flagged') {
         // Load flagged ratings
         if (this.classes.length > 0) {
@@ -3255,8 +3241,6 @@ class CadenceApp {
         } else if (this.currentView === 'pathway') {
           await this.loadSongs();
           this.renderPathway();
-        } else if (this.currentView === 'submissions') {
-          await this.loadSubmissions();
         } else if (this.currentView === 'flagged') {
           await this.loadFlaggedRatings();
         }
@@ -4310,7 +4294,6 @@ class CadenceApp {
     this.currentClass = null;
     sessionStorage.removeItem('cadence_currentView');
     this.classStudents = [];
-    this.submissions = [];
     this.flaggedRatings = [];
     this.loadingSongs = false;
     this.initializing = false;
@@ -5962,178 +5945,8 @@ class CadenceApp {
   }
 
   // ============================================
-  // TEACHER: Submissions & Flagged Ratings Review
+  // TEACHER: Flagged Ratings Review
   // ============================================
-
-  async loadSubmissions() {
-    const user = auth.getCurrentUser();
-
-    // Use direct RPC call to get all students from teacher's classes
-    let students;
-    try {
-      const result = await this.callRpcDirect('get_all_teacher_students', {});
-      students = result.data;
-    } catch (studentsError) {
-      console.error('Error loading students:', studentsError);
-      this.submissions = [];
-      this.renderSubmissionsFeed();
-      return;
-    }
-
-    if (!students || students.length === 0) {
-      this.submissions = [];
-      this.renderSubmissionsFeed();
-      return;
-    }
-
-    const studentIds = students.map(s => s.user_id);
-
-    // Create a lookup map for student info (since RLS might block the users join)
-    const studentMap = {};
-    students.forEach(s => {
-      studentMap[s.user_id] = { name: s.name, email: s.email };
-    });
-
-    // Use direct fetch to bypass stale Supabase client connections
-    const { data, error } = await this.callSelectDirect(
-      'song_ratings',
-      '*,songs!inner(title,artist),instruments(icon,name)',
-      { in: { user_id: studentIds } },
-      { order: 'date_graded.desc', limit: 50 }
-    );
-
-    if (error) {
-      console.error('Error loading submissions:', error);
-      return;
-    }
-
-    // Attach student info from our map
-    this.submissions = (data || []).map(submission => ({
-      ...submission,
-      users: studentMap[submission.user_id] || { name: 'Unknown Student' }
-    }));
-
-    // Populate filter dropdowns
-    this.populateSubmissionsFilters();
-    this.renderSubmissionsFeed();
-  }
-
-  renderSubmissionsFeed() {
-    const container = document.getElementById('submissions-feed');
-    if (!container) return;
-
-    if (!this.submissions || this.submissions.length === 0) {
-      container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No recent submissions</p>';
-      return;
-    }
-
-    // Apply filters
-    const classFilter = document.getElementById('submissions-class-filter')?.value || '';
-    const instrumentFilter = document.getElementById('submissions-instrument-filter')?.value || '';
-
-    let filteredSubmissions = this.submissions;
-
-    // Filter by instrument
-    if (instrumentFilter) {
-      filteredSubmissions = filteredSubmissions.filter(s => s.instrument_id === instrumentFilter);
-    }
-
-    // Filter by class - need to check if student is in the selected class
-    if (classFilter && this.submissionsClassMemberships) {
-      const studentIdsInClass = this.submissionsClassMemberships
-        .filter(m => m.class_id === classFilter)
-        .map(m => m.user_id);
-      filteredSubmissions = filteredSubmissions.filter(s => studentIdsInClass.includes(s.user_id));
-    }
-
-    if (filteredSubmissions.length === 0) {
-      container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No submissions match the selected filters</p>';
-      return;
-    }
-
-    const html = filteredSubmissions.map(submission => {
-      const timeAgo = this.getTimeAgo(submission.date_graded);
-
-      return `
-        <div class="submission-card">
-          <div class="submission-header">
-            <div>
-              <div class="submission-student">${submission.users.name}</div>
-              <div class="submission-song">${submission.songs.title} - ${submission.songs.artist}</div>
-            </div>
-            <div class="submission-time">${timeAgo}</div>
-          </div>
-          <div class="submission-details">
-            <div class="submission-detail-item">
-              <div class="submission-detail-label">Instrument</div>
-              <div class="submission-detail-value">${submission.instruments.icon} ${submission.instruments.name}</div>
-            </div>
-            <div class="submission-detail-item">
-              <div class="submission-detail-label">Assessed Level</div>
-              <div class="submission-detail-value">Level ${submission.assessed_level}</div>
-            </div>
-          </div>
-          ${submission.notes ? `
-            <div class="submission-notes">
-              <div class="submission-notes-label">Notes:</div>
-              <div class="submission-notes-text">${submission.notes}</div>
-            </div>
-          ` : ''}
-          <div class="submission-actions">
-            <button class="btn btn-secondary btn-sm" onclick="app.editSongLevel('${submission.id}', '${submission.song_id}', '${submission.songs.title}', ${submission.assessed_level}, '${(submission.notes || '').replace(/'/g, "\\'")}')">Edit Level</button>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    container.innerHTML = html;
-  }
-
-  async populateSubmissionsFilters() {
-    // Populate class filter
-    const classFilter = document.getElementById('submissions-class-filter');
-    if (classFilter && this.classes) {
-      const classOptions = this.classes.map(c =>
-        `<option value="${c.id}">${c.name}</option>`
-      ).join('');
-      classFilter.innerHTML = '<option value="">All Classes</option>' + classOptions;
-    }
-
-    // Populate instrument filter
-    const instrumentFilter = document.getElementById('submissions-instrument-filter');
-    if (instrumentFilter && this.instruments) {
-      const instrumentOptions = this.instruments.map(i =>
-        `<option value="${i.id}">${i.icon} ${i.name}</option>`
-      ).join('');
-      instrumentFilter.innerHTML = '<option value="">All Instruments</option>' + instrumentOptions;
-    }
-
-    // Fetch class memberships for filtering
-    const user = auth.getCurrentUser();
-    const { data: memberships } = await supabase
-      .from('class_members')
-      .select('user_id, class_id')
-      .in('class_id', this.classes.map(c => c.id));
-
-    this.submissionsClassMemberships = memberships || [];
-  }
-
-  setupSubmissionsFilters() {
-    const classFilter = document.getElementById('submissions-class-filter');
-    const instrumentFilter = document.getElementById('submissions-instrument-filter');
-
-    if (classFilter) {
-      classFilter.addEventListener('change', () => {
-        this.renderSubmissionsFeed();
-      });
-    }
-
-    if (instrumentFilter) {
-      instrumentFilter.addEventListener('change', () => {
-        this.renderSubmissionsFeed();
-      });
-    }
-  }
 
   async loadFlaggedRatings() {
     // Get all students from all the teacher's classes first, so we can filter everything
@@ -7001,8 +6814,8 @@ class CadenceApp {
         document.getElementById('edit-song-level-modal').classList.add('hidden');
         this.showToast('Song level updated successfully', 'success');
 
-        // Reload submissions to show the updated level
-        await this.loadSubmissions();
+        // Reload flagged ratings to show the updated level
+        await this.loadFlaggedRatings();
       } catch (error) {
         console.error('Error updating song level:', error);
         this.showToast(`Failed to update song level: ${error.message}`, 'error');
