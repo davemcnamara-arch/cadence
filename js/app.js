@@ -457,6 +457,18 @@ class CadenceApp {
       deleteSongBtn.addEventListener('click', () => this.deleteSong());
     }
 
+    // Admin: Scan duplicates button
+    const scanDuplicatesBtn = document.getElementById('scan-duplicates-btn');
+    if (scanDuplicatesBtn) {
+      scanDuplicatesBtn.addEventListener('click', () => this.scanForDuplicates());
+    }
+
+    // Admin: Confirm merge button
+    const confirmMergeBtn = document.getElementById('confirm-merge-btn');
+    if (confirmMergeBtn) {
+      confirmMergeBtn.addEventListener('click', () => this.executeMerge());
+    }
+
     // Setup admin forms
     this.setupAdminForms();
 
@@ -7412,6 +7424,8 @@ class CadenceApp {
         this.renderAdminInstruments();
       } else if (sectionName === 'content') {
         this.loadContentModeration();
+      } else if (sectionName === 'duplicates') {
+        // Don't auto-scan; wait for button click
       } else if (sectionName === 'users') {
         this.loadUsersManagement();
       }
@@ -8211,6 +8225,231 @@ class CadenceApp {
     document.getElementById('admin-song-modal').classList.add('hidden');
     this.showToast('Song deleted successfully', 'success');
     await this.loadContentModeration();
+  }
+
+  // ============================================
+  // ADMIN: Merge Duplicate Songs
+  // ============================================
+
+  async scanForDuplicates() {
+    const container = document.getElementById('duplicates-list');
+    if (!container) return;
+
+    container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">Scanning for duplicates...</p>';
+
+    try {
+      const { data, error } = await this.callRpcDirect('find_duplicate_song_groups', {
+        p_threshold: 0.35,
+        p_limit: 50
+      });
+
+      if (error) {
+        console.error('Error scanning for duplicates:', error);
+        container.innerHTML = '<p style="color: var(--error-color); text-align: center; padding: 3rem;">Failed to scan for duplicates. The database function may need to be created first.</p>';
+        return;
+      }
+
+      this.duplicatePairs = data || [];
+      this.renderDuplicates();
+    } catch (err) {
+      console.error('Error scanning for duplicates:', err);
+      container.innerHTML = '<p style="color: var(--error-color); text-align: center; padding: 3rem;">Failed to scan for duplicates. The database function may need to be created first.</p>';
+    }
+  }
+
+  renderDuplicates() {
+    const container = document.getElementById('duplicates-list');
+    if (!container) return;
+
+    if (!this.duplicatePairs || this.duplicatePairs.length === 0) {
+      container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No potential duplicates found. Your song library is clean!</p>';
+      return;
+    }
+
+    const html = this.duplicatePairs.map((pair, index) => {
+      const scorePercent = Math.round(pair.similarity_score * 100);
+      const scoreClass = scorePercent >= 70 ? 'high' : '';
+
+      return `
+        <div class="duplicate-pair-card">
+          <div class="duplicate-pair-header">
+            <span style="font-weight: 600;">Potential Duplicate #${index + 1}</span>
+            <span class="duplicate-pair-score ${scoreClass}">${scorePercent}% similar</span>
+          </div>
+          <div class="duplicate-pair-songs">
+            <div class="duplicate-song-info">
+              <div class="duplicate-song-title">${this.escapeHtml(pair.title)}</div>
+              <div class="duplicate-song-artist">${this.escapeHtml(pair.artist)}</div>
+              <div class="duplicate-song-stats">
+                <span>${pair.rating_count || 0} ratings</span>
+                <span>${pair.student_count || 0} students</span>
+                <span>${pair.approved ? 'Approved' : 'Pending'}</span>
+                <span>${[pair.youtube_url ? 'YT' : '', pair.chords_url ? 'Chords' : '', pair.bass_tab_url ? 'Bass' : '', pair.drum_notation_url ? 'Drums' : ''].filter(Boolean).join(', ') || 'No links'}</span>
+              </div>
+            </div>
+            <div class="duplicate-pair-vs">VS</div>
+            <div class="duplicate-song-info">
+              <div class="duplicate-song-title">${this.escapeHtml(pair.match_title)}</div>
+              <div class="duplicate-song-artist">${this.escapeHtml(pair.match_artist)}</div>
+              <div class="duplicate-song-stats">
+                <span>Song B</span>
+              </div>
+            </div>
+          </div>
+          <div class="duplicate-pair-actions">
+            <button class="btn btn-primary btn-sm" onclick="app.showMergeModal('${pair.song_id}', '${pair.match_song_id}')">Review & Merge</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+  }
+
+  async showMergeModal(songIdA, songIdB) {
+    // Fetch full details for both songs
+    const [resultA, resultB] = await Promise.all([
+      supabase.from('songs').select('*').eq('id', songIdA).single(),
+      supabase.from('songs').select('*').eq('id', songIdB).single()
+    ]);
+
+    if (resultA.error || resultB.error) {
+      this.showToast('Failed to load song details', 'error');
+      return;
+    }
+
+    const songA = resultA.data;
+    const songB = resultB.data;
+
+    // Get counts for both songs
+    const [ratingsA, ratingsB, studentsA, studentsB] = await Promise.all([
+      supabase.from('song_ratings').select('id', { count: 'exact', head: true }).eq('song_id', songIdA),
+      supabase.from('song_ratings').select('id', { count: 'exact', head: true }).eq('song_id', songIdB),
+      supabase.from('student_songs').select('id', { count: 'exact', head: true }).eq('song_id', songIdA),
+      supabase.from('student_songs').select('id', { count: 'exact', head: true }).eq('song_id', songIdB)
+    ]);
+
+    this.mergeCandidate = { songA, songB };
+    this.mergeKeepId = songA.id; // Default to keeping song A
+
+    const buildSongCard = (song, counts, label) => {
+      const ratingCount = counts.ratings || 0;
+      const studentCount = counts.students || 0;
+      const links = [
+        song.youtube_url ? 'YouTube' : '',
+        song.chords_url ? 'Chords' : '',
+        song.bass_tab_url ? 'Bass Tab' : '',
+        song.drum_notation_url ? 'Drum Notation' : '',
+        song.tutorial_url ? 'Tutorial' : ''
+      ].filter(Boolean);
+
+      return `
+        <div class="merge-song-option ${song.id === this.mergeKeepId ? 'selected' : ''}"
+             data-song-id="${song.id}" onclick="app.selectMergeKeep('${song.id}')">
+          <div class="merge-keep-badge">KEEP THIS SONG</div>
+          <div class="merge-delete-badge">WILL BE MERGED & DELETED</div>
+          <div class="merge-song-name">${this.escapeHtml(song.title)}</div>
+          <div class="merge-song-artist">${this.escapeHtml(song.artist)}</div>
+          <div class="merge-song-detail">
+            <span class="merge-song-detail-label">Status</span>
+            <span class="merge-song-detail-value">${song.approved ? 'Approved' : 'Pending'}</span>
+          </div>
+          <div class="merge-song-detail">
+            <span class="merge-song-detail-label">Ratings</span>
+            <span class="merge-song-detail-value">${ratingCount}</span>
+          </div>
+          <div class="merge-song-detail">
+            <span class="merge-song-detail-label">Students tracking</span>
+            <span class="merge-song-detail-value">${studentCount}</span>
+          </div>
+          <div class="merge-song-detail">
+            <span class="merge-song-detail-label">Resource links</span>
+            <span class="merge-song-detail-value">${links.length > 0 ? links.join(', ') : 'None'}</span>
+          </div>
+          <div class="merge-song-detail">
+            <span class="merge-song-detail-label">Added</span>
+            <span class="merge-song-detail-value">${new Date(song.created_at).toLocaleDateString()}</span>
+          </div>
+        </div>
+      `;
+    };
+
+    const comparison = document.getElementById('merge-songs-comparison');
+    comparison.innerHTML =
+      buildSongCard(songA, { ratings: ratingsA.count, students: studentsA.count }, 'Song A') +
+      buildSongCard(songB, { ratings: ratingsB.count, students: studentsB.count }, 'Song B');
+
+    document.getElementById('confirm-merge-btn').disabled = false;
+    document.getElementById('merge-songs-modal').classList.remove('hidden');
+  }
+
+  selectMergeKeep(songId) {
+    this.mergeKeepId = songId;
+
+    // Update UI
+    document.querySelectorAll('.merge-song-option').forEach(option => {
+      option.classList.toggle('selected', option.dataset.songId === songId);
+    });
+  }
+
+  async executeMerge() {
+    if (!this.mergeCandidate || !this.mergeKeepId) return;
+
+    const keepId = this.mergeKeepId;
+    const deleteId = keepId === this.mergeCandidate.songA.id
+      ? this.mergeCandidate.songB.id
+      : this.mergeCandidate.songA.id;
+
+    const keepSong = keepId === this.mergeCandidate.songA.id
+      ? this.mergeCandidate.songA
+      : this.mergeCandidate.songB;
+    const deleteSong = deleteId === this.mergeCandidate.songA.id
+      ? this.mergeCandidate.songA
+      : this.mergeCandidate.songB;
+
+    if (!confirm(`Are you sure you want to merge "${deleteSong.title}" by ${deleteSong.artist} into "${keepSong.title}" by ${keepSong.artist}? This cannot be undone.`)) {
+      return;
+    }
+
+    document.getElementById('confirm-merge-btn').disabled = true;
+    document.getElementById('confirm-merge-btn').textContent = 'Merging...';
+
+    try {
+      const { data, error } = await this.callRpcDirect('merge_songs', {
+        p_keep_song_id: keepId,
+        p_delete_song_id: deleteId
+      });
+
+      if (error) {
+        console.error('Error merging songs:', error);
+        this.showToast('Failed to merge songs: ' + (error.message || 'Unknown error'), 'error');
+        return;
+      }
+
+      const result = typeof data === 'string' ? JSON.parse(data) : data;
+
+      if (result?.success) {
+        document.getElementById('merge-songs-modal').classList.add('hidden');
+        this.showToast(result.message || 'Songs merged successfully', 'success');
+
+        // Remove the merged pair from the list and re-render
+        this.duplicatePairs = (this.duplicatePairs || []).filter(p =>
+          p.song_id !== deleteId && p.match_song_id !== deleteId
+        );
+        this.renderDuplicates();
+      } else {
+        this.showToast(result?.message || 'Failed to merge songs', 'error');
+      }
+    } catch (err) {
+      console.error('Error merging songs:', err);
+      this.showToast('Failed to merge songs: ' + (err.message || 'Unknown error'), 'error');
+    } finally {
+      const btn = document.getElementById('confirm-merge-btn');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Merge Songs';
+      }
+    }
   }
 
   // ============================================
