@@ -2988,49 +2988,9 @@ body {
   font-size: 0.875rem;
 }
 
-/* Tutorial list items */
-.tutorial-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.75rem;
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-}
-
-.tutorial-item.pending {
-  border-color: var(--warning-color);
-  background-color: #fffbeb;
-}
-
-.tutorial-icon {
-  font-size: 1.25rem;
-  flex-shrink: 0;
-}
-
-.tutorial-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.tutorial-title {
-  font-weight: 500;
-  font-size: 0.9375rem;
-}
-
-.tutorial-title a {
-  color: var(--primary-color);
-  text-decoration: none;
-}
-
-.tutorial-title a:hover {
-  text-decoration: underline;
-}
-
-.tutorial-meta {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
+.resource-badge.type-tutorial {
+  background-color: #ede9fe;
+  color: #5b21b6;
 }
 
 /* Song card resources button */

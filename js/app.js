@@ -256,7 +256,7 @@ class CadenceApp {
     // Rate resources modal
     this.setupRateResourcesModal();
 
-    // Student resources and tutorials modals
+    // Student resources modals
     this.setupResourceModals();
 
     // Export
@@ -726,22 +726,12 @@ class CadenceApp {
       });
     }
 
-    // Load resource counts (tutorials + student resources)
-    const [{ data: tutorialCounts }, { data: resourceCounts }] = await Promise.all([
-      this.callSelectDirect('song_tutorials', 'song_id', { eq: { status: 'approved' } }),
-      this.callSelectDirect('student_resources', 'song_id', { eq: { status: 'approved' } })
-    ]);
+    // Load resource counts (all types: tutorials, links, files)
+    const { data: resourceCounts } = await this.callSelectDirect(
+      'student_resources', 'song_id', { eq: { status: 'approved' } }
+    );
 
-    // Create count maps
-    const tutorialCountMap = {};
     const resourceCountMap = {};
-
-    if (tutorialCounts) {
-      tutorialCounts.forEach(t => {
-        tutorialCountMap[t.song_id] = (tutorialCountMap[t.song_id] || 0) + 1;
-      });
-    }
-
     if (resourceCounts) {
       resourceCounts.forEach(r => {
         resourceCountMap[r.song_id] = (resourceCountMap[r.song_id] || 0) + 1;
@@ -752,7 +742,6 @@ class CadenceApp {
     this.songs = (data || []).map(song => ({
       ...song,
       resource_ratings: ratingsMap[song.id] || { chords: [], tutorial: [] },
-      tutorial_count: tutorialCountMap[song.id] || 0,
       resource_count: resourceCountMap[song.id] || 0
     }));
 
@@ -1850,8 +1839,8 @@ class CadenceApp {
             <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', '${chordsUrlField}', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add ${chordsLabel.toLowerCase()} link">+ ${chordsLabel}</button>
           `}
           </span>
-          <button class="btn btn-secondary btn-resources ${(song.tutorial_count + song.resource_count) > 0 ? 'has-resources' : ''}" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}')" title="View tutorials & student resources">
-            Resources${(song.tutorial_count + song.resource_count) > 0 ? ` <span class="resource-count">${song.tutorial_count + song.resource_count}</span>` : ''}
+          <button class="btn btn-secondary btn-resources ${song.resource_count > 0 ? 'has-resources' : ''}" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}')" title="View resources">
+            Resources${song.resource_count > 0 ? ` <span class="resource-count">${song.resource_count}</span>` : ''}
           </button>
           ${song.youtube_url ? `
             <div class="resource-link-group">
@@ -2724,9 +2713,9 @@ class CadenceApp {
       if (song) {
         this.selectedSimilarSong = song;
 
-        // Fetch approved tutorials for this song
-        const { data: tutorials } = await this.rawSelect('song_tutorials',
-          `select=url,instrument_id&song_id=eq.${songId}&status=eq.approved&order=created_at.asc`
+        // Fetch approved tutorial resources for this song
+        const { data: tutorials } = await this.rawSelect('student_resources',
+          `select=file_url,instrument_id&song_id=eq.${songId}&status=eq.approved&file_type=eq.tutorial&order=created_at.asc`
         );
         this.selectedSimilarSongTutorials = tutorials || [];
 
@@ -2763,11 +2752,11 @@ class CadenceApp {
     const universalTutorial = tutorials.find(t => !t.instrument_id);
 
     if (instrumentTutorial) {
-      document.getElementById('song-tutorial').value = instrumentTutorial.url;
+      document.getElementById('song-tutorial').value = instrumentTutorial.file_url;
     } else if (universalTutorial) {
-      document.getElementById('song-tutorial').value = universalTutorial.url;
+      document.getElementById('song-tutorial').value = universalTutorial.file_url;
     } else if (tutorials.length === 0 && song.tutorial_url) {
-      // Legacy fallback: only use if no per-instrument tutorials exist at all
+      // Legacy fallback: only use if no tutorial resources exist at all
       document.getElementById('song-tutorial').value = song.tutorial_url;
     } else {
       document.getElementById('song-tutorial').value = '';
@@ -3206,22 +3195,23 @@ class CadenceApp {
 
       if (result.error) throw result.error;
 
-      // Save tutorial URL to song_tutorials with instrument_id so each instrument keeps its own tutorial
+      // Save tutorial URL as a resource with file_type='tutorial'
       const gradedSongId = result.data?.song_id;
       if (gradedSongId && this.gradingData.tutorial_url) {
         try {
           const isTeacher = auth.hasRole('teacher') || auth.hasRole('admin');
-          await this.rawInsert('song_tutorials', {
+          await this.rawInsert('student_resources', {
             song_id: gradedSongId,
-            url: this.gradingData.tutorial_url,
-            title: null,
+            file_url: this.gradingData.tutorial_url,
+            file_type: 'tutorial',
+            title: 'Tutorial Video',
             instrument_id: this.gradingData.instrument,
-            submitted_by_user_id: auth.getCurrentUser().id,
+            user_id: auth.getCurrentUser().id,
             status: isTeacher ? 'approved' : 'pending'
           });
         } catch (tutErr) {
           // Don't fail the grading if tutorial insert fails (e.g. duplicate)
-          console.warn('Could not save tutorial to song_tutorials:', tutErr);
+          console.warn('Could not save tutorial resource:', tutErr);
           this.showToast('Tutorial link could not be saved, but grading succeeded.', 'warning');
         }
       }
@@ -3773,7 +3763,7 @@ class CadenceApp {
             ` : `
               <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
             `}
-            <button class="btn-link-add" onclick="app.showSongResourcesModal('${song.id}', '${firstStudentSong.instrument_id}')" title="View tutorials and resources">Resources</button>
+            <button class="btn-link-add" onclick="app.showSongResourcesModal('${song.id}', '${firstStudentSong.instrument_id}')" title="View resources">Resources</button>
           </div>
         </div>
         <div class="actions-grouped">
@@ -3824,7 +3814,7 @@ class CadenceApp {
             ` : `
               <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
             `}
-            <button class="btn-link-add" onclick="app.showSongResourcesModal('${song.id}', '${studentSong.instrument_id}')" title="View tutorials and resources">Resources</button>
+            <button class="btn-link-add" onclick="app.showSongResourcesModal('${song.id}', '${studentSong.instrument_id}')" title="View resources">Resources</button>
           </div>
         </div>
         <div class="actions">
@@ -6160,8 +6150,8 @@ class CadenceApp {
 
     const studentIds = allStudents.map(s => s.user_id);
 
-    // Load pending links, tutorials, and resources filtered to teacher's own students
-    const [{ data: pendingLinks }, { data: pendingTutorials }, { data: pendingResources }] = await Promise.all([
+    // Load pending links and resources (which now include tutorials) filtered to teacher's own students
+    const [{ data: pendingLinks }, { data: pendingAllResources }] = await Promise.all([
       this.callSelectDirect(
         'pending_links',
         'id,song_id,link_type,url,submitted_at,submitted_by_user_id,songs!inner(title,artist),users!pending_links_submitted_by_user_id_fkey(name)',
@@ -6169,23 +6159,18 @@ class CadenceApp {
         { order: 'submitted_at.desc' }
       ),
       this.callSelectDirect(
-        'song_tutorials',
-        'id,song_id,url,title,created_at,submitted_by_user_id,instrument_id,songs!inner(title,artist),instruments(icon,name)',
-        { in: { submitted_by_user_id: studentIds }, eq: { status: 'pending' } },
-        { order: 'created_at.desc' }
-      ),
-      this.callSelectDirect(
         'student_resources',
-        'id,song_id,title,file_url,file_type,created_at,user_id,instrument_id,songs!inner(title,artist),instruments(icon,name)',
+        'id,song_id,title,file_url,file_type,created_at,user_id,instrument_id,songs!inner(title,artist),instruments(icon,name),users!student_resources_user_id_fkey(name)',
         { in: { user_id: studentIds }, eq: { status: 'pending' } },
         { order: 'created_at.desc' }
       )
     ]);
 
-    // Store pending data
+    // Split resources into tutorials and non-tutorials for separate display sections
+    const allResources = pendingAllResources || [];
     this.pendingLinks = pendingLinks || [];
-    this.pendingTutorials = pendingTutorials || [];
-    this.pendingResources = pendingResources || [];
+    this.pendingTutorials = allResources.filter(r => r.file_type === 'tutorial');
+    this.pendingResources = allResources.filter(r => r.file_type !== 'tutorial');
 
     // Enrich pending links with instrument context from song_ratings
     if (this.pendingLinks.length > 0) {
@@ -6469,7 +6454,7 @@ class CadenceApp {
       `;
     }
 
-    // Build HTML for pending tutorials section
+    // Build HTML for pending tutorials section (tutorials are resources with file_type='tutorial')
     let pendingTutorialsHtml = '';
     if (this.pendingTutorials && this.pendingTutorials.length > 0) {
       pendingTutorialsHtml = `
@@ -6496,10 +6481,10 @@ class CadenceApp {
                   ${tutorial.title ? `<div style="font-weight: 500; margin-bottom: 0.5rem; color: var(--text-primary);">${tutorial.title}</div>` : ''}
                   <div style="font-weight: 500; margin-bottom: 0.5rem; color: var(--text-primary);">Submitted URL:</div>
                   <div id="pending-tutorial-display-${tutorial.id}">
-                    <a href="${tutorial.url}" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color); word-break: break-all;">${tutorial.url}</a>
+                    <a href="${tutorial.file_url}" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color); word-break: break-all;">${tutorial.file_url}</a>
                   </div>
                   <div id="pending-tutorial-edit-${tutorial.id}" class="hidden" style="margin-top: 0.5rem;">
-                    <input type="url" id="pending-tutorial-input-${tutorial.id}" value="${tutorial.url}" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.875rem; background: var(--bg-primary); color: var(--text-primary);" />
+                    <input type="url" id="pending-tutorial-input-${tutorial.id}" value="${tutorial.file_url}" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.875rem; background: var(--bg-primary); color: var(--text-primary);" />
                     <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
                       <button class="btn btn-primary" style="font-size: 0.75rem;" onclick="app.savePendingTutorialUrl('${tutorial.id}')">Save URL</button>
                       <button class="btn btn-secondary" style="font-size: 0.75rem;" onclick="app.cancelEditPendingTutorial('${tutorial.id}')">Cancel</button>
@@ -6835,7 +6820,7 @@ class CadenceApp {
 
   async approvePendingTutorial(tutorialId, songId) {
     try {
-      await this.rawUpdate('song_tutorials', tutorialId, {
+      await this.rawUpdate('student_resources', tutorialId, {
         status: 'approved',
         reviewed_by_user_id: auth.getCurrentUser().id,
         reviewed_at: new Date().toISOString()
@@ -6844,7 +6829,7 @@ class CadenceApp {
       // Update local song count
       const song = this.songs.find(s => s.id === songId);
       if (song) {
-        song.tutorial_count = (song.tutorial_count || 0) + 1;
+        song.resource_count = (song.resource_count || 0) + 1;
       }
 
       this.showToast('Tutorial approved', 'success');
@@ -6861,7 +6846,7 @@ class CadenceApp {
 
   async deletePendingTutorial(tutorialId) {
     try {
-      await this.rawDelete('song_tutorials', tutorialId);
+      await this.rawDelete('student_resources', tutorialId);
       this.showToast('Tutorial deleted', 'success');
       await this.loadFlaggedRatings();
     } catch (error) {
@@ -6885,7 +6870,7 @@ class CadenceApp {
     // Reset input value
     const tutorial = this.pendingTutorials?.find(t => t.id === tutorialId);
     const input = document.getElementById(`pending-tutorial-input-${tutorialId}`);
-    if (tutorial && input) input.value = tutorial.url;
+    if (tutorial && input) input.value = tutorial.file_url;
   }
 
   async savePendingTutorialUrl(tutorialId) {
@@ -6899,11 +6884,11 @@ class CadenceApp {
     }
 
     try {
-      await this.rawUpdate('song_tutorials', tutorialId, { url: newUrl });
+      await this.rawUpdate('student_resources', tutorialId, { file_url: newUrl });
 
       // Update local data
       const tutorial = this.pendingTutorials?.find(t => t.id === tutorialId);
-      if (tutorial) tutorial.url = newUrl;
+      if (tutorial) tutorial.file_url = newUrl;
 
       this.showToast('URL updated successfully', 'success');
 
@@ -8214,7 +8199,7 @@ class CadenceApp {
   }
 
   // ============================================
-  // STUDENT RESOURCES & MULTIPLE TUTORIALS
+  // STUDENT RESOURCES (tutorials, links, files)
   // ============================================
 
   setupResourceModals() {
@@ -8226,8 +8211,6 @@ class CadenceApp {
         await this.submitStudentResource();
       });
     }
-
-    // Add Tutorial form - using inline onsubmit handler in HTML instead
   }
 
   async showSongResourcesModal(songId, instrumentId) {
@@ -8266,11 +8249,8 @@ class CadenceApp {
       }
     }
 
-    // Load tutorials and resources
-    await Promise.all([
-      this.loadSongTutorials(songId),
-      this.loadStudentResources(songId)
-    ]);
+    // Load resources
+    await this.loadStudentResources(songId);
 
     // Show modal
     document.getElementById('song-resources-modal').classList.remove('hidden');
@@ -8280,105 +8260,8 @@ class CadenceApp {
   async onResourcesInstrumentChange() {
     if (!this.currentResourceSong) return;
 
-    // Reload tutorials and resources with new instrument filter
-    await Promise.all([
-      this.loadSongTutorials(this.currentResourceSong.id),
-      this.loadStudentResources(this.currentResourceSong.id)
-    ]);
-  }
-
-  async loadSongTutorials(songId) {
-    const container = document.getElementById('song-tutorials-list');
-    container.innerHTML = '<p style="color: var(--text-secondary);">Loading tutorials...</p>';
-
-    try {
-      const isTeacher = auth.hasRole('teacher') || auth.hasRole('admin');
-
-      // Use raw fetch to avoid Supabase JS client issues after inserts
-      // RLS policy already filters: students see approved tutorials or their own submissions
-      // Teachers see all tutorials
-      // Fetch ALL tutorials for this song, then filter by instrument client-side.
-      // This lets us check if ANY tutorials exist before deciding to show the tutorial_url fallback.
-      let query = `select=id,url,title,status,submitted_by_user_id,instrument_id,created_at&song_id=eq.${songId}&order=created_at.asc`;
-
-      const { data, error } = await this.rawSelect('song_tutorials', query);
-
-      if (error) {
-        console.error('Error loading tutorials:', error);
-        container.innerHTML = '<p class="empty-resources">Failed to load tutorials</p>';
-        return;
-      }
-
-      // Filter client-side by selected instrument: show tutorials for this instrument OR universal (null instrument_id)
-      const filterInstrumentId = document.getElementById('resources-instrument-filter')?.value || this.currentInstrument;
-      const filteredData = (data || []).filter(t =>
-        !t.instrument_id || t.instrument_id === filterInstrumentId
-      );
-
-      // Also include the song's main tutorial_url (stored on songs table during grading)
-      // Only show this fallback if there are NO entries in song_tutorials at all (for any instrument).
-      // Once per-instrument tutorials exist in song_tutorials, rely solely on that table.
-      const song = this.currentResourceSong;
-      const allTutorials = [...filteredData];
-      if (song?.tutorial_url && (!data || data.length === 0)) {
-        allTutorials.unshift({
-          id: 'main-tutorial',
-          url: song.tutorial_url,
-          title: 'Tutorial Video',
-          status: 'approved',
-          instrument_id: null,
-          is_main: true
-        });
-      }
-
-      if (allTutorials.length === 0) {
-        container.innerHTML = '<p class="empty-resources">No tutorial videos yet. Be the first to add one!</p>';
-        return;
-      }
-
-      container.innerHTML = allTutorials.map(tutorial => {
-        const statusBadge = tutorial.status === 'pending'
-          ? '<span class="resource-badge pending">Pending Approval</span>'
-          : '';
-
-        // Show instrument badge for instrument-specific tutorials
-        const instrument = tutorial.instrument_id
-          ? this.instruments.find(i => i.id === tutorial.instrument_id)
-          : null;
-        const instrumentBadge = instrument
-          ? `<span class="resource-badge instrument">${instrument.icon} ${instrument.name}</span>`
-          : '<span class="resource-badge universal">All Instruments</span>';
-
-        const approveButton = isTeacher && tutorial.status === 'pending'
-          ? `<button class="btn btn-sm btn-primary" onclick="app.approveTutorial('${tutorial.id}')">Approve</button>`
-          : '';
-
-        const deleteButton = isTeacher && !tutorial.is_main
-          ? `<button class="btn btn-sm btn-danger" onclick="app.deleteTutorial('${tutorial.id}')" title="Delete tutorial">Delete</button>`
-          : '';
-
-        return `
-          <div class="tutorial-item ${tutorial.status === 'pending' ? 'pending' : ''}">
-            <span class="tutorial-icon">🎬</span>
-            <div class="tutorial-content">
-              <div class="tutorial-title">
-                <a href="${tutorial.url}" target="_blank">${tutorial.title || 'Tutorial Video'}</a>
-                ${instrumentBadge}
-                ${statusBadge}
-              </div>
-              <div class="tutorial-meta">${tutorial.is_main ? 'Added during grading' : 'Shared by a student'}</div>
-            </div>
-            <div class="resource-actions">
-              ${approveButton}
-              ${deleteButton}
-            </div>
-          </div>
-        `;
-      }).join('');
-    } catch (error) {
-      console.error('Error loading tutorials:', error);
-      container.innerHTML = '<p class="empty-resources">An error occurred</p>';
-    }
+    // Reload resources with new instrument filter
+    await this.loadStudentResources(this.currentResourceSong.id);
   }
 
   async loadStudentResources(songId) {
@@ -8388,13 +8271,10 @@ class CadenceApp {
     try {
       const isTeacher = auth.hasRole('teacher') || auth.hasRole('admin');
 
-      // Use raw fetch to avoid Supabase JS client issues after inserts
-      // RLS policy already filters: students see approved resources or their own submissions
-      // Teachers see all resources
-      // Filter by selected instrument in modal: show resources for this instrument OR universal (null instrument_id)
+      // Fetch all resources (tutorials, links, files) for this song
       let query = `select=id,title,description,file_url,file_type,status,user_id,instrument_id,created_at&song_id=eq.${songId}&order=created_at.desc`;
 
-      // Get instrument from filter dropdown (falls back to current instrument)
+      // Filter by selected instrument: show resources for this instrument OR universal (null instrument_id)
       const filterInstrumentId = document.getElementById('resources-instrument-filter')?.value || this.currentInstrument;
       if (filterInstrumentId) {
         query += `&or=(instrument_id.is.null,instrument_id.eq.${filterInstrumentId})`;
@@ -8408,21 +8288,49 @@ class CadenceApp {
         return;
       }
 
-      if (!data || data.length === 0) {
-        container.innerHTML = '<p class="empty-resources">No student resources shared yet. Share your drawings, notes, or helpful links!</p>';
+      // Also include the song's legacy tutorial_url if no tutorial resources exist yet
+      const song = this.currentResourceSong;
+      const allResources = [...(data || [])];
+      const hasTutorialResources = allResources.some(r => r.file_type === 'tutorial');
+      if (song?.tutorial_url && !hasTutorialResources) {
+        allResources.unshift({
+          id: 'main-tutorial',
+          title: 'Tutorial Video',
+          description: null,
+          file_url: song.tutorial_url,
+          file_type: 'tutorial',
+          status: 'approved',
+          instrument_id: null,
+          is_legacy: true
+        });
+      }
+
+      if (allResources.length === 0) {
+        container.innerHTML = '<p class="empty-resources">No resources yet. Be the first to add one!</p>';
         return;
       }
 
-      container.innerHTML = data.map(resource => {
-        const icon = resource.file_type === 'image' ? '🖼️'
+      // Sort: tutorials first, then others
+      allResources.sort((a, b) => {
+        const aIsTutorial = a.file_type === 'tutorial' ? 0 : 1;
+        const bIsTutorial = b.file_type === 'tutorial' ? 0 : 1;
+        return aIsTutorial - bIsTutorial;
+      });
+
+      container.innerHTML = allResources.map(resource => {
+        const icon = resource.file_type === 'tutorial' ? '🎬'
+          : resource.file_type === 'image' ? '🖼️'
           : resource.file_type === 'pdf' ? '📄'
           : '🔗';
+
+        const typeBadge = resource.file_type === 'tutorial'
+          ? '<span class="resource-badge type-tutorial">Tutorial</span>'
+          : '';
 
         const statusBadge = resource.status === 'pending'
           ? '<span class="resource-badge pending">Pending Approval</span>'
           : '';
 
-        // Show instrument badge for instrument-specific resources
         const instrument = resource.instrument_id
           ? this.instruments.find(i => i.id === resource.instrument_id)
           : null;
@@ -8434,7 +8342,7 @@ class CadenceApp {
           ? `<button class="btn btn-sm btn-primary" onclick="app.approveResource('${resource.id}')">Approve</button>`
           : '';
 
-        const deleteButton = isTeacher
+        const deleteButton = isTeacher && !resource.is_legacy
           ? `<button class="btn btn-sm btn-danger" onclick="app.deleteResource('${resource.id}')" title="Delete resource">Delete</button>`
           : '';
 
@@ -8444,11 +8352,12 @@ class CadenceApp {
             <div class="resource-content">
               <div class="resource-title">
                 <a href="${resource.file_url}" target="_blank">${resource.title}</a>
+                ${typeBadge}
                 ${instrumentBadge}
                 ${statusBadge}
               </div>
               ${resource.description ? `<div class="resource-description">${resource.description}</div>` : ''}
-              <div class="resource-meta">Shared by a student</div>
+              <div class="resource-meta">${resource.is_legacy ? 'Added during grading' : 'Shared by a student'}</div>
             </div>
             <div class="resource-actions">
               ${approveButton}
@@ -8463,7 +8372,7 @@ class CadenceApp {
     }
   }
 
-  showAddResourceModal() {
+  showAddResourceModal(presetType) {
     if (!this.currentResourceSong) {
       this.showToast('Please select a song first', 'error');
       return;
@@ -8486,6 +8395,14 @@ class CadenceApp {
     // Reset form
     document.getElementById('add-resource-form').reset();
 
+    // Set type if preset
+    if (presetType) {
+      document.getElementById('resource-type').value = presetType;
+    }
+
+    // Update form fields based on selected type
+    this.onResourceTypeChange();
+
     // Populate instrument dropdown
     const instrumentSelect = document.getElementById('resource-instrument');
     if (instrumentSelect && this.instruments) {
@@ -8501,54 +8418,11 @@ class CadenceApp {
       }
     }
 
-    document.getElementById('add-resource-modal').classList.remove('hidden');
-  }
-
-  showAddTutorialModal() {
-    if (!this.currentResourceSong) {
-      this.showToast('Please select a song first', 'error');
-      return;
-    }
-
-    document.getElementById('add-tutorial-song-info').textContent =
-      `${this.currentResourceSong.title} - ${this.currentResourceSong.artist}`;
-
-    // Show pending notice for students
-    const isStudent = auth.hasRole('student');
-    const pendingNotice = document.getElementById('tutorial-pending-notice');
-    if (pendingNotice) {
-      if (isStudent) {
-        pendingNotice.classList.remove('hidden');
-      } else {
-        pendingNotice.classList.add('hidden');
-      }
-    }
-
-    // Reset form
-    document.getElementById('add-tutorial-form').reset();
-
-    // Populate instrument dropdown
-    const instrumentSelect = document.getElementById('tutorial-instrument');
-    if (instrumentSelect && this.instruments) {
-      instrumentSelect.innerHTML = '<option value="">All Instruments (Universal)</option>' +
-        this.instruments.map(i =>
-          `<option value="${i.id}">${i.icon} ${i.name}</option>`
-        ).join('');
-
-      // Pre-select the instrument from the filter dropdown (what user is currently viewing)
-      const filterInstrumentId = document.getElementById('resources-instrument-filter')?.value || this.currentInstrument;
-      if (filterInstrumentId) {
-        instrumentSelect.value = filterInstrumentId;
-      }
-    }
-
-    document.getElementById('add-tutorial-modal').classList.remove('hidden');
-
-    // Wire up inline search button (matches grading modal pattern)
-    const searchBtn = document.getElementById('search-tutorial-resource-btn');
+    // Wire up search button for tutorials
+    const searchBtn = document.getElementById('search-resource-btn');
     if (searchBtn) {
       searchBtn.onclick = () => {
-        const searchInstrumentId = document.getElementById('tutorial-instrument')?.value ||
+        const searchInstrumentId = document.getElementById('resource-instrument')?.value ||
           document.getElementById('resources-instrument-filter')?.value || this.currentInstrument;
         const instrumentName = this.instruments.find(i => i.id === searchInstrumentId)?.name || '';
         const searchQuery = instrumentName
@@ -8557,6 +8431,41 @@ class CadenceApp {
         const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
         window.open(searchUrl, '_blank');
       };
+    }
+
+    document.getElementById('add-resource-modal').classList.remove('hidden');
+  }
+
+  onResourceTypeChange() {
+    const type = document.getElementById('resource-type').value;
+    const linkGroup = document.getElementById('resource-link-group');
+    const fileGroup = document.getElementById('resource-file-group');
+    const descGroup = document.getElementById('resource-description-group');
+    const searchBtn = document.getElementById('search-resource-btn');
+    const linkLabel = document.getElementById('resource-link-label');
+    const titleInput = document.getElementById('resource-title');
+
+    if (type === 'tutorial') {
+      linkGroup.classList.remove('hidden');
+      fileGroup.classList.add('hidden');
+      descGroup.classList.add('hidden');
+      if (searchBtn) searchBtn.style.display = '';
+      if (linkLabel) linkLabel.textContent = 'Tutorial URL';
+      if (titleInput) titleInput.placeholder = 'e.g., Beginner-friendly tutorial';
+    } else if (type === 'file') {
+      linkGroup.classList.add('hidden');
+      fileGroup.classList.remove('hidden');
+      descGroup.classList.remove('hidden');
+      if (searchBtn) searchBtn.style.display = 'none';
+      if (titleInput) titleInput.placeholder = 'e.g., Chord fingering diagram';
+    } else {
+      // link
+      linkGroup.classList.remove('hidden');
+      fileGroup.classList.add('hidden');
+      descGroup.classList.remove('hidden');
+      if (searchBtn) searchBtn.style.display = 'none';
+      if (linkLabel) linkLabel.textContent = 'URL';
+      if (titleInput) titleInput.placeholder = 'e.g., Practice tips, Chord chart';
     }
   }
 
@@ -8569,15 +8478,15 @@ class CadenceApp {
       const title = document.getElementById('resource-title').value.trim();
       const url = document.getElementById('resource-link').value.trim();
       const description = document.getElementById('resource-description').value.trim();
+      const resourceType = document.getElementById('resource-type').value;
       const fileInput = document.getElementById('resource-file');
       const file = fileInput?.files[0];
       const isStudent = auth.hasRole('student');
 
       let fileUrl = '';
-      let fileType = 'link';
+      let fileType = resourceType === 'tutorial' ? 'tutorial' : 'link';
 
-      // Check if we have a file or URL
-      if (file) {
+      if (resourceType === 'file' && file) {
         // Check file size (5MB limit)
         if (file.size > 5 * 1024 * 1024) {
           this.showToast('File size must be under 5MB', 'error');
@@ -8609,16 +8518,18 @@ class CadenceApp {
         fileUrl = urlData.publicUrl;
       } else if (url) {
         fileUrl = url;
-        fileType = 'link';
+      } else if (resourceType === 'file' && !file) {
+        this.showToast('Please select a file to upload', 'error');
+        return;
       } else {
-        this.showToast('Please provide a URL or upload a file', 'error');
+        this.showToast('Please provide a URL', 'error');
         return;
       }
 
       // Get selected instrument (empty string = universal/all instruments)
       const instrumentId = document.getElementById('resource-instrument')?.value || null;
 
-      // Insert resource record using raw fetch (workaround for Supabase JS client bug)
+      // Insert resource record
       await this.rawInsert('student_resources', {
         song_id: this.currentResourceSong.id,
         user_id: auth.getCurrentUser().id,
@@ -8771,107 +8682,6 @@ class CadenceApp {
 
     const data = await response.json();
     return { data, error: null };
-  }
-
-  async submitTutorial() {
-    // Prevent double submission
-    if (this.isSubmittingTutorial) return;
-    this.isSubmittingTutorial = true;
-
-    try {
-      const url = document.getElementById('tutorial-url').value.trim();
-      const title = document.getElementById('tutorial-title').value.trim();
-
-      if (!this.currentResourceSong) {
-        this.showToast('No song selected', 'error');
-        return;
-      }
-
-      const isStudent = auth.hasRole('student');
-
-      // Get selected instrument (empty string = universal/all instruments)
-      const instrumentId = document.getElementById('tutorial-instrument')?.value || null;
-
-      // Use raw fetch insert (workaround for Supabase JS client bug with inserts)
-      await this.rawInsert('song_tutorials', {
-        song_id: this.currentResourceSong.id,
-        url: url,
-        title: title || null,
-        instrument_id: instrumentId || null,
-        submitted_by_user_id: auth.getCurrentUser().id,
-        status: isStudent ? 'pending' : 'approved'
-      });
-
-      // Close modal and refresh
-      document.getElementById('add-tutorial-modal').classList.add('hidden');
-      this.showToast(
-        isStudent ? 'Tutorial submitted for teacher approval' : 'Tutorial added successfully',
-        'success'
-      );
-
-      // Refresh the tutorials list
-      await this.loadSongTutorials(this.currentResourceSong.id);
-    } catch (error) {
-      console.error('Error submitting tutorial:', error);
-      this.showToast('Failed to save tutorial: ' + error.message, 'error');
-    } finally {
-      this.isSubmittingTutorial = false;
-    }
-  }
-
-  async approveTutorial(tutorialId) {
-    try {
-      await this.rawUpdate('song_tutorials', tutorialId, {
-        status: 'approved',
-        reviewed_by_user_id: auth.getCurrentUser().id,
-        reviewed_at: new Date().toISOString()
-      });
-
-      // Update local song count and re-render
-      const song = this.songs.find(s => s.id === this.currentResourceSong.id);
-      if (song) {
-        song.tutorial_count = (song.tutorial_count || 0) + 1;
-        this.filterSongs(); // Re-render song cards
-      }
-
-      this.showToast('Tutorial approved', 'success');
-      await this.loadSongTutorials(this.currentResourceSong.id);
-    } catch (error) {
-      console.error('Error approving tutorial:', error);
-      this.showToast('Failed to approve tutorial', 'error');
-    }
-  }
-
-  async rejectTutorial(tutorialId) {
-    try {
-      await this.rawUpdate('song_tutorials', tutorialId, {
-        status: 'rejected',
-        reviewed_by_user_id: auth.getCurrentUser().id,
-        reviewed_at: new Date().toISOString()
-      });
-
-      this.showToast('Tutorial rejected', 'success');
-      await this.loadSongTutorials(this.currentResourceSong.id);
-    } catch (error) {
-      console.error('Error rejecting tutorial:', error);
-      this.showToast('Failed to reject tutorial', 'error');
-    }
-  }
-
-  async deleteTutorial(tutorialId) {
-    if (!confirm('Are you sure you want to delete this tutorial?')) {
-      return;
-    }
-
-    try {
-      await this.rawDelete('song_tutorials', tutorialId);
-
-      this.showToast('Tutorial deleted', 'success');
-      await this.loadSongTutorials(this.currentResourceSong.id);
-    } catch (error) {
-      console.error('Error deleting tutorial:', error);
-      this.showToast('Failed to delete tutorial', 'error');
-    }
   }
 
   async approveResource(resourceId) {
