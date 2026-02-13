@@ -2522,6 +2522,190 @@ body {
   margin-top: 1rem;
 }
 
+/* Merge Duplicates */
+.duplicates-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.duplicate-pair-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+  transition: var(--transition);
+}
+
+.duplicate-pair-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.duplicate-pair-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.duplicate-pair-score {
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.duplicate-pair-score.high {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.duplicate-pair-songs {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 1rem;
+  align-items: center;
+}
+
+.duplicate-song-info {
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  background: var(--bg-secondary);
+}
+
+.duplicate-song-title {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.duplicate-song-artist {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.duplicate-song-stats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.duplicate-pair-vs {
+  font-weight: 700;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.duplicate-pair-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+/* Merge Modal Comparison */
+.merge-comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.merge-song-option {
+  padding: 1.5rem;
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.merge-song-option:hover {
+  border-color: var(--primary-color);
+  background: var(--bg-secondary);
+}
+
+.merge-song-option.selected {
+  border-color: var(--primary-color);
+  background: #eff6ff;
+  box-shadow: 0 0 0 1px var(--primary-color);
+}
+
+.merge-song-option .merge-keep-badge {
+  display: none;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--primary-color);
+  color: white;
+  margin-bottom: 0.75rem;
+}
+
+.merge-song-option.selected .merge-keep-badge {
+  display: inline-block;
+}
+
+.merge-song-option .merge-delete-badge {
+  display: none;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--error-color);
+  color: white;
+  margin-bottom: 0.75rem;
+}
+
+.merge-song-option:not(.selected) .merge-delete-badge {
+  display: inline-block;
+}
+
+.merge-song-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.merge-song-artist {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.merge-song-detail {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.875rem;
+}
+
+.merge-song-detail:last-child {
+  border-bottom: none;
+}
+
+.merge-song-detail-label {
+  color: var(--text-secondary);
+}
+
+.merge-song-detail-value {
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .duplicate-pair-songs {
+    grid-template-columns: 1fr;
+  }
+  .duplicate-pair-vs {
+    text-align: center;
+  }
+  .merge-comparison {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Users List */
 .users-list {
   display: grid;

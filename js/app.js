@@ -455,6 +455,18 @@ class CadenceApp {
       deleteSongBtn.addEventListener('click', () => this.deleteSong());
     }
 
+    // Admin: Scan duplicates button
+    const scanDuplicatesBtn = document.getElementById('scan-duplicates-btn');
+    if (scanDuplicatesBtn) {
+      scanDuplicatesBtn.addEventListener('click', () => this.scanForDuplicates());
+    }
+
+    // Admin: Confirm merge button
+    const confirmMergeBtn = document.getElementById('confirm-merge-btn');
+    if (confirmMergeBtn) {
+      confirmMergeBtn.addEventListener('click', () => this.executeMerge());
+    }
+
     // Setup admin forms
     this.setupAdminForms();
 
@@ -7221,6 +7233,8 @@ class CadenceApp {
         this.renderAdminInstruments();
       } else if (sectionName === 'content') {
         this.loadContentModeration();
+      } else if (sectionName === 'duplicates') {
+        // Don't auto-scan; wait for button click
       } else if (sectionName === 'users') {
         this.loadUsersManagement();
       }

@@ -383,6 +383,7 @@
           <button class="admin-section-tab active" data-section="levels">Levels & Checklists</button>
           <button class="admin-section-tab" data-section="instruments">Instruments</button>
           <button class="admin-section-tab" data-section="content">Content Moderation</button>
+          <button class="admin-section-tab" data-section="duplicates">Merge Duplicates</button>
           <button class="admin-section-tab" data-section="users">User Management</button>
         </div>
 
@@ -429,6 +430,22 @@
           </div>
           <div id="content-moderation-list" class="content-moderation-list">
             <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Merge Duplicates Section -->
+        <div id="duplicates-section" class="admin-section">
+          <div class="admin-section-header">
+            <h3>Merge Duplicate Songs</h3>
+            <div class="admin-filters">
+              <button id="scan-duplicates-btn" class="btn btn-primary">Scan for Duplicates</button>
+            </div>
+          </div>
+          <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+            Find songs with similar titles and artists that may be duplicates. Select a pair to merge them, combining all ratings, student progress, and resources.
+          </p>
+          <div id="duplicates-list" class="duplicates-list">
+            <p style="color: var(--text-secondary); text-align: center; padding: 3rem;">Click "Scan for Duplicates" to find potential duplicate songs.</p>
           </div>
         </div>
 
@@ -1187,6 +1204,28 @@
         <div class="form-actions" style="margin-top: 1.5rem;">
           <button type="button" class="btn btn-secondary modal-close">Cancel</button>
           <button type="button" id="confirm-delete-account-btn" class="btn btn-danger">Delete Account</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Merging Duplicate Songs -->
+  <div id="merge-songs-modal" class="modal hidden">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h2>Merge Duplicate Songs</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+          Choose which song to keep. All ratings, student progress, tutorials, and resources from the other song will be merged into the kept song, then the duplicate will be deleted.
+        </p>
+        <div id="merge-songs-comparison" class="merge-comparison">
+          <!-- Populated by JS -->
+        </div>
+        <div class="form-actions" style="margin-top: 1.5rem;">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="button" id="confirm-merge-btn" class="btn btn-primary" disabled>Merge Songs</button>
         </div>
       </div>
     </div>
