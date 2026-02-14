@@ -120,8 +120,6 @@
           <button class="nav-tab teacher-tab hidden" data-view="flagged">Review <span id="flagged-count-badge" class="tab-notification-badge hidden"></span></button>
           <!-- Account management tab (shown to teachers and admins) -->
           <button class="nav-tab teacher-tab admin-tab hidden" data-view="accounts">Accounts</button>
-          <!-- Merge duplicates tab (shown to teachers and admins) -->
-          <button class="nav-tab teacher-tab admin-tab hidden" data-view="duplicates">Duplicates</button>
           <!-- Admin tabs (shown only to admins) -->
           <button class="nav-tab admin-tab hidden" data-view="admin">Admin</button>
         </nav>
@@ -171,6 +169,7 @@
         <div class="view-header">
           <h2>Song Library</h2>
           <div class="song-actions">
+            <button id="scan-duplicates-btn" class="btn btn-secondary teacher-tab admin-tab hidden">Scan for Duplicates</button>
             <button id="grade-new-song-btn" class="btn btn-grade-song">+ Grade New Song</button>
           </div>
         </div>
@@ -195,6 +194,16 @@
 
         <div id="songs-grid" class="songs-grid">
           <!-- Songs populated by JS -->
+        </div>
+
+        <div id="duplicates-section" class="teacher-tab admin-tab hidden" style="margin-top: 2rem;">
+          <h3>Merge Duplicate Songs</h3>
+          <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+            Find songs with similar titles and artists that may be duplicates. Select a pair to merge them, combining all ratings, student progress, and resources.
+          </p>
+          <div id="duplicates-list" class="duplicates-list">
+            <p style="color: var(--text-secondary); text-align: center; padding: 3rem;">Click "Scan for Duplicates" to find potential duplicate songs.</p>
+          </div>
         </div>
       </div>
 
@@ -369,19 +378,6 @@
         </div>
       </div>
 
-      <!-- Merge Duplicates (teachers and admins) -->
-      <div id="duplicates-view" class="view hidden">
-        <div class="view-header">
-          <h2>Merge Duplicate Songs</h2>
-          <button id="scan-duplicates-btn" class="btn btn-primary">Scan for Duplicates</button>
-        </div>
-        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-          Find songs with similar titles and artists that may be duplicates. Select a pair to merge them, combining all ratings, student progress, and resources.
-        </p>
-        <div id="duplicates-list" class="duplicates-list">
-          <p style="color: var(--text-secondary); text-align: center; padding: 3rem;">Click "Scan for Duplicates" to find potential duplicate songs.</p>
-        </div>
-      </div>
 
       <!-- Admin: Admin Dashboard -->
       <div id="admin-view" class="view admin-view hidden">
