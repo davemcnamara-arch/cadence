@@ -543,8 +543,8 @@ class CadenceApp {
     const savedView = sessionStorage.getItem('cadence_currentView');
     const validViews = {
       student: ['pathway', 'songs', 'progress'],
-      teacher: ['songs', 'classes', 'flagged', 'accounts', 'duplicates'],
-      admin: ['songs', 'classes', 'flagged', 'accounts', 'duplicates', 'admin']
+      teacher: ['songs', 'classes', 'flagged', 'accounts'],
+      admin: ['songs', 'classes', 'flagged', 'accounts', 'admin']
     };
     const restoredView = savedView && validViews[user.role]?.includes(savedView) ? savedView : null;
 
@@ -1420,8 +1420,6 @@ class CadenceApp {
         }
       } else if (viewName === 'accounts') {
         loadViewAsync(() => this.loadAccountsData());
-      } else if (viewName === 'duplicates') {
-        // Don't auto-scan; wait for button click
       } else if (viewName === 'admin') {
         // Load admin data
         this.renderAdminStats(this.adminStats || {students: 0, teachers: 0, songs: 0, classes: 0});
