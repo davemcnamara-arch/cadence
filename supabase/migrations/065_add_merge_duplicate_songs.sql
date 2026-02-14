@@ -204,8 +204,7 @@ BEGIN
   -- Delete remaining pending links that couldn't be moved
   DELETE FROM pending_links WHERE song_id = p_delete_song_id;
 
-  -- Delete any resource_ratings referencing the deleted song
-  DELETE FROM resource_ratings WHERE song_id = p_delete_song_id;
+  -- Note: resource_ratings are cascade-deleted when their student_songs are deleted above
 
   -- Now safe to delete the duplicate song
   DELETE FROM songs WHERE id = p_delete_song_id;
