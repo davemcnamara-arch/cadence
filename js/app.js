@@ -6170,7 +6170,7 @@ class CadenceApp {
       ),
       this.callSelectDirect(
         'song_tutorials',
-        'id,song_id,url,title,created_at,submitted_by_user_id,instrument_id,songs!inner(title,artist),instruments(icon,name)',
+        'id,song_id,url,title,created_at,submitted_by_user_id,instrument_id,songs!inner(title,artist),instruments(icon,name),users!submitted_by_user_id(name)',
         { in: { submitted_by_user_id: studentIds }, eq: { status: 'pending' } },
         { order: 'created_at.desc' }
       ),
