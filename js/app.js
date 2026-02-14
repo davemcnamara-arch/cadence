@@ -5822,16 +5822,28 @@ class CadenceApp {
       console.error('Error loading student preview data:', error);
     }
 
-    let progressData = data?.progress || [];
-    let songsData = data?.songs || [];
+    let progressData = [];
+    let songsData = [];
+
+    // Handle both RPC return formats:
+    // - Current (migration 060): flat array of student_songs
+    // - Legacy: { progress: [...], songs: [...] }
+    if (Array.isArray(data)) {
+      songsData = data;
+    } else if (data) {
+      progressData = data.progress || [];
+      songsData = data.songs || [];
+    }
 
     // Fallback: if RPC returned no progress, use data already loaded from classStudents
+    // Use saved original instruments since this.instruments was cleared for preview mode
+    const savedInstruments = this.previewMode.originalInstruments || [];
     if (progressData.length === 0) {
       const member = this.classStudents.find(m => m.user_id === studentId);
       const memberProgress = member?.student_progress || [];
       if (memberProgress.length > 0) {
         progressData = memberProgress.map(p => {
-          const inst = this.instruments.find(i => i.id === p.instrument_id);
+          const inst = savedInstruments.find(i => i.id === p.instrument_id);
           return {
             instrument_id: p.instrument_id,
             current_level: p.current_level,
