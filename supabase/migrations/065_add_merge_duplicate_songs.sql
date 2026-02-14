@@ -1,5 +1,5 @@
 -- Enable the pg_trgm extension for fuzzy text matching
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA public;
 
 -- Find potential duplicate songs using trigram similarity
 -- Returns groups of songs that look like duplicates
@@ -26,7 +26,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, extensions
+SET search_path = public
 AS $$
 BEGIN
   RETURN QUERY
@@ -204,8 +204,7 @@ BEGIN
   -- Delete remaining pending links that couldn't be moved
   DELETE FROM pending_links WHERE song_id = p_delete_song_id;
 
-  -- Delete any resource_ratings referencing the deleted song
-  DELETE FROM resource_ratings WHERE song_id = p_delete_song_id;
+  -- Note: resource_ratings are cascade-deleted when their student_songs are deleted above
 
   -- Now safe to delete the duplicate song
   DELETE FROM songs WHERE id = p_delete_song_id;

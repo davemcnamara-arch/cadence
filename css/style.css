@@ -2581,6 +2581,15 @@ body {
   margin-bottom: 0.25rem;
 }
 
+.duplicate-song-title a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.duplicate-song-title a:hover {
+  text-decoration: underline;
+}
+
 .duplicate-song-artist {
   color: var(--text-secondary);
   font-size: 0.875rem;

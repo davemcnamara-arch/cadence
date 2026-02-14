@@ -7536,6 +7536,11 @@ class CadenceApp {
     container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">Scanning for duplicates...</p>';
 
     try {
+      // Ensure songs are loaded so titles can open the song detail modal
+      if (!this.songs || this.songs.length === 0) {
+        await this.loadSongs();
+      }
+
       const { data, error } = await this.callRpcDirect('find_duplicate_song_groups', {
         p_threshold: 0.35,
         p_limit: 50
@@ -7576,7 +7581,7 @@ class CadenceApp {
           </div>
           <div class="duplicate-pair-songs">
             <div class="duplicate-song-info">
-              <div class="duplicate-song-title">${this.escapeHtml(pair.title)}</div>
+              <div class="duplicate-song-title"><a href="#" onclick="event.preventDefault(); app.viewSongDetails('${pair.song_id}')">${this.escapeHtml(pair.title)}</a></div>
               <div class="duplicate-song-artist">${this.escapeHtml(pair.artist)}</div>
               <div class="duplicate-song-stats">
                 <span>${pair.rating_count || 0} ratings</span>
@@ -7587,7 +7592,7 @@ class CadenceApp {
             </div>
             <div class="duplicate-pair-vs">VS</div>
             <div class="duplicate-song-info">
-              <div class="duplicate-song-title">${this.escapeHtml(pair.match_title)}</div>
+              <div class="duplicate-song-title"><a href="#" onclick="event.preventDefault(); app.viewSongDetails('${pair.match_song_id}')">${this.escapeHtml(pair.match_title)}</a></div>
               <div class="duplicate-song-artist">${this.escapeHtml(pair.match_artist)}</div>
               <div class="duplicate-song-stats">
                 <span>Song B</span>
