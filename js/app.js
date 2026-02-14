@@ -7542,7 +7542,7 @@ class CadenceApp {
       }
 
       const { data, error } = await this.callRpcDirect('find_duplicate_song_groups', {
-        p_threshold: 0.35,
+        p_threshold: 0.65,
         p_limit: 50
       });
 
@@ -7600,6 +7600,7 @@ class CadenceApp {
             </div>
           </div>
           <div class="duplicate-pair-actions">
+            <button class="btn btn-secondary btn-sm" onclick="app.dismissDuplicatePair('${pair.song_id}', '${pair.match_song_id}', this)">Not Duplicates</button>
             <button class="btn btn-primary btn-sm" onclick="app.showMergeModal('${pair.song_id}', '${pair.match_song_id}')">Review & Merge</button>
           </div>
         </div>
@@ -7607,6 +7608,53 @@ class CadenceApp {
     }).join('');
 
     container.innerHTML = html;
+  }
+
+  async dismissDuplicatePair(songIdA, songIdB, buttonEl) {
+    const card = buttonEl.closest('.duplicate-pair-card');
+    try {
+      buttonEl.disabled = true;
+      buttonEl.textContent = 'Dismissing...';
+
+      const { data, error } = await this.callRpcDirect('dismiss_duplicate_pair', {
+        p_song_id_a: songIdA,
+        p_song_id_b: songIdB
+      });
+
+      if (error) {
+        console.error('Error dismissing duplicate pair:', error);
+        this.showToast('Failed to dismiss pair', 'error');
+        buttonEl.disabled = false;
+        buttonEl.textContent = 'Not Duplicates';
+        return;
+      }
+
+      // Animate the card out and remove from list
+      card.style.transition = 'opacity 0.3s, transform 0.3s';
+      card.style.opacity = '0';
+      card.style.transform = 'translateX(20px)';
+      setTimeout(() => {
+        card.remove();
+        // Remove from in-memory list too
+        this.duplicatePairs = this.duplicatePairs.filter(
+          p => !(p.song_id === songIdA && p.match_song_id === songIdB)
+        );
+        // Show empty state if none left
+        if (this.duplicatePairs.length === 0) {
+          const container = document.getElementById('duplicates-list');
+          if (container) {
+            container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No potential duplicates found. Your song library is clean!</p>';
+          }
+        }
+      }, 300);
+
+      this.showToast('Pair dismissed as separate songs', 'success');
+    } catch (err) {
+      console.error('Error dismissing duplicate pair:', err);
+      this.showToast('Failed to dismiss pair', 'error');
+      buttonEl.disabled = false;
+      buttonEl.textContent = 'Not Duplicates';
+    }
   }
 
   async showMergeModal(songIdA, songIdB) {
