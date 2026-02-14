@@ -7531,6 +7531,21 @@ class CadenceApp {
     const container = document.getElementById('duplicates-list');
     if (!container) return;
 
+    const btn = document.getElementById('scan-duplicates-btn');
+    const section = document.getElementById('duplicates-section');
+
+    // Show the duplicates section and scroll to it
+    if (section) {
+      section.classList.remove('hidden');
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Disable button while scanning
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Scanning...';
+    }
+
     container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">Scanning for duplicates...</p>';
 
     try {
@@ -7555,6 +7570,11 @@ class CadenceApp {
     } catch (err) {
       console.error('Error scanning for duplicates:', err);
       container.innerHTML = '<p style="color: var(--error-color); text-align: center; padding: 3rem;">Failed to scan for duplicates. The database function may need to be created first.</p>';
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Scan for Duplicates';
+      }
     }
   }
 
