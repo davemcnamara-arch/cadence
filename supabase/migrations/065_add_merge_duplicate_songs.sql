@@ -1,3 +1,6 @@
+-- Enable the pg_trgm extension for fuzzy text matching
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 -- Find potential duplicate songs using trigram similarity
 -- Returns groups of songs that look like duplicates
 CREATE OR REPLACE FUNCTION find_duplicate_song_groups(
