@@ -2523,6 +2523,18 @@ body {
 }
 
 /* Merge Duplicates */
+.duplicates-section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+.duplicates-section h3 {
+  margin-bottom: 0.5rem;
+}
+
 .duplicates-list {
   display: grid;
   gap: 1rem;
