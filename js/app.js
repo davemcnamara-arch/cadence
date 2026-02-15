@@ -5623,6 +5623,24 @@ class CadenceApp {
       }
     }
 
+    // Fallback: derive progressData from songsData when student_progress isn't available
+    // (migration 060 RPC returns flat song array without separate progress data)
+    if (progressData.length === 0 && songsData.length > 0) {
+      const instrumentMap = {};
+      songsData.forEach(s => {
+        if (!instrumentMap[s.instrument_id]) {
+          const inst = s.instruments || this.instruments?.find(i => i.id === s.instrument_id) || { id: s.instrument_id, name: 'Unknown', icon: '🎵' };
+          instrumentMap[s.instrument_id] = {
+            instrument_id: s.instrument_id,
+            current_level: null,
+            current_branch: null,
+            instruments: { id: inst.id, name: inst.name, icon: inst.icon }
+          };
+        }
+      });
+      progressData = Object.values(instrumentMap);
+    }
+
     // Build student detail modal content
     let html = '';
 
@@ -5642,9 +5660,9 @@ class CadenceApp {
             <div class="student-instrument-header">
               ${inst.icon} ${inst.name}
             </div>
-            <div class="student-progress-info">
+            ${progress.current_level != null ? `<div class="student-progress-info">
               Level ${progress.current_level}${progress.current_branch ? ` - ${progress.current_branch}` : ''}
-            </div>
+            </div>` : ''}
             <div class="student-progress-info">
               ${learning.length} learning • ${mastered.length} mastered
             </div>
