@@ -2104,9 +2104,10 @@ class CadenceApp {
       content.querySelectorAll('.song-student-item').forEach(el => {
         el.addEventListener('click', () => {
           const studentId = el.dataset.studentId;
+          const studentName = el.querySelector('strong')?.textContent;
           if (studentId) {
             document.getElementById('song-details-modal').classList.add('hidden');
-            this.viewStudentDetail(studentId);
+            this.viewStudentDetail(studentId, studentName);
           }
         });
       });
@@ -5535,7 +5536,7 @@ class CadenceApp {
     container.innerHTML = html;
   }
 
-  async viewStudentDetail(studentId) {
+  async viewStudentDetail(studentId, studentName) {
     // Find student info first from already-loaded data
     let student = this.classStudents.find(m => m.user_id === studentId)?.users;
     // Fallback: look up from cross-class search results cache
@@ -5544,6 +5545,10 @@ class CadenceApp {
       if (match) {
         student = { id: match.user_id, name: match.name, email: match.email };
       }
+    }
+    // Fallback: use the provided name (e.g. from song details modal)
+    if (!student && studentName) {
+      student = { id: studentId, name: studentName };
     }
     if (!student) return;
 
