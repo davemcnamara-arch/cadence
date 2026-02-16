@@ -6967,6 +6967,11 @@ class CadenceApp {
         if (this.adminContentList) {
           await this.loadContentModeration();
         }
+
+        // Also refresh flagged/new ratings review if visible
+        if (this.newRatings || this.flaggedRatings) {
+          await this.loadFlaggedRatings();
+        }
       } catch (error) {
         console.error('Error updating song details:', error);
         this.showToast(`Failed to update song details: ${error.message}`, 'error');
