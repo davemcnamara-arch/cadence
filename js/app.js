@@ -450,6 +450,16 @@ class CadenceApp {
       unapproveSongBtn.addEventListener('click', () => this.approveSong(false));
     }
 
+    const editModerateSongBtn = document.getElementById('edit-moderate-song-btn');
+    if (editModerateSongBtn) {
+      editModerateSongBtn.addEventListener('click', () => {
+        const song = this.adminContentList?.find(s => s.id === this.currentModeratingSongId);
+        if (song) {
+          this.editSongDetails(song.id, song.title, song.artist, song.suggested_level || null);
+        }
+      });
+    }
+
     const deleteSongBtn = document.getElementById('delete-song-btn');
     if (deleteSongBtn) {
       deleteSongBtn.addEventListener('click', () => this.deleteSong());
@@ -6951,6 +6961,11 @@ class CadenceApp {
         // Reload songs to show the updated details
         await this.loadSongs();
         this.renderSongs();
+
+        // Also refresh content moderation list if visible
+        if (this.adminContentList) {
+          await this.loadContentModeration();
+        }
       } catch (error) {
         console.error('Error updating song details:', error);
         this.showToast(`Failed to update song details: ${error.message}`, 'error');
@@ -7540,6 +7555,7 @@ class CadenceApp {
             </div>
           </div>
           <div class="content-mod-actions">
+            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); app.editSongDetails('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', ${song.suggested_level || 'null'})" title="Edit song details">Edit Details</button>
             <button class="btn btn-secondary btn-sm" onclick="app.moderateSong('${song.id}')">Moderate</button>
           </div>
         </div>
@@ -7557,14 +7573,8 @@ class CadenceApp {
 
     const details = `
       <div style="margin-bottom: 1rem;">
-        <div class="form-group" style="margin-bottom: 0.5rem;">
-          <label for="moderate-song-title" style="font-size: 0.85rem; font-weight: 600;">Song Title</label>
-          <input type="text" id="moderate-song-title" class="form-input" value="${song.title.replace(/"/g, '&quot;')}" style="font-size: 1.1rem; font-weight: 600;">
-        </div>
-        <div class="form-group" style="margin-bottom: 0.5rem;">
-          <label for="moderate-song-artist" style="font-size: 0.85rem; font-weight: 600;">Artist</label>
-          <input type="text" id="moderate-song-artist" class="form-input" value="${song.artist.replace(/"/g, '&quot;')}" style="color: var(--text-secondary);">
-        </div>
+        <h3 style="margin-bottom: 0.5rem;">${song.title}</h3>
+        <p style="color: var(--text-secondary);">${song.artist}</p>
       </div>
       <div style="display: grid; gap: 0.75rem; margin-bottom: 1rem;">
         <div><strong>Instrument:</strong> ${song.instruments?.icon || ''} ${song.instruments?.name || 'N/A'}</div>
@@ -8354,31 +8364,6 @@ class CadenceApp {
   }
 
   async approveSong(approved) {
-    const titleInput = document.getElementById('moderate-song-title');
-    const artistInput = document.getElementById('moderate-song-artist');
-    const song = this.adminContentList.find(s => s.id === this.currentModeratingSongId);
-
-    // Check if title or artist was edited
-    const newTitle = titleInput ? titleInput.value.trim() : null;
-    const newArtist = artistInput ? artistInput.value.trim() : null;
-    const titleChanged = song && newTitle && newTitle !== song.title;
-    const artistChanged = song && newArtist && newArtist !== song.artist;
-
-    if (titleChanged || artistChanged) {
-      const { error: updateError } = await supabase
-        .rpc('update_song_details', {
-          p_song_id: this.currentModeratingSongId,
-          p_title: newTitle || song.title,
-          p_artist: newArtist || song.artist
-        });
-
-      if (updateError) {
-        console.error('Error updating song details:', updateError);
-        this.showToast('Failed to update song details', 'error');
-        return;
-      }
-    }
-
     const { error } = await supabase
       .from('songs')
       .update({ approved })
