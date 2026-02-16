@@ -8559,7 +8559,7 @@ class CadenceApp {
     }
   }
 
-  showAddResourceModal(presetType) {
+  showAddResourceModal() {
     if (!this.currentResourceSong) {
       this.showToast('Please select a song first', 'error');
       return;
@@ -8581,14 +8581,6 @@ class CadenceApp {
 
     // Reset form
     document.getElementById('add-resource-form').reset();
-
-    // Set type if preset
-    if (presetType) {
-      document.getElementById('resource-type').value = presetType;
-    }
-
-    // Update form fields based on selected type
-    this.onResourceTypeChange();
 
     // Populate instrument dropdown
     const instrumentSelect = document.getElementById('resource-instrument');
@@ -8623,43 +8615,6 @@ class CadenceApp {
     document.getElementById('add-resource-modal').classList.remove('hidden');
   }
 
-  onResourceTypeChange() {
-    const type = document.getElementById('resource-type').value;
-    const linkGroup = document.getElementById('resource-link-group');
-    const fileGroup = document.getElementById('resource-file-group');
-    const descGroup = document.getElementById('resource-description-group');
-    const searchBtn = document.getElementById('search-resource-btn');
-    const linkLabel = document.getElementById('resource-link-label');
-    const titleInput = document.getElementById('resource-title');
-
-    if (type === 'tutorial') {
-      linkGroup.classList.remove('hidden');
-      fileGroup.classList.add('hidden');
-      descGroup.classList.add('hidden');
-      if (searchBtn) searchBtn.style.display = '';
-      if (linkLabel) linkLabel.textContent = 'Tutorial URL';
-      if (titleInput) titleInput.placeholder = 'e.g., Beginner-friendly tutorial';
-    } else if (type === 'file') {
-      linkGroup.classList.add('hidden');
-      fileGroup.classList.remove('hidden');
-      descGroup.classList.remove('hidden');
-      if (searchBtn) searchBtn.style.display = 'none';
-      if (titleInput) titleInput.placeholder = 'e.g., Chord fingering diagram';
-      const fileLabel = fileGroup.querySelector('label');
-      if (fileLabel) fileLabel.textContent = 'Upload File';
-    } else {
-      // link — show both URL and file upload (user can provide either)
-      linkGroup.classList.remove('hidden');
-      fileGroup.classList.remove('hidden');
-      descGroup.classList.remove('hidden');
-      if (searchBtn) searchBtn.style.display = 'none';
-      if (linkLabel) linkLabel.textContent = 'URL';
-      if (titleInput) titleInput.placeholder = 'e.g., Practice tips, Chord chart';
-      const fileLabel = fileGroup.querySelector('label');
-      if (fileLabel) fileLabel.textContent = 'Or Upload a File';
-    }
-  }
-
   async submitStudentResource() {
     // Prevent double submission
     if (this.isSubmittingResource) return;
@@ -8669,26 +8624,22 @@ class CadenceApp {
       const title = document.getElementById('resource-title').value.trim();
       const url = document.getElementById('resource-link').value.trim();
       const description = document.getElementById('resource-description').value.trim();
-      const resourceType = document.getElementById('resource-type').value;
       const fileInput = document.getElementById('resource-file');
       const file = fileInput?.files[0];
       const isStudent = auth.hasRole('student');
 
       let fileUrl = '';
-      let fileType = resourceType === 'tutorial' ? 'tutorial' : 'link';
+      let fileType = 'link';
 
-      if ((resourceType === 'file' || resourceType === 'link') && file) {
-        // File upload takes priority (for 'link' type, user can provide either)
-        // Check file size (5MB limit)
+      if (file) {
+        // File upload takes priority over URL
         if (file.size > 5 * 1024 * 1024) {
           this.showToast('File size must be under 5MB', 'error');
           return;
         }
 
-        // Determine file type
         fileType = file.type.startsWith('image/') ? 'image' : 'pdf';
 
-        // Upload to Supabase storage
         const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
         const filePath = `${this.currentResourceSong.id}/${fileName}`;
 
@@ -8702,7 +8653,6 @@ class CadenceApp {
           return;
         }
 
-        // Get public URL
         const { data: urlData } = supabase.storage
           .from('student-resources')
           .getPublicUrl(filePath);
@@ -8710,9 +8660,8 @@ class CadenceApp {
         fileUrl = urlData.publicUrl;
       } else if (url) {
         fileUrl = url;
-      } else if (resourceType === 'file') {
-        this.showToast('Please select a file to upload', 'error');
-        return;
+        // Auto-detect tutorial videos by URL
+        fileType = /youtube\.com|youtu\.be|vimeo\.com/i.test(url) ? 'tutorial' : 'link';
       } else {
         this.showToast('Please provide a URL or upload a file', 'error');
         return;
