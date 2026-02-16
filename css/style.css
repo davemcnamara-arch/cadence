@@ -2574,6 +2574,17 @@ body {
   color: #991b1b;
 }
 
+.back-to-top-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.back-to-top-btn {
+  font-size: 0.95rem;
+  padding: 0.6rem 1.5rem;
+}
+
 .duplicate-pair-songs {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
