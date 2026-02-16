@@ -6494,6 +6494,7 @@ class CadenceApp {
                     <option value="4" ${item.rating.level === 4 ? 'disabled' : ''}>Level 4 - Finding Your Style</option>
                     <option value="5" ${item.rating.level === 5 ? 'disabled' : ''}>Level 5 - Mastering It</option>
                   </select>
+                  <button class="btn btn-secondary" onclick="event.stopPropagation(); app.editSongDetails('${item.songId}', '${item.song.title.replace(/'/g, "\\'")}', '${item.song.artist.replace(/'/g, "\\'")}', null)" title="Edit song details">Edit Details</button>
                   <button class="btn btn-primary" onclick="app.reviewNewRating('${item.id}', 'review-level-${index}')">Confirm</button>
                 </div>
               </div>
