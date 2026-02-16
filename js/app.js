@@ -8645,14 +8645,18 @@ class CadenceApp {
       descGroup.classList.remove('hidden');
       if (searchBtn) searchBtn.style.display = 'none';
       if (titleInput) titleInput.placeholder = 'e.g., Chord fingering diagram';
+      const fileLabel = fileGroup.querySelector('label');
+      if (fileLabel) fileLabel.textContent = 'Upload File';
     } else {
-      // link
+      // link — show both URL and file upload (user can provide either)
       linkGroup.classList.remove('hidden');
-      fileGroup.classList.add('hidden');
+      fileGroup.classList.remove('hidden');
       descGroup.classList.remove('hidden');
       if (searchBtn) searchBtn.style.display = 'none';
       if (linkLabel) linkLabel.textContent = 'URL';
       if (titleInput) titleInput.placeholder = 'e.g., Practice tips, Chord chart';
+      const fileLabel = fileGroup.querySelector('label');
+      if (fileLabel) fileLabel.textContent = 'Or Upload a File';
     }
   }
 
@@ -8673,7 +8677,8 @@ class CadenceApp {
       let fileUrl = '';
       let fileType = resourceType === 'tutorial' ? 'tutorial' : 'link';
 
-      if (resourceType === 'file' && file) {
+      if ((resourceType === 'file' || resourceType === 'link') && file) {
+        // File upload takes priority (for 'link' type, user can provide either)
         // Check file size (5MB limit)
         if (file.size > 5 * 1024 * 1024) {
           this.showToast('File size must be under 5MB', 'error');
@@ -8705,11 +8710,11 @@ class CadenceApp {
         fileUrl = urlData.publicUrl;
       } else if (url) {
         fileUrl = url;
-      } else if (resourceType === 'file' && !file) {
+      } else if (resourceType === 'file') {
         this.showToast('Please select a file to upload', 'error');
         return;
       } else {
-        this.showToast('Please provide a URL', 'error');
+        this.showToast('Please provide a URL or upload a file', 'error');
         return;
       }
 
