@@ -7658,7 +7658,8 @@ class CadenceApp {
     if (!container) return;
 
     if (!this.duplicatePairs || this.duplicatePairs.length === 0) {
-      container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No potential duplicates found. Your song library is clean!</p>';
+      container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No potential duplicates found. Your song library is clean!</p>' +
+        '<div class="back-to-top-container"><button class="btn btn-secondary back-to-top-btn" onclick="window.scrollTo({ top: 0, behavior: \'smooth\' })">&#8593; Back to Top</button></div>';
       return;
     }
 
@@ -7700,7 +7701,11 @@ class CadenceApp {
       `;
     }).join('');
 
-    container.innerHTML = html;
+    container.innerHTML = html + `
+      <div class="back-to-top-container">
+        <button class="btn btn-secondary back-to-top-btn" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">&#8593; Back to Top</button>
+      </div>
+    `;
   }
 
   async dismissDuplicatePair(songIdA, songIdB, buttonEl) {
