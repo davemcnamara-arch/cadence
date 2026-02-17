@@ -591,6 +591,10 @@ class CadenceApp {
       const classesTitle = document.getElementById('classes-view-title');
       if (classesTitle) classesTitle.textContent = 'Classes';
 
+      // Show admin-only account management features
+      document.getElementById('create-teacher-btn')?.classList.remove('hidden');
+      document.getElementById('pending-accounts-section')?.classList.remove('hidden');
+
       await this.loadAdminData();
       await this.loadClasses();
 
@@ -8238,6 +8242,12 @@ class CadenceApp {
   }
 
   async createTeacherAccount() {
+    // Only admins can create teacher accounts
+    if (auth.getCurrentUser()?.role !== 'admin') {
+      this.showToast('Only admins can create teacher accounts', 'error');
+      return;
+    }
+
     const email = document.getElementById('new-teacher-email').value.trim().toLowerCase();
     const name = document.getElementById('new-teacher-name').value.trim();
 
@@ -8285,6 +8295,12 @@ class CadenceApp {
   }
 
   async removePendingTeacherAccount(accountId) {
+    // Only admins can manage pending teacher accounts
+    if (auth.getCurrentUser()?.role !== 'admin') {
+      this.showToast('Only admins can manage pending teacher accounts', 'error');
+      return;
+    }
+
     const { error } = await supabase
       .from('pre_registered_accounts')
       .delete()
