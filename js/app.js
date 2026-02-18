@@ -5995,12 +5995,12 @@ class CadenceApp {
     const teacherTabs = document.querySelectorAll('.teacher-tab');
 
     if (currentUser && (currentUser.role === 'teacher' || currentUser.role === 'admin')) {
-      // Show teacher tabs
+      // Hide student tabs first, then show teacher tabs — this order matters because
+      // the Song Library tab has both classes; showing teacher tabs last ensures it stays visible.
+      document.querySelectorAll('.student-tab').forEach(tab => tab.classList.add('hidden'));
       teacherTabs.forEach(tab => {
         tab.classList.remove('hidden');
       });
-      // Hide student tabs
-      document.querySelectorAll('.student-tab').forEach(tab => tab.classList.add('hidden'));
     }
 
     // Show action buttons again (only those we hid)
