@@ -1377,8 +1377,14 @@ class CadenceApp {
 
   switchView(viewName, { addToHistory = true } = {}) {
     // Push a browser history entry so the back button can return here
-    if (addToHistory && this.currentView && this.currentView !== viewName) {
-      history.pushState({ cadenceView: viewName }, '', window.location.pathname + window.location.search);
+    if (addToHistory) {
+      if (this.currentView && this.currentView !== viewName) {
+        history.pushState({ cadenceView: viewName }, '', window.location.pathname + window.location.search);
+      } else if (!this.currentView) {
+        // First view load: replace the initial placeholder with the real starting view
+        // so the back button never lands on a view that doesn't belong to this role
+        history.replaceState({ cadenceView: viewName }, '', window.location.pathname + window.location.search);
+      }
     }
 
     // Increment switch counter to detect stale async results
@@ -5094,6 +5100,9 @@ class CadenceApp {
     this.allTeacherStudents = null;
 
     // Hide classes list, show class detail
+    // Push a history entry so the phone back button returns to the classes list
+    // instead of whatever view was in the initial history placeholder
+    history.pushState({ cadenceView: 'classes' }, '', window.location.pathname + window.location.search);
     document.getElementById('classes-list').classList.add('hidden');
     document.getElementById('class-detail-view').classList.remove('hidden');
 
