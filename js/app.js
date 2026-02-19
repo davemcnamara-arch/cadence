@@ -8467,16 +8467,22 @@ class CadenceApp {
     // Populate instrument filter dropdown
     const filterSelect = document.getElementById('resources-instrument-filter');
     if (filterSelect && this.instruments) {
-      filterSelect.innerHTML = this.instruments.map(i =>
+      // Only show instruments that this song has been graded for
+      const ratedInstrumentIds = [...new Set((song.song_ratings || []).map(r => r.instrument_id))];
+      const gradedInstruments = this.instruments.filter(i => ratedInstrumentIds.includes(i.id));
+      const instrumentsToShow = gradedInstruments.length > 0 ? gradedInstruments : this.instruments;
+
+      filterSelect.innerHTML = instrumentsToShow.map(i =>
         `<option value="${i.id}">${i.icon} ${i.name}</option>`
       ).join('');
 
-      // Set to the passed instrument, then card's instrument, then current instrument
-      if (instrumentId) {
-        filterSelect.value = instrumentId;
-      } else if (this.currentInstrument) {
+      // Default to current instrument if it's in the graded list, then the passed instrument, then first option
+      if (this.currentInstrument && ratedInstrumentIds.includes(this.currentInstrument)) {
         filterSelect.value = this.currentInstrument;
+      } else if (instrumentId && ratedInstrumentIds.includes(instrumentId)) {
+        filterSelect.value = instrumentId;
       }
+      // else: leave the select at its first option (first graded instrument)
     }
 
     // Load resources
