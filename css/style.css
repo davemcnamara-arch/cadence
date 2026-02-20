@@ -3115,6 +3115,11 @@ body {
   color: #5b21b6;
 }
 
+.resource-badge.song-link {
+  background-color: #ccfbf1;
+  color: #0f766e;
+}
+
 /* Song card resources button */
 .btn-resources {
   display: inline-flex;

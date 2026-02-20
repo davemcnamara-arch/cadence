@@ -8521,6 +8521,8 @@ class CadenceApp {
 
       // Filter by selected instrument: show resources for this instrument OR universal (null instrument_id)
       const filterInstrumentId = document.getElementById('resources-instrument-filter')?.value || this.currentInstrument;
+      const filterInstrument = this.instruments?.find(i => i.id === filterInstrumentId);
+      const filterInstrumentName = filterInstrument?.name || '';
       if (filterInstrumentId) {
         query += `&or=(instrument_id.is.null,instrument_id.eq.${filterInstrumentId})`;
       }
@@ -8550,26 +8552,63 @@ class CadenceApp {
         });
       }
 
+      // Add song-level chords/tab/notation URL (instrument-specific)
+      const chordsUrlField = this.getChordsUrlField(filterInstrumentName);
+      const chordsLabel = this.getChordsLabelForInstrument(filterInstrumentName);
+      if (song?.[chordsUrlField]) {
+        allResources.unshift({
+          id: `song-${chordsUrlField}`,
+          title: chordsLabel,
+          description: null,
+          file_url: song[chordsUrlField],
+          file_type: 'link',
+          status: 'approved',
+          instrument_id: filterInstrumentId || null,
+          is_song_url: true
+        });
+      }
+
+      // Add song-level YouTube URL (always shown if present)
+      if (song?.youtube_url) {
+        allResources.unshift({
+          id: 'song-youtube-url',
+          title: 'YouTube',
+          description: null,
+          file_url: song.youtube_url,
+          file_type: 'link',
+          status: 'approved',
+          instrument_id: null,
+          is_song_url: true
+        });
+      }
+
       if (allResources.length === 0) {
         container.innerHTML = '<p class="empty-resources">No resources yet. Be the first to add one!</p>';
         return;
       }
 
-      // Sort: tutorials first, then others
+      // Sort: song URLs first, then tutorials, then others
       allResources.sort((a, b) => {
+        if (a.is_song_url && !b.is_song_url) return -1;
+        if (!a.is_song_url && b.is_song_url) return 1;
         const aIsTutorial = a.file_type === 'tutorial' ? 0 : 1;
         const bIsTutorial = b.file_type === 'tutorial' ? 0 : 1;
         return aIsTutorial - bIsTutorial;
       });
 
       container.innerHTML = allResources.map(resource => {
-        const icon = resource.file_type === 'tutorial' ? '🎬'
+        const icon = resource.id === 'song-youtube-url' ? '🎵'
+          : resource.file_type === 'tutorial' ? '🎬'
           : resource.file_type === 'image' ? '🖼️'
           : resource.file_type === 'pdf' ? '📄'
           : '🔗';
 
         const typeBadge = resource.file_type === 'tutorial'
           ? '<span class="resource-badge type-tutorial">Tutorial</span>'
+          : '';
+
+        const songLinkBadge = resource.is_song_url
+          ? '<span class="resource-badge song-link">Song Link</span>'
           : '';
 
         const statusBadge = resource.status === 'pending'
@@ -8587,9 +8626,11 @@ class CadenceApp {
           ? `<button class="btn btn-sm btn-primary" onclick="app.approveResource('${resource.id}')">Approve</button>`
           : '';
 
-        const deleteButton = isTeacher && !resource.is_legacy
+        const deleteButton = isTeacher && !resource.is_legacy && !resource.is_song_url
           ? `<button class="btn btn-sm btn-danger" onclick="app.deleteResource('${resource.id}')" title="Delete resource">Delete</button>`
           : '';
+
+        const metaText = resource.is_song_url || resource.is_legacy ? 'Added during grading' : 'Shared by a student';
 
         return `
           <div class="resource-item ${resource.status === 'pending' ? 'pending' : ''}">
@@ -8598,11 +8639,12 @@ class CadenceApp {
               <div class="resource-title">
                 <a href="${resource.file_url}" target="_blank">${resource.title}</a>
                 ${typeBadge}
+                ${songLinkBadge}
                 ${instrumentBadge}
                 ${statusBadge}
               </div>
               ${resource.description ? `<div class="resource-description">${resource.description}</div>` : ''}
-              <div class="resource-meta">${resource.is_legacy ? 'Added during grading' : 'Shared by a student'}</div>
+              <div class="resource-meta">${metaText}</div>
             </div>
             <div class="resource-actions">
               ${approveButton}
