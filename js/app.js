@@ -395,6 +395,12 @@ class CadenceApp {
       confirmRemoveStudentBtn.addEventListener('click', () => this.removeStudentFromClass());
     }
 
+    // Teacher/Admin: Confirm transfer student
+    const confirmTransferStudentBtn = document.getElementById('confirm-transfer-student-btn');
+    if (confirmTransferStudentBtn) {
+      confirmTransferStudentBtn.addEventListener('click', () => this.executeTransferStudent());
+    }
+
     // Admin: Section tabs
     document.querySelectorAll('.admin-section-tab').forEach(tab => {
       tab.addEventListener('click', (e) => {
@@ -4964,6 +4970,96 @@ class CadenceApp {
     }
   }
 
+  // ============================================
+  // TEACHER/ADMIN: Transfer Student Between Classes
+  // ============================================
+
+  showTransferStudentModal(studentId, studentName) {
+    if (!this.currentClass) {
+      this.showToast('No class selected', 'error');
+      return;
+    }
+
+    document.getElementById('transfer-student-id').value = studentId;
+    document.getElementById('transfer-student-name').textContent = studentName;
+
+    const select = document.getElementById('transfer-target-class');
+    select.innerHTML = '';
+
+    // Populate the destination class dropdown from already-loaded data
+    this.loadClassesForTransfer(select);
+
+    document.getElementById('transfer-student-modal').classList.remove('hidden');
+  }
+
+  loadClassesForTransfer(selectElement) {
+    const user = auth.getCurrentUser();
+    const currentClassId = this.currentClass?.id;
+
+    // this.classes already contains all classes for admin, or teacher's own classes for teacher
+    const targetClasses = (this.classes || []).filter(c => c.id !== currentClassId && !c.archived);
+
+    selectElement.innerHTML = '';
+
+    if (targetClasses.length === 0) {
+      selectElement.innerHTML = '<option value="">No other classes available</option>';
+      return;
+    }
+
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '-- Select a class --';
+    selectElement.appendChild(placeholder);
+
+    targetClasses
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+      .forEach(cls => {
+        const option = document.createElement('option');
+        option.value = cls.id;
+        const teacherLabel = user.role === 'admin' && cls.teacher_name ? ` (${cls.teacher_name})` : '';
+        option.textContent = `${cls.name}${teacherLabel}`;
+        selectElement.appendChild(option);
+      });
+  }
+
+  async executeTransferStudent() {
+    const studentId = document.getElementById('transfer-student-id').value;
+    const targetClassId = document.getElementById('transfer-target-class').value;
+
+    if (!studentId || !targetClassId) {
+      this.showToast('Please select a destination class', 'error');
+      return;
+    }
+
+    if (!this.currentClass) {
+      this.showToast('No source class selected', 'error');
+      return;
+    }
+
+    try {
+      const { data } = await this.callRpcDirect('transfer_student_between_classes', {
+        p_student_id: studentId,
+        p_from_class_id: this.currentClass.id,
+        p_to_class_id: targetClassId
+      });
+
+      if (data.success) {
+        document.getElementById('transfer-student-modal').classList.add('hidden');
+        this.showToast(data.message, 'success');
+        // Reload the roster
+        await this.loadClassStudents();
+        this.renderClassRoster();
+        document.getElementById('class-detail-count').textContent =
+          `${this.classStudents.length} student${this.classStudents.length !== 1 ? 's' : ''}`;
+      } else {
+        this.showToast(data.message || 'Failed to transfer student', 'error');
+      }
+    } catch (error) {
+      console.error('Unexpected error transferring student:', error);
+      this.showToast('An unexpected error occurred', 'error');
+    }
+  }
+
   filterClasses() {
     const searchTerm = document.getElementById('class-search')?.value.toLowerCase() || '';
 
@@ -5270,6 +5366,7 @@ class CadenceApp {
           <div class="roster-student-instruments">${instruments}</div>
           <div class="roster-actions" style="display: flex; gap: 0.5rem; margin-left: 1rem;">
             <button class="btn-text" style="font-size: 0.75rem;" onclick="event.stopPropagation(); app.showEditStudentModal('${student.id}', '${student.name.replace(/'/g, "\\'")}')">Edit</button>
+            <button class="btn-text" style="font-size: 0.75rem; color: var(--primary-color);" onclick="event.stopPropagation(); app.showTransferStudentModal('${student.id}', '${student.name.replace(/'/g, "\\'")}')">Transfer</button>
             <button class="btn-text" style="font-size: 0.75rem; color: var(--error-color);" onclick="event.stopPropagation(); app.showRemoveStudentModal('${student.id}', '${student.name.replace(/'/g, "\\'")}')">Remove</button>
           </div>
         </div>

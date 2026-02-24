@@ -806,6 +806,33 @@
     </div>
   </div>
 
+  <!-- Modal for Transfer Student -->
+  <div id="transfer-student-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>Transfer Student</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="transfer-student-id">
+        <p style="margin-bottom: 1rem;">Transfer <strong><span id="transfer-student-name"></span></strong> to another class.</p>
+        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1.25rem;">
+          All of the student's progress and song data will be preserved.
+        </p>
+        <div class="form-group">
+          <label for="transfer-target-class">Destination Class</label>
+          <select id="transfer-target-class" style="width: 100%;">
+            <option value="">Loading classes...</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button id="confirm-transfer-student-btn" class="btn btn-primary">Transfer Student</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal for Student Detail -->
   <div id="student-detail-modal" class="modal hidden">
     <div class="modal-content modal-large">
