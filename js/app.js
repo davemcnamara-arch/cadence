@@ -8067,6 +8067,7 @@ class CadenceApp {
           </div>
           <div class="user-admin-meta">
             <span class="user-role-badge ${user.role}">${user.role.charAt(0).toUpperCase() + user.role.slice(1)}</span>
+            ${user.role === 'student' ? `<button class="btn btn-secondary btn-sm" onclick="app.showAdminAddToClassModal('${user.id}', '${user.name.replace(/'/g, "\\'")}')">Add to Class</button>` : ''}
             <button class="btn btn-secondary btn-sm" onclick="app.editUserRole('${user.id}', '${user.name}', '${user.role}')">Change Role</button>
           </div>
         </div>
@@ -8081,6 +8082,69 @@ class CadenceApp {
     document.getElementById('edit-user-info').textContent = `Editing role for: ${userName}`;
     document.getElementById('user-role-select').value = currentRole;
     document.getElementById('edit-user-role-modal').classList.remove('hidden');
+  }
+
+  async showAdminAddToClassModal(userId, userName) {
+    this.adminAddStudentId = userId;
+    document.getElementById('admin-add-student-name').textContent = userName;
+
+    const select = document.getElementById('admin-add-student-class-select');
+    select.innerHTML = '<option value="">Loading classes...</option>';
+
+    document.getElementById('admin-add-student-to-class-modal').classList.remove('hidden');
+
+    try {
+      const user = auth.getCurrentUser();
+      const result = await this.callRpcDirect('get_teacher_classes', {
+        p_teacher_id: user.id,
+        p_include_archived: false
+      });
+      const classes = result.data || [];
+
+      select.innerHTML = '<option value="">-- Select a class --</option>';
+      classes
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+        .forEach(cls => {
+          const option = document.createElement('option');
+          option.value = cls.id;
+          option.textContent = cls.teacher_name ? `${cls.name} (${cls.teacher_name})` : cls.name;
+          select.appendChild(option);
+        });
+
+      if (classes.length === 0) {
+        select.innerHTML = '<option value="">No classes available</option>';
+      }
+    } catch (error) {
+      console.error('Error loading classes for admin add:', error);
+      select.innerHTML = '<option value="">Error loading classes</option>';
+    }
+  }
+
+  async executeAdminAddToClass() {
+    const studentId = this.adminAddStudentId;
+    const classId = document.getElementById('admin-add-student-class-select').value;
+
+    if (!studentId || !classId) {
+      this.showToast('Please select a class', 'error');
+      return;
+    }
+
+    try {
+      const { data } = await this.callRpcDirect('admin_add_student_to_class', {
+        p_student_id: studentId,
+        p_class_id: classId
+      });
+
+      if (data.success) {
+        document.getElementById('admin-add-student-to-class-modal').classList.add('hidden');
+        this.showToast(data.message, 'success');
+      } else {
+        this.showToast(data.message || 'Failed to add student to class', 'error');
+      }
+    } catch (error) {
+      console.error('Error adding student to class:', error);
+      this.showToast('An unexpected error occurred', 'error');
+    }
   }
 
   setupAdminForms() {
