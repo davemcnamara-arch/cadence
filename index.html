@@ -959,7 +959,10 @@
     <div class="modal-content modal-large">
       <div class="modal-header">
         <h2 id="song-resources-title">Resources</h2>
-        <button class="modal-close">&times;</button>
+        <div class="modal-header-actions">
+          <button id="view-song-card-btn" class="btn btn-secondary btn-sm hidden" onclick="app.goToSongCard()">View Song Card</button>
+          <button class="modal-close">&times;</button>
+        </div>
       </div>
       <div class="modal-body">
         <p id="song-resources-info" style="margin-bottom: 0.5rem; color: var(--text-secondary);"></p>
