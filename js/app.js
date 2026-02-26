@@ -1624,6 +1624,17 @@ class CadenceApp {
       const songId = card.dataset.songId;
       card.addEventListener('click', () => this.viewSongDetails(songId));
     });
+
+    // Scroll to and highlight a song card if navigation was triggered via goToSongCard()
+    if (this._highlightSongId) {
+      const targetCard = grid.querySelector(`.song-card[data-song-id="${this._highlightSongId}"]`);
+      this._highlightSongId = null;
+      if (targetCard) {
+        targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        targetCard.classList.add('song-card-highlight');
+        targetCard.addEventListener('animationend', () => targetCard.classList.remove('song-card-highlight'), { once: true });
+      }
+    }
   }
 
   formatResourceRating(ratings) {
@@ -8627,6 +8638,17 @@ class CadenceApp {
     document.getElementById('song-resources-title').textContent = `Resources for ${song.title}`;
     document.getElementById('song-resources-info').textContent = `${song.title} - ${song.artist}`;
 
+    // Show "View Song Card" button for teachers/admins so they can navigate to the song in the library
+    const viewSongCardBtn = document.getElementById('view-song-card-btn');
+    if (viewSongCardBtn) {
+      if (auth.hasRole('teacher') || auth.hasRole('admin')) {
+        viewSongCardBtn.classList.remove('hidden');
+        viewSongCardBtn.dataset.songId = song.id;
+      } else {
+        viewSongCardBtn.classList.add('hidden');
+      }
+    }
+
     // If no instrument passed, try to get selected instrument from the song card dropdown
     if (!instrumentId) {
       const card = document.querySelector(`.song-card[data-song-id="${songId}"]`);
@@ -8660,6 +8682,22 @@ class CadenceApp {
 
     // Show modal
     document.getElementById('song-resources-modal').classList.remove('hidden');
+  }
+
+  // Navigate from the song-resources-modal to the song's card in the Song Library
+  goToSongCard() {
+    const btn = document.getElementById('view-song-card-btn');
+    const songId = btn?.dataset.songId;
+    if (!songId) return;
+
+    // Close open modals
+    document.getElementById('song-resources-modal').classList.add('hidden');
+    document.getElementById('student-detail-modal')?.classList.add('hidden');
+
+    // Store the song ID so filterSongs() can scroll to it after rendering
+    this._highlightSongId = songId;
+
+    this.switchView('songs');
   }
 
   // Handle instrument filter change in resources modal
