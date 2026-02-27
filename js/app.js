@@ -915,10 +915,9 @@ class CadenceApp {
     // Use student ID if in preview mode, otherwise use current user
     const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
-    const { data, error } = await this.callInsertDirect('student_progress', {
-      user_id: userId,
-      instrument_id: instrumentId,
-      current_level: 1
+    const { data, error } = await this.callRpcDirect('add_instrument_for_student', {
+      p_student_id: userId,
+      p_instrument_id: instrumentId
     });
 
     if (error) {
@@ -962,28 +961,13 @@ class CadenceApp {
     // Use student ID if in preview mode, otherwise use current user
     const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
-    // Delete all student songs for this instrument
-    const { error: songsError } = await supabase
-      .from('student_songs')
-      .delete()
-      .eq('user_id', userId)
-      .eq('instrument_id', this.currentInstrument);
+    const { error } = await this.callRpcDirect('remove_instrument_for_student', {
+      p_student_id: userId,
+      p_instrument_id: this.currentInstrument
+    });
 
-    if (songsError) {
-      console.error('Error deleting student songs:', songsError);
-      this.showToast('Failed to remove instrument', 'error');
-      return;
-    }
-
-    // Delete the student progress record
-    const { error: progressError } = await supabase
-      .from('student_progress')
-      .delete()
-      .eq('user_id', userId)
-      .eq('instrument_id', this.currentInstrument);
-
-    if (progressError) {
-      console.error('Error deleting student progress:', progressError);
+    if (error) {
+      console.error('Error removing instrument:', error);
       this.showToast('Failed to remove instrument', 'error');
       return;
     }
@@ -3571,67 +3555,6 @@ class CadenceApp {
     }
   }
 
-  // Direct INSERT query using fetch to bypass stale Supabase client connections
-  async callInsertDirect(table, body, _isRetry = false) {
-    const session = await this.getSessionWithTimeout();
-    const accessToken = session?.access_token;
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-    try {
-      const headers = {
-        'Content-Type': 'application/json',
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
-        'Prefer': 'return=representation'
-      };
-      if (accessToken) {
-        headers['Authorization'] = `Bearer ${accessToken}`;
-      }
-
-      const response = await fetch(
-        `https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}?select=*`,
-        {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(body),
-          signal: controller.signal
-        }
-      );
-
-      clearTimeout(timeoutId);
-
-      // On 401, force-refresh the token and retry once
-      if (response.status === 401 && !_isRetry) {
-        const { data: { session: refreshed } } = await supabase.auth.refreshSession();
-        if (refreshed?.access_token) {
-          return this.callInsertDirect(table, body, true);
-        }
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        return {
-          data: null,
-          error: {
-            message: errorData.message || `HTTP ${response.status}`,
-            details: errorData.details
-          }
-        };
-      }
-
-      const data = await response.json();
-      // PostgREST returns an array; unwrap to match Supabase .single() behaviour
-      return { data: Array.isArray(data) ? data[0] : data, error: null };
-    } catch (err) {
-      clearTimeout(timeoutId);
-      if (err.name === 'AbortError') {
-        this.showToast('Connection lost. Retrying...', 'error');
-        return { data: null, error: { message: 'Connection timeout' } };
-      }
-      return { data: null, error: { message: err.message } };
-    }
-  }
 
   // ============================================
   // STUDENT: Progress Tracking & Mastery
