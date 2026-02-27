@@ -6052,16 +6052,19 @@ class CadenceApp {
 
     this.studentProgress = progressData;
 
-    // Load instruments and set first as current
+    // Load ALL available instruments so teacher can assign new ones to the student.
+    // (Without this, this.instruments would only contain the student's current instruments,
+    // causing showInstrumentSelection() to always report "already tracking all instruments".)
+    await this.loadInstruments();
+
+    // Set first instrument as current
     if (progressData.length > 0) {
-      this.instruments = progressData.map(p => p.instruments);
       this.currentInstrument = progressData[0].instrument_id;
 
       // Load levels for the student's instrument
       await this.loadLevels(this.currentInstrument);
       await this.loadSongs();
     } else {
-      this.instruments = [];
       this.currentInstrument = null;
     }
 
