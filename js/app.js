@@ -1521,9 +1521,16 @@ class CadenceApp {
 
     if (levelFilter) {
       filteredSongs = filteredSongs.filter(song => {
-        // Check suggested level OR average rated level
+        // Check suggested level OR rated level
         const levelNum = parseInt(levelFilter);
         if (song.suggested_level === levelNum) return true;
+        // When instrument filter is active, only count ratings for that specific instrument
+        if (instrumentFilter && instrumentFilter !== 'my-instruments') {
+          return song.song_ratings?.some(r => r.assessed_level === levelNum && r.instrument_id === instrumentFilter);
+        } else if (instrumentFilter === 'my-instruments') {
+          const myInstrumentIds = this.studentProgress.map(p => p.instrument_id);
+          return song.song_ratings?.some(r => r.assessed_level === levelNum && myInstrumentIds.includes(r.instrument_id));
+        }
         return song.song_ratings?.some(r => r.assessed_level === levelNum);
       });
     }
