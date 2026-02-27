@@ -915,10 +915,9 @@ class CadenceApp {
     // Use student ID if in preview mode, otherwise use current user
     const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
-    const { data, error } = await this.callInsertDirect('student_progress', {
-      user_id: userId,
-      instrument_id: instrumentId,
-      current_level: 1
+    const { data, error } = await this.callRpcDirect('add_instrument_for_student', {
+      p_student_id: userId,
+      p_instrument_id: instrumentId
     });
 
     if (error) {
@@ -962,28 +961,13 @@ class CadenceApp {
     // Use student ID if in preview mode, otherwise use current user
     const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
-    // Delete all student songs for this instrument
-    const { error: songsError } = await supabase
-      .from('student_songs')
-      .delete()
-      .eq('user_id', userId)
-      .eq('instrument_id', this.currentInstrument);
+    const { error } = await this.callRpcDirect('remove_instrument_for_student', {
+      p_student_id: userId,
+      p_instrument_id: this.currentInstrument
+    });
 
-    if (songsError) {
-      console.error('Error deleting student songs:', songsError);
-      this.showToast('Failed to remove instrument', 'error');
-      return;
-    }
-
-    // Delete the student progress record
-    const { error: progressError } = await supabase
-      .from('student_progress')
-      .delete()
-      .eq('user_id', userId)
-      .eq('instrument_id', this.currentInstrument);
-
-    if (progressError) {
-      console.error('Error deleting student progress:', progressError);
+    if (error) {
+      console.error('Error removing instrument:', error);
       this.showToast('Failed to remove instrument', 'error');
       return;
     }
