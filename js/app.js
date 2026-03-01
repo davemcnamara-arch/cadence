@@ -30,6 +30,10 @@ class CadenceApp {
     this.teacherSongStudentCounts = null;
     this.flaggedRatings = [];
 
+    // Trending songs cache
+    this._trendingSongs = null;
+    this._trendingSongsCacheInstrument = undefined; // undefined = never loaded
+
     // Guard against double initialization
     this.initializing = false;
 
@@ -1438,6 +1442,62 @@ class CadenceApp {
   // SONG LIBRARY: Display & Filtering
   // ============================================
 
+  async loadTrendingSongs() {
+    const instrumentName = this.instruments.find(i => i.id === this.currentInstrument)?.name || null;
+
+    // Serve from cache if instrument hasn't changed
+    if (this._trendingSongsCacheInstrument === instrumentName && this._trendingSongs !== null) {
+      return this._trendingSongs;
+    }
+
+    try {
+      const result = await this.callRpcDirect('get_trending_songs', {
+        days_back: 14,
+        limit_count: 10,
+        instrument_filter: instrumentName
+      });
+      this._trendingSongs = result.data || [];
+    } catch (err) {
+      console.warn('Could not load trending songs:', err);
+      this._trendingSongs = [];
+    }
+
+    this._trendingSongsCacheInstrument = instrumentName;
+    return this._trendingSongs;
+  }
+
+  renderTrendingStrip(songs) {
+    const container = document.getElementById('trending-strip-container');
+    const strip = document.getElementById('trending-strip');
+    if (!container || !strip) return;
+
+    if (!songs || songs.length === 0) {
+      container.classList.add('hidden');
+      return;
+    }
+
+    strip.innerHTML = songs.map(song => `
+      <div class="trending-card" data-song-id="${song.song_id}" role="button" tabindex="0">
+        <div class="trending-card-title">${this.escapeHtml(song.title)}</div>
+        <div class="trending-card-artist">${this.escapeHtml(song.artist)}</div>
+        <span class="trending-card-badge">${song.trending_score} student${song.trending_score !== 1 ? 's' : ''} this fortnight</span>
+      </div>
+    `).join('');
+
+    strip.querySelectorAll('.trending-card').forEach(card => {
+      const songId = card.dataset.songId;
+      card.addEventListener('click', () => this.viewSongDetails(songId));
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.viewSongDetails(songId);
+        }
+      });
+    });
+
+    container.classList.remove('hidden');
+  }
+
   async renderSongs() {
     await this.loadSongs();
 
@@ -1473,6 +1533,9 @@ class CadenceApp {
         }
       }
     }
+
+    // Load and render trending strip (cached per instrument)
+    this.loadTrendingSongs().then(trending => this.renderTrendingStrip(trending));
 
     this.filterSongs();
   }

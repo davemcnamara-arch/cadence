@@ -1025,6 +1025,90 @@ body {
   cursor: pointer;
 }
 
+/* Trending Songs Strip */
+.trending-strip-container {
+  margin-bottom: 1.5rem;
+}
+
+.trending-strip-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+
+.trending-strip {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.trending-strip::-webkit-scrollbar {
+  height: 4px;
+}
+
+.trending-strip::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+}
+
+.trending-strip::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 2px;
+}
+
+.trending-card {
+  flex: 0 0 auto;
+  width: 180px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.trending-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-md);
+}
+
+.trending-card-title {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trending-card-artist {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trending-card-badge {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.2rem 0.5rem;
+  background: #e0f2fe;
+  color: #0369a1;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 /* Song Detail Modal - Your Students Section */
 .song-students-section h3 {
   margin-bottom: 0.75rem;
