@@ -1109,6 +1109,33 @@ body {
   white-space: nowrap;
 }
 
+/* Learning strip badge (green, distinct from trending blue) */
+.learning-badge {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.learning-card-links {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.learning-card-link {
+  font-size: 0.75rem;
+  color: var(--primary-color);
+  text-decoration: none;
+  padding: 0.15rem 0.4rem;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.learning-card-link:hover {
+  text-decoration: underline;
+}
+
 /* Song Detail Modal - Your Students Section */
 .song-students-section h3 {
   margin-bottom: 0.75rem;
