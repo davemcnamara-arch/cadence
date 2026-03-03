@@ -1551,20 +1551,27 @@ class CadenceApp {
       const chordsUrl = song[chordsUrlField];
       const youtubeUrl = song.youtube_url;
 
+      const tutorialUrl = song.tutorial_url;
+
       const links = [];
       if (chordsUrl) {
         links.push(`<a href="${this.escapeHtml(chordsUrl)}" target="_blank" class="learning-card-link" onclick="event.stopPropagation()">${this.escapeHtml(chordsLabel)}</a>`);
       }
+      if (tutorialUrl) {
+        links.push(`<a href="${this.escapeHtml(tutorialUrl)}" target="_blank" class="learning-card-link" onclick="event.stopPropagation()">Tutorial</a>`);
+      }
       if (youtubeUrl) {
         links.push(`<a href="${this.escapeHtml(youtubeUrl)}" target="_blank" class="learning-card-link" onclick="event.stopPropagation()">YouTube</a>`);
       }
+      // Always show a Resources button so students can access the full modal
+      links.push(`<button class="learning-card-link learning-card-resources-btn" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}', '${studentSong.instrument_id}')">Resources</button>`);
 
       return `
         <div class="trending-card" data-song-id="${song.id}" role="button" tabindex="0">
           <div class="trending-card-title">${this.escapeHtml(song.title)}</div>
           <div class="trending-card-artist">${this.escapeHtml(song.artist)}</div>
           <span class="trending-card-badge learning-badge">${instrumentIcon} ${this.escapeHtml(instrumentName)}</span>
-          ${links.length > 0 ? `<div class="learning-card-links">${links.join('')}</div>` : ''}
+          <div class="learning-card-links">${links.join('')}</div>
         </div>
       `;
     }).filter(Boolean).join('');
@@ -1572,7 +1579,7 @@ class CadenceApp {
     strip.querySelectorAll('.trending-card').forEach(card => {
       const songId = card.dataset.songId;
       card.addEventListener('click', (e) => {
-        if (e.target.tagName === 'A') return;
+        if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') return;
         this.viewSongDetails(songId);
       });
       card.addEventListener('keydown', (e) => {

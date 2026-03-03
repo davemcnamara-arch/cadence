@@ -1136,6 +1136,11 @@ body {
   text-decoration: underline;
 }
 
+.learning-card-resources-btn {
+  border: none;
+  cursor: pointer;
+}
+
 /* Song Detail Modal - Your Students Section */
 .song-students-section h3 {
   margin-bottom: 0.75rem;
