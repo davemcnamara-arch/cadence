@@ -1233,6 +1233,9 @@ class CadenceApp {
         }
       });
     });
+
+    // Load and render currently-learning songs strip at top of pathway
+    this.loadLearningSongsForStrip().then(songs => this.renderLearningSongsStrip(songs));
   }
 
   navigateToLevelSongs(levelNumber) {
@@ -1487,6 +1490,91 @@ class CadenceApp {
     strip.querySelectorAll('.trending-card').forEach(card => {
       const songId = card.dataset.songId;
       card.addEventListener('click', () => this.viewSongDetails(songId));
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.viewSongDetails(songId);
+        }
+      });
+    });
+
+    container.classList.remove('hidden');
+  }
+
+  async loadLearningSongsForStrip() {
+    // In preview mode, use the already-loaded student songs (which include song data)
+    if (this.previewMode.active) {
+      return this.studentSongs.filter(s => s.status === 'learning' && s.songs);
+    }
+
+    const user = auth.getCurrentUser();
+    if (!user) return [];
+
+    // If studentSongs already has embedded song data (loaded by renderProgress), reuse it
+    if (this.studentSongs.some(s => s.songs)) {
+      return this.studentSongs.filter(s => s.status === 'learning' && s.songs);
+    }
+
+    try {
+      const { data } = await this.callSelectDirect(
+        'student_songs',
+        '*,songs(*)',
+        { eq: { user_id: user.id, status: 'learning' } },
+        { order: 'date_started.desc' }
+      );
+      return data || [];
+    } catch (err) {
+      console.warn('Could not load learning songs for pathway strip:', err);
+      return [];
+    }
+  }
+
+  renderLearningSongsStrip(songs) {
+    const container = document.getElementById('learning-strip-container');
+    const strip = document.getElementById('learning-strip');
+    if (!container || !strip) return;
+
+    if (!songs || songs.length === 0) {
+      container.classList.add('hidden');
+      return;
+    }
+
+    strip.innerHTML = songs.map(studentSong => {
+      const song = studentSong.songs;
+      if (!song) return '';
+
+      const instrument = this.instruments.find(i => i.id === studentSong.instrument_id);
+      const instrumentIcon = instrument?.icon || '';
+      const instrumentName = instrument?.name || '';
+      const chordsUrlField = this.getChordsUrlField(instrumentName);
+      const chordsLabel = this.getChordsLabelForInstrument(instrumentName);
+      const chordsUrl = song[chordsUrlField];
+      const youtubeUrl = song.youtube_url;
+
+      const links = [];
+      if (chordsUrl) {
+        links.push(`<a href="${this.escapeHtml(chordsUrl)}" target="_blank" class="learning-card-link" onclick="event.stopPropagation()">${this.escapeHtml(chordsLabel)}</a>`);
+      }
+      if (youtubeUrl) {
+        links.push(`<a href="${this.escapeHtml(youtubeUrl)}" target="_blank" class="learning-card-link" onclick="event.stopPropagation()">YouTube</a>`);
+      }
+
+      return `
+        <div class="trending-card" data-song-id="${song.id}" role="button" tabindex="0">
+          <div class="trending-card-title">${this.escapeHtml(song.title)}</div>
+          <div class="trending-card-artist">${this.escapeHtml(song.artist)}</div>
+          <span class="trending-card-badge learning-badge">${instrumentIcon} ${this.escapeHtml(instrumentName)}</span>
+          ${links.length > 0 ? `<div class="learning-card-links">${links.join('')}</div>` : ''}
+        </div>
+      `;
+    }).filter(Boolean).join('');
+
+    strip.querySelectorAll('.trending-card').forEach(card => {
+      const songId = card.dataset.songId;
+      card.addEventListener('click', (e) => {
+        if (e.target.tagName === 'A') return;
+        this.viewSongDetails(songId);
+      });
       card.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
