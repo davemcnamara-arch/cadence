@@ -8909,19 +8909,6 @@ class CadenceApp {
         });
       }
 
-      // Add song-level YouTube URL (always shown if present)
-      if (song?.youtube_url) {
-        allResources.unshift({
-          id: 'song-youtube-url',
-          title: 'YouTube',
-          description: null,
-          file_url: song.youtube_url,
-          file_type: 'link',
-          status: 'approved',
-          instrument_id: null,
-          is_song_url: true
-        });
-      }
 
       if (allResources.length === 0) {
         container.innerHTML = '<p class="empty-resources">No resources yet. Be the first to add one!</p>';
@@ -8938,8 +8925,7 @@ class CadenceApp {
       });
 
       container.innerHTML = allResources.map(resource => {
-        const icon = resource.id === 'song-youtube-url' ? '🎵'
-          : resource.file_type === 'tutorial' ? '🎬'
+        const icon = resource.file_type === 'tutorial' ? '🎬'
           : resource.file_type === 'image' ? '🖼️'
           : resource.file_type === 'pdf' ? '📄'
           : '🔗';
