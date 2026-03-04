@@ -2084,6 +2084,12 @@ class CadenceApp {
             <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', '${urlField}', '', '${escapedTitle}', '${escapedArtist}', '${escapedInstName}')" title="Add ${label.toLowerCase()} link">+ ${label}</button>`;
         }
       }
+
+      // Update the Learning Resources button to use the newly selected instrument
+      const resourcesBtn = card.querySelector('.btn-resources');
+      if (resourcesBtn) {
+        resourcesBtn.setAttribute('onclick', `event.stopPropagation(); app.showSongResourcesModal('${song.id}', '${instrumentId}')`);
+      }
     }
   }
 
@@ -8792,10 +8798,9 @@ class CadenceApp {
       ).join('');
 
       // Default to passed instrument first, then current instrument, then first option
-      if (instrumentId && ratedInstrumentIds.includes(instrumentId)) {
-        filterSelect.value = instrumentId;
-      } else if (this.currentInstrument && ratedInstrumentIds.includes(this.currentInstrument)) {
-        filterSelect.value = this.currentInstrument;
+      const preferredInstrumentId = instrumentId || this.currentInstrument;
+      if (preferredInstrumentId) {
+        filterSelect.value = preferredInstrumentId;
       }
       // else: leave the select at its first option (first graded instrument)
     }
