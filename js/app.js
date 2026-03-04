@@ -1910,12 +1910,6 @@ class CadenceApp {
 
     const instrumentName = instrument?.name || '';
     const instrumentIcon = instrument?.icon || '';
-    const chordsLabel = this.getChordsLabelForInstrument(instrumentName);
-    const chordsUrlField = this.getChordsUrlField(instrumentName);
-    const chordsUrl = song[chordsUrlField] || '';
-
-    // Get resource ratings for chords
-    const chordsRating = this.formatResourceRating(song.resource_ratings?.chords);
 
     // Check user role - show "Start Learning" button for students or in preview mode
     const user = auth.getCurrentUser();
@@ -2000,19 +1994,6 @@ class CadenceApp {
           ${studentCountBadge}
         </div>
         <div class="song-actions">
-          <span class="chords-link-container" data-song-id="${song.id}">
-          ${chordsUrl ? `
-            <div class="resource-link-group">
-              <a href="${chordsUrl}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">${chordsLabel}</a>
-              ${chordsRating}
-              <button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', '${chordsUrlField}', '${chordsUrl.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit ${chordsLabel.toLowerCase()} link">✎</button>
-            </div>
-          ` : this.getMyPendingLink(song.id, chordsUrlField) ? `
-            <span class="btn btn-secondary btn-pending" onclick="event.stopPropagation()" title="Your ${chordsLabel.toLowerCase()} link is awaiting teacher approval" style="opacity: 0.7; cursor: default; font-style: italic;">⏳ ${chordsLabel} Pending</span>
-          ` : `
-            <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', '${chordsUrlField}', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add ${chordsLabel.toLowerCase()} link">+ ${chordsLabel}</button>
-          `}
-          </span>
           ${song.youtube_url ? `
             <div class="resource-link-group">
               <a href="${song.youtube_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">YouTube</a>
