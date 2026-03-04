@@ -8810,11 +8810,11 @@ class CadenceApp {
         `<option value="${i.id}">${i.icon} ${i.name}</option>`
       ).join('');
 
-      // Default to current instrument if it's in the graded list, then the passed instrument, then first option
-      if (this.currentInstrument && ratedInstrumentIds.includes(this.currentInstrument)) {
-        filterSelect.value = this.currentInstrument;
-      } else if (instrumentId && ratedInstrumentIds.includes(instrumentId)) {
+      // Default to passed instrument first, then current instrument, then first option
+      if (instrumentId && ratedInstrumentIds.includes(instrumentId)) {
         filterSelect.value = instrumentId;
+      } else if (this.currentInstrument && ratedInstrumentIds.includes(this.currentInstrument)) {
+        filterSelect.value = this.currentInstrument;
       }
       // else: leave the select at its first option (first graded instrument)
     }
