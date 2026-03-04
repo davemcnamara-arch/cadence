@@ -1554,17 +1554,11 @@ class CadenceApp {
       const tutorialUrl = song.tutorial_url;
 
       const links = [];
-      if (chordsUrl) {
-        links.push(`<a href="${this.escapeHtml(chordsUrl)}" target="_blank" class="learning-card-link" onclick="event.stopPropagation()">${this.escapeHtml(chordsLabel)}</a>`);
-      }
-      if (tutorialUrl) {
-        links.push(`<a href="${this.escapeHtml(tutorialUrl)}" target="_blank" class="learning-card-link" onclick="event.stopPropagation()">Tutorial</a>`);
-      }
       if (youtubeUrl) {
         links.push(`<a href="${this.escapeHtml(youtubeUrl)}" target="_blank" class="learning-card-link" onclick="event.stopPropagation()">YouTube</a>`);
       }
-      // Always show a Resources button so students can access the full modal
-      links.push(`<button class="learning-card-link learning-card-resources-btn" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}', '${studentSong.instrument_id}')">Resources</button>`);
+      // Always show a Learning Resources button so students can access the full modal
+      links.push(`<button class="learning-card-link learning-card-resources-btn" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}', '${studentSong.instrument_id}')">Learning Resources</button>`);
 
       return `
         <div class="trending-card" data-song-id="${song.id}" role="button" tabindex="0">
@@ -3943,7 +3937,6 @@ class CadenceApp {
             ${instrumentBadges}
           </div>
           <div class="song-links" style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-            ${chordsLinks}
             ${song.youtube_url ? `
               <span style="display: inline-flex; align-items: center; gap: 2px;">
                 <a href="${song.youtube_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">YouTube</a>
@@ -3954,7 +3947,7 @@ class CadenceApp {
             ` : `
               <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
             `}
-            <button class="btn-link-add" onclick="app.showSongResourcesModal('${song.id}', '${firstStudentSong.instrument_id}')" title="View resources">Resources</button>
+            <button class="btn-link-add" onclick="app.showSongResourcesModal('${song.id}', '${firstStudentSong.instrument_id}')" title="View learning resources">Learning Resources</button>
           </div>
         </div>
         <div class="actions-grouped">
