@@ -3967,6 +3967,16 @@ class CadenceApp {
           <div class="artist">${song.artist}</div>
           ${instrument ? `<div class="instrument-tag" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">${instrumentIcon} ${instrumentName}</div>` : ''}
           <div class="song-links" style="margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            ${song.youtube_url ? `
+              <span style="display: inline-flex; align-items: center; gap: 2px;">
+                <a href="${song.youtube_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">YouTube</a>
+                <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'youtube_url', '${song.youtube_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit YouTube link">✎</button>
+              </span>
+            ` : this.getMyPendingLink(song.id, 'youtube_url') ? `
+              <span style="display: inline-flex; align-items: center; gap: 2px; font-size: 12px; color: var(--text-secondary); font-style: italic;" title="Your YouTube link is awaiting teacher approval">⏳ YouTube Pending</span>
+            ` : `
+              <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
+            `}
             <button class="learning-card-link learning-card-resources-btn" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}', '${studentSong.instrument_id}')">Learning Resources</button>
           </div>
         </div>
