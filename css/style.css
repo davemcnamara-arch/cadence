@@ -1068,7 +1068,7 @@ body {
 
 .trending-card {
   flex: 0 0 auto;
-  width: 180px;
+  width: 220px;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
