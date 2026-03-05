@@ -1574,7 +1574,7 @@ class CadenceApp {
         links.push(`<a href="${this.escapeHtml(youtubeUrl)}" target="_blank" class="song-resource-link song-resource-link--youtube" onclick="event.stopPropagation()">▶ YouTube</a>`);
       }
       // Always show a Learning Resources button so students can access the full modal
-      links.push(`<button class="learning-card-link learning-card-resources-btn" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}', '${studentSong.instrument_id}')">Learning Resources</button>`);
+      links.push(`<button class="btn btn-secondary btn-resources" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}', '${studentSong.instrument_id}')">Learning Resources</button>`);
 
       return `
         <div class="trending-card" data-song-id="${song.id}" role="button" tabindex="0">
