@@ -2630,7 +2630,7 @@ class CadenceApp {
       } else if (fieldName === 'tutorial_url') {
         searchQuery = instrumentName ? `${title} ${instrumentName} tutorial` : `${title} tutorial`;
       } else if (fieldName === 'youtube_url') {
-        searchQuery = `${title} youtube`;
+        searchQuery = `${title} ${artist} youtube`;
       }
 
       if (searchQuery) {
