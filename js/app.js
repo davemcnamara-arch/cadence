@@ -544,6 +544,14 @@ class CadenceApp {
   }
 
   async onUserSignedIn(user) {
+    // Skip re-initialization if preview mode is active.
+    // Tab switches trigger supabase.auth.refreshSession() which can fire a SIGNED_IN
+    // event, causing this function to run again and reset the UI to teacher mode while
+    // the preview banner stays visible (since previewMode.active is still true).
+    if (this.previewMode.active) {
+      return;
+    }
+
     // Prevent concurrent initialization (Supabase can fire SIGNED_IN twice)
     if (this.initializing) {
       return;
