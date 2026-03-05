@@ -2796,6 +2796,10 @@ class CadenceApp {
             });
           }
           this.filterStudentSongs();
+          requestAnimationFrame(() => {
+            document.querySelector(`.student-song-item[data-song-id="${songId}"]`)
+              ?.scrollIntoView({ block: 'nearest' });
+          });
         }
       }
     } catch (error) {
@@ -6418,7 +6422,7 @@ class CadenceApp {
         }).join('');
 
       return `
-        <div class="student-song-item">
+        <div class="student-song-item" data-song-id="${item.song_id}">
           <div class="student-song-header">
             <div class="student-song-info">
               <div class="student-song-title">${this.escapeHtml(item.title)}</div>
