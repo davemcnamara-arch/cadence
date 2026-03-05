@@ -1704,6 +1704,9 @@ class CadenceApp {
     }
 
     const grid = document.getElementById('songs-grid');
+    const countEl = document.getElementById('songs-count');
+    const count = filteredSongs ? filteredSongs.length : 0;
+    if (countEl) countEl.textContent = `Showing ${count} song${count !== 1 ? 's' : ''}`;
     if (!filteredSongs || filteredSongs.length === 0) {
       grid.innerHTML = '<p style="color: var(--text-secondary);">No songs found. Be the first to grade a song!</p>';
       return;
@@ -6354,7 +6357,10 @@ class CadenceApp {
     const listEl = document.getElementById('student-songs-list');
     if (!listEl) return;
 
+    const countEl = document.getElementById('student-songs-count');
+
     if (!songs || songs.length === 0) {
+      if (countEl) countEl.textContent = 'Showing 0 songs';
       listEl.innerHTML = `
         <div class="empty-state">
           <p>No songs found.</p>
@@ -6394,6 +6400,8 @@ class CadenceApp {
     });
 
     const items = [...grouped.values()].sort((a, b) => a.title.localeCompare(b.title));
+
+    if (countEl) countEl.textContent = `Showing ${items.length} song${items.length !== 1 ? 's' : ''}`;
 
     listEl.innerHTML = items.map(item => {
       const totalStudents = new Set(
