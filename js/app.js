@@ -6364,50 +6364,63 @@ class CadenceApp {
       return;
     }
 
-    // Group by song + instrument so we can show all learners per song
+    // Group by song, collecting all instruments and the students per instrument
     const grouped = new Map();
     songs.forEach(row => {
-      const key = `${row.song_id}__${row.instrument_id}`;
-      if (!grouped.has(key)) {
-        grouped.set(key, {
+      if (!grouped.has(row.song_id)) {
+        grouped.set(row.song_id, {
           song_id: row.song_id,
           title: row.title,
           artist: row.artist,
-          instrument_id: row.instrument_id,
-          instrument_name: row.instrument_name,
-          instrument_icon: row.instrument_icon,
+          instruments: new Map() // instrument_id → { name, icon, students[] }
+        });
+      }
+      const entry = grouped.get(row.song_id);
+      if (!entry.instruments.has(row.instrument_id)) {
+        entry.instruments.set(row.instrument_id, {
+          name: row.instrument_name,
+          icon: row.instrument_icon,
           students: []
         });
       }
-      grouped.get(key).students.push({
+      entry.instruments.get(row.instrument_id).students.push({
         id: row.student_id,
         name: row.student_name,
-        class_name: row.class_name,
-        date_started: row.date_started
+        class_name: row.class_name
       });
     });
 
     const items = [...grouped.values()].sort((a, b) => a.title.localeCompare(b.title));
 
     listEl.innerHTML = items.map(item => {
-      const studentTags = item.students
+      const totalStudents = new Set(
+        [...item.instruments.values()].flatMap(i => i.students.map(s => s.id))
+      ).size;
+
+      const instrumentRows = [...item.instruments.values()]
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map(s => `<span class="student-tag" title="${s.class_name || ''}">${this.escapeHtml(s.name)}</span>`)
-        .join('');
+        .map(instr => {
+          const tags = instr.students
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map(s => `<span class="student-tag" title="${this.escapeHtml(s.class_name || '')}">${this.escapeHtml(s.name)}</span>`)
+            .join('');
+          return `
+            <div class="student-song-instrument-row">
+              <span class="instrument-badge">${instr.icon} ${this.escapeHtml(instr.name)}</span>
+              <div class="student-song-students">${tags}</div>
+            </div>`;
+        }).join('');
 
       return `
         <div class="student-song-item">
-          <div class="student-song-info">
-            <div class="student-song-title">${this.escapeHtml(item.title)}</div>
-            <div class="student-song-artist">${this.escapeHtml(item.artist)}</div>
+          <div class="student-song-header">
+            <div class="student-song-info">
+              <div class="student-song-title">${this.escapeHtml(item.title)}</div>
+              <div class="student-song-artist">${this.escapeHtml(item.artist)}</div>
+            </div>
+            <div class="student-song-count">${totalStudents} student${totalStudents !== 1 ? 's' : ''}</div>
           </div>
-          <div class="student-song-instrument">
-            <span class="instrument-badge">${item.instrument_icon} ${this.escapeHtml(item.instrument_name)}</span>
-          </div>
-          <div class="student-song-students">
-            ${studentTags}
-          </div>
-          <div class="student-song-count">${item.students.length} student${item.students.length !== 1 ? 's' : ''}</div>
+          <div class="student-song-instruments">${instrumentRows}</div>
         </div>`;
     }).join('');
   }

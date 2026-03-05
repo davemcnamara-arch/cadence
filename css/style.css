@@ -3375,10 +3375,9 @@ body {
 }
 
 .student-song-item {
-  display: grid;
-  grid-template-columns: 1fr auto auto auto;
-  align-items: center;
-  gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
   padding: 1rem 1.25rem;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
@@ -3388,6 +3387,13 @@ body {
 
 .student-song-item:hover {
   border-color: var(--primary-color);
+}
+
+.student-song-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .student-song-title {
@@ -3401,30 +3407,43 @@ body {
   margin-top: 0.125rem;
 }
 
-.student-song-instrument .instrument-badge {
+.student-song-instruments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.student-song-instrument-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+}
+
+.student-song-instrument-row .instrument-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   padding: 0.25rem 0.625rem;
   background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 999px;
   font-size: 0.8125rem;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .student-song-students {
   display: flex;
   flex-wrap: wrap;
   gap: 0.375rem;
-  justify-content: flex-end;
-  max-width: 320px;
 }
 
 .student-tag {
   display: inline-block;
   padding: 0.2rem 0.5rem;
-  background: var(--primary-light, #ede9fe);
-  color: var(--primary-color);
+  background: #e5e7eb;
+  color: #1f2937;
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 500;
@@ -3435,16 +3454,5 @@ body {
   color: var(--text-secondary);
   font-size: 0.8125rem;
   white-space: nowrap;
-  text-align: right;
-  min-width: 5rem;
-}
-
-@media (max-width: 640px) {
-  .student-song-item {
-    grid-template-columns: 1fr;
-  }
-  .student-song-students {
-    justify-content: flex-start;
-    max-width: none;
-  }
+  flex-shrink: 0;
 }
