@@ -3396,6 +3396,50 @@ body {
   gap: 1rem;
 }
 
+.student-song-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.song-resource-link {
+  display: inline-block;
+  padding: 0.2rem 0.625rem;
+  border-radius: var(--border-radius);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-decoration: none;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  white-space: nowrap;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.song-resource-link:hover {
+  border-color: var(--primary-color);
+  background: #eef2ff;
+  color: var(--primary-color);
+}
+
+.song-resource-link--youtube {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.song-resource-link--youtube:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #991b1b;
+}
+
+.student-song-links {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .student-song-title {
   font-weight: 600;
   font-size: 0.9375rem;

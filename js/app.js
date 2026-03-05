@@ -6372,6 +6372,10 @@ class CadenceApp {
           song_id: row.song_id,
           title: row.title,
           artist: row.artist,
+          youtube_url: row.youtube_url,
+          chords_url: row.chords_url,
+          bass_tab_url: row.bass_tab_url,
+          drum_notation_url: row.drum_notation_url,
           instruments: new Map() // instrument_id → { name, icon, students[] }
         });
       }
@@ -6404,12 +6408,25 @@ class CadenceApp {
             .sort((a, b) => a.name.localeCompare(b.name))
             .map(s => `<span class="student-tag" title="${this.escapeHtml(s.class_name || '')}">${this.escapeHtml(s.name)}</span>`)
             .join('');
+
+          const tabUrlField = this.getChordsUrlField(instr.name);
+          const tabUrl = item[tabUrlField];
+          const tabLabel = this.getChordsLabelForInstrument(instr.name);
+          const tabLink = tabUrl
+            ? `<a href="${this.escapeHtml(tabUrl)}" target="_blank" class="song-resource-link">${tabLabel}</a>`
+            : '';
+
           return `
             <div class="student-song-instrument-row">
               <span class="instrument-badge">${instr.icon} ${this.escapeHtml(instr.name)}</span>
               <div class="student-song-students">${tags}</div>
+              ${tabLink ? `<div class="student-song-links">${tabLink}</div>` : ''}
             </div>`;
         }).join('');
+
+      const youtubeLink = item.youtube_url
+        ? `<a href="${this.escapeHtml(item.youtube_url)}" target="_blank" class="song-resource-link song-resource-link--youtube">▶ YouTube</a>`
+        : '';
 
       return `
         <div class="student-song-item">
@@ -6418,7 +6435,10 @@ class CadenceApp {
               <div class="student-song-title">${this.escapeHtml(item.title)}</div>
               <div class="student-song-artist">${this.escapeHtml(item.artist)}</div>
             </div>
-            <div class="student-song-count">${totalStudents} student${totalStudents !== 1 ? 's' : ''}</div>
+            <div class="student-song-header-right">
+              ${youtubeLink}
+              <div class="student-song-count">${totalStudents} student${totalStudents !== 1 ? 's' : ''}</div>
+            </div>
           </div>
           <div class="student-song-instruments">${instrumentRows}</div>
         </div>`;
