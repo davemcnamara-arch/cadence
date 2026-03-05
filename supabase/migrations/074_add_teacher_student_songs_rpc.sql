@@ -36,7 +36,7 @@ BEGIN
     i.icon              AS instrument_icon,
     c.id                AS class_id,
     c.name              AS class_name,
-    ss.date_started     AS date_started
+    ss.date_started::DATE AS date_started
   FROM student_songs ss
   JOIN users u          ON u.id  = ss.user_id
   JOIN songs so         ON so.id = ss.song_id
