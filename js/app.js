@@ -32,7 +32,7 @@ class CadenceApp {
 
     // Trending songs cache
     this._trendingSongs = null;
-    this._trendingSongsCacheInstrument = undefined; // undefined = never loaded
+    this._trendingSongsCacheKey = undefined; // undefined = never loaded
 
     // Guard against double initialization
     this.initializing = false;
@@ -1471,9 +1471,12 @@ class CadenceApp {
 
   async loadTrendingSongs() {
     const instrumentName = this.instruments.find(i => i.id === this.currentInstrument)?.name || null;
+    const levelRaw = document.getElementById('filter-level')?.value || '';
+    const levelNumber = levelRaw ? parseInt(levelRaw, 10) : null;
 
-    // Serve from cache if instrument hasn't changed
-    if (this._trendingSongsCacheInstrument === instrumentName && this._trendingSongs !== null) {
+    // Serve from cache if instrument and level haven't changed
+    const cacheKey = `${instrumentName}:${levelNumber}`;
+    if (this._trendingSongsCacheKey === cacheKey && this._trendingSongs !== null) {
       return this._trendingSongs;
     }
 
@@ -1481,7 +1484,8 @@ class CadenceApp {
       const result = await this.callRpcDirect('get_trending_songs', {
         days_back: 14,
         limit_count: 10,
-        instrument_filter: instrumentName
+        instrument_filter: instrumentName,
+        level_filter: levelNumber
       });
       this._trendingSongs = result.data || [];
     } catch (err) {
@@ -1489,7 +1493,7 @@ class CadenceApp {
       this._trendingSongs = [];
     }
 
-    this._trendingSongsCacheInstrument = instrumentName;
+    this._trendingSongsCacheKey = cacheKey;
     return this._trendingSongs;
   }
 
@@ -1647,9 +1651,6 @@ class CadenceApp {
       }
     }
 
-    // Load and render trending strip (cached per instrument)
-    this.loadTrendingSongs().then(trending => this.renderTrendingStrip(trending));
-
     this.filterSongs();
   }
 
@@ -1660,6 +1661,9 @@ class CadenceApp {
 
     // Store current filter instrument for use in rendering
     this.currentFilterInstrument = instrumentFilter;
+
+    // Reload trending strip to match current instrument + level filters
+    this.loadTrendingSongs().then(trending => this.renderTrendingStrip(trending));
 
     // Check for duplicates in this.songs before filtering
     const songIds = this.songs.map(s => s.id);
