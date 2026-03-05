@@ -5504,7 +5504,7 @@ class CadenceApp {
       }).join(' ');
 
       return `
-        <div class="roster-item">
+        <div class="roster-item" data-student-id="${student.id}">
           <div class="roster-student-info" onclick="app.viewStudentDetail('${student.id}')" style="cursor: pointer; flex: 1;">
             <div class="roster-student-name">${student.name}</div>
             <div class="roster-student-meta">
@@ -6210,8 +6210,9 @@ class CadenceApp {
   }
 
   async exitStudentPreview() {
-    // Save the original view before resetting
+    // Save the original view and student ID before resetting
     const originalView = this.previewMode.originalView;
+    const previewedStudentId = this.previewMode.studentId;
 
     // Restore teacher's original data
     this.studentProgress = this.previewMode.originalStudentProgress || [];
@@ -6269,6 +6270,16 @@ class CadenceApp {
       const btn = document.getElementById(btnId);
       if (btn) btn.classList.remove('hidden');
     });
+
+    // Scroll the roster back to the student that was being previewed
+    if (previewedStudentId) {
+      setTimeout(() => {
+        const rosterItem = document.querySelector(`.roster-item[data-student-id="${previewedStudentId}"]`);
+        if (rosterItem) {
+          rosterItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 50);
+    }
   }
 
   // ============================================
