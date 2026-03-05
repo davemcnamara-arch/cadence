@@ -577,7 +577,7 @@ class CadenceApp {
     const savedView = sessionStorage.getItem('cadence_currentView');
     const validViews = {
       student: ['pathway', 'songs', 'progress'],
-      teacher: ['songs', 'classes', 'flagged', 'accounts'],
+      teacher: ['songs', 'classes', 'student-songs', 'flagged', 'accounts'],
       admin: ['songs', 'classes', 'flagged', 'accounts', 'admin']
     };
     const restoredView = savedView && validViews[user.role]?.includes(savedView) ? savedView : null;
