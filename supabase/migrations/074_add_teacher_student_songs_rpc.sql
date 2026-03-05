@@ -3,6 +3,7 @@
 -- across all of the calling teacher's non-archived classes.
 -- Each row represents one student learning one song on one instrument.
 
+DROP FUNCTION IF EXISTS get_teacher_student_songs();
 CREATE OR REPLACE FUNCTION get_teacher_student_songs()
 RETURNS TABLE (
   student_song_id    UUID,
