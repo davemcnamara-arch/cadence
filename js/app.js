@@ -1571,10 +1571,10 @@ class CadenceApp {
 
       const links = [];
       if (youtubeUrl) {
-        links.push(`<a href="${this.escapeHtml(youtubeUrl)}" target="_blank" class="learning-card-link" onclick="event.stopPropagation()">YouTube</a>`);
+        links.push(`<a href="${this.escapeHtml(youtubeUrl)}" target="_blank" class="song-resource-link song-resource-link--youtube" onclick="event.stopPropagation()">▶ YouTube</a>`);
       }
       // Always show a Learning Resources button so students can access the full modal
-      links.push(`<button class="learning-card-link learning-card-resources-btn" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}', '${studentSong.instrument_id}')">Learning Resources</button>`);
+      links.push(`<button class="btn btn-secondary btn-resources" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}', '${studentSong.instrument_id}')">Learning Resources</button>`);
 
       return `
         <div class="trending-card" data-song-id="${song.id}" role="button" tabindex="0">
@@ -2012,7 +2012,7 @@ class CadenceApp {
         <div class="song-actions">
           ${song.youtube_url ? `
             <div class="resource-link-group">
-              <a href="${song.youtube_url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">YouTube</a>
+              <a href="${song.youtube_url}" target="_blank" class="song-resource-link song-resource-link--youtube" onclick="event.stopPropagation()">▶ YouTube</a>
               <button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'youtube_url', '${song.youtube_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit YouTube link">✎</button>
             </div>
           ` : this.getMyPendingLink(song.id, 'youtube_url') ? `
@@ -3952,16 +3952,16 @@ class CadenceApp {
           </div>
           <div class="song-links" style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
             ${song.youtube_url ? `
-              <span style="display: inline-flex; align-items: center; gap: 2px;">
-                <a href="${song.youtube_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">YouTube</a>
+              <span style="display: inline-flex; align-items: center; gap: 4px;">
+                <a href="${song.youtube_url}" target="_blank" class="song-resource-link song-resource-link--youtube" onclick="event.stopPropagation()">▶ YouTube</a>
                 <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'youtube_url', '${song.youtube_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Edit YouTube link">✎</button>
               </span>
             ` : this.getMyPendingLink(song.id, 'youtube_url') ? `
-              <span style="display: inline-flex; align-items: center; gap: 2px; font-size: 12px; color: var(--text-secondary); font-style: italic;" title="Your YouTube link is awaiting teacher approval">⏳ YouTube Pending</span>
+              <span class="btn btn-secondary btn-pending" onclick="event.stopPropagation()" title="Your YouTube link is awaiting teacher approval" style="opacity: 0.7; cursor: default; font-style: italic;">⏳ YouTube Pending</span>
             ` : `
-              <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
+              <button class="btn btn-secondary btn-add" onclick="app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${firstInstrumentName.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
             `}
-            <button class="btn-link-add" onclick="app.showSongResourcesModal('${song.id}', '${firstStudentSong.instrument_id}')" title="View learning resources">Learning Resources</button>
+            <button class="btn btn-secondary btn-resources" onclick="app.showSongResourcesModal('${song.id}', '${firstStudentSong.instrument_id}')" title="View learning resources">Learning Resources</button>
           </div>
         </div>
         <div class="actions-grouped">
@@ -3985,16 +3985,16 @@ class CadenceApp {
           ${instrument ? `<div class="instrument-tag" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">${instrumentIcon} ${instrumentName}</div>` : ''}
           <div class="song-links" style="margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
             ${song.youtube_url ? `
-              <span style="display: inline-flex; align-items: center; gap: 2px;">
-                <a href="${song.youtube_url}" target="_blank" style="font-size: 12px; color: var(--secondary-color);">YouTube</a>
+              <span style="display: inline-flex; align-items: center; gap: 4px;">
+                <a href="${song.youtube_url}" target="_blank" class="song-resource-link song-resource-link--youtube" onclick="event.stopPropagation()">▶ YouTube</a>
                 <button class="btn-icon-small" onclick="app.editSongResource('${song.id}', 'youtube_url', '${song.youtube_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit YouTube link">✎</button>
               </span>
             ` : this.getMyPendingLink(song.id, 'youtube_url') ? `
-              <span style="display: inline-flex; align-items: center; gap: 2px; font-size: 12px; color: var(--text-secondary); font-style: italic;" title="Your YouTube link is awaiting teacher approval">⏳ YouTube Pending</span>
+              <span class="btn btn-secondary btn-pending" onclick="event.stopPropagation()" title="Your YouTube link is awaiting teacher approval" style="opacity: 0.7; cursor: default; font-style: italic;">⏳ YouTube Pending</span>
             ` : `
-              <button class="btn-link-add" onclick="app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
+              <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
             `}
-            <button class="learning-card-link learning-card-resources-btn" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}', '${studentSong.instrument_id}')">Learning Resources</button>
+            <button class="btn btn-secondary btn-resources" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}', '${studentSong.instrument_id}')">Learning Resources</button>
           </div>
         </div>
         <div class="actions">
