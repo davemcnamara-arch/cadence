@@ -6393,6 +6393,9 @@ class CadenceApp {
         .map(([id, instr]) => ({ id, ...instr }))
         .sort((a, b) => a.name.localeCompare(b.name));
       const firstInstrumentId = sortedInstrs[0]?.id || '';
+      const escapedTitle = (item.title || '').replace(/'/g, "\\'");
+      const escapedArtist = (item.artist || '').replace(/'/g, "\\'");
+      const escapedFirstInstrName = (sortedInstrs[0]?.name || '').replace(/'/g, "\\'");
 
       const instrumentRows = sortedInstrs.map(instr => {
           const tags = instr.students
@@ -6415,7 +6418,9 @@ class CadenceApp {
               <div class="student-song-artist">${this.escapeHtml(item.artist)}</div>
             </div>
             <div class="student-song-header-right">
-              ${item.youtube_url ? `<a href="${this.escapeHtml(item.youtube_url)}" target="_blank" class="song-resource-link song-resource-link--youtube">▶ YouTube</a>` : ''}
+              ${item.youtube_url
+                ? `<a href="${this.escapeHtml(item.youtube_url)}" target="_blank" class="song-resource-link song-resource-link--youtube">▶ YouTube</a>`
+                : `<button class="btn btn-secondary btn-add" onclick="app.editSongResource('${item.song_id}', 'youtube_url', '', '${escapedTitle}', '${escapedArtist}', '${escapedFirstInstrName}')" title="Add YouTube link">+ YouTube</button>`}
               <button class="btn btn-secondary btn-resources" onclick="app.openSongFromStudentDetail('${item.song_id}', '${firstInstrumentId}')">Learning Resources</button>
               <div class="student-song-count">${totalStudents} student${totalStudents !== 1 ? 's' : ''}</div>
             </div>
