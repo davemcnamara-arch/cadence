@@ -2783,6 +2783,13 @@ class CadenceApp {
           this.filterSongs();
         } else if (this.currentView === 'progress') {
           this.renderProgress();
+        } else if (this.currentView === 'student-songs') {
+          if (this.teacherStudentSongs) {
+            this.teacherStudentSongs.forEach(row => {
+              if (row.song_id === songId) row[fieldName] = url || null;
+            });
+          }
+          this.filterStudentSongs();
         }
       }
     } catch (error) {
