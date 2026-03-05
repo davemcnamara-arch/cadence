@@ -314,6 +314,20 @@ class CadenceApp {
       studentSearchInput.addEventListener('input', () => this.filterStudents());
     }
 
+    // Teacher: Student Songs filters
+    const studentSongsSearch = document.getElementById('student-songs-search');
+    if (studentSongsSearch) {
+      studentSongsSearch.addEventListener('input', () => this.filterStudentSongs());
+    }
+    const studentSongsClassFilter = document.getElementById('student-songs-class-filter');
+    if (studentSongsClassFilter) {
+      studentSongsClassFilter.addEventListener('change', () => this.filterStudentSongs());
+    }
+    const studentSongsInstrumentFilter = document.getElementById('student-songs-instrument-filter');
+    if (studentSongsInstrumentFilter) {
+      studentSongsInstrumentFilter.addEventListener('change', () => this.filterStudentSongs());
+    }
+
     // Teacher: Create class
     const createClassBtn = document.getElementById('create-class-btn');
     if (createClassBtn) {
@@ -1426,6 +1440,8 @@ class CadenceApp {
         loadViewAsync(() => this.renderProgress());
       } else if (viewName === 'classes') {
         this.renderClassesList();
+      } else if (viewName === 'student-songs') {
+        loadViewAsync(() => this.loadStudentSongs());
       } else if (viewName === 'flagged') {
         // Load flagged ratings
         if (this.classes.length > 0) {
@@ -6251,6 +6267,149 @@ class CadenceApp {
       const btn = document.getElementById(btnId);
       if (btn) btn.classList.remove('hidden');
     });
+  }
+
+  // ============================================
+  // TEACHER: Student Songs
+  // ============================================
+
+  async loadStudentSongs() {
+    const listEl = document.getElementById('student-songs-list');
+    if (!listEl) return;
+
+    listEl.innerHTML = '<div class="loading-state">Loading student songs...</div>';
+
+    let result;
+    try {
+      result = await this.callRpcDirect('get_teacher_student_songs', {});
+    } catch (err) {
+      console.error('Error loading student songs:', err);
+      listEl.innerHTML = '<div class="empty-state">Failed to load student songs. Please try again.</div>';
+      return;
+    }
+
+    this.teacherStudentSongs = result.data || [];
+    this.populateStudentSongsFilters();
+    this.filterStudentSongs();
+  }
+
+  populateStudentSongsFilters() {
+    const classFilter = document.getElementById('student-songs-class-filter');
+    const instrumentFilter = document.getElementById('student-songs-instrument-filter');
+    if (!classFilter || !instrumentFilter) return;
+
+    const songs = this.teacherStudentSongs || [];
+
+    // Unique classes
+    const classMap = new Map();
+    songs.forEach(s => { if (s.class_id) classMap.set(s.class_id, s.class_name); });
+    const currentClass = classFilter.value;
+    classFilter.innerHTML = '<option value="">All Classes</option>';
+    [...classMap.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .forEach(([id, name]) => {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = name;
+        opt.selected = (id === currentClass);
+        classFilter.appendChild(opt);
+      });
+
+    // Unique instruments
+    const instrMap = new Map();
+    songs.forEach(s => { if (s.instrument_id) instrMap.set(s.instrument_id, { name: s.instrument_name, icon: s.instrument_icon }); });
+    const currentInstr = instrumentFilter.value;
+    instrumentFilter.innerHTML = '<option value="">All Instruments</option>';
+    [...instrMap.entries()]
+      .sort((a, b) => a[1].name.localeCompare(b[1].name))
+      .forEach(([id, { name, icon }]) => {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = `${icon} ${name}`;
+        opt.selected = (id === currentInstr);
+        instrumentFilter.appendChild(opt);
+      });
+  }
+
+  filterStudentSongs() {
+    const songs = this.teacherStudentSongs || [];
+    const search = (document.getElementById('student-songs-search')?.value || '').toLowerCase();
+    const classId = document.getElementById('student-songs-class-filter')?.value || '';
+    const instrumentId = document.getElementById('student-songs-instrument-filter')?.value || '';
+
+    const filtered = songs.filter(s => {
+      if (classId && s.class_id !== classId) return false;
+      if (instrumentId && s.instrument_id !== instrumentId) return false;
+      if (search) {
+        const matchesSong = s.title?.toLowerCase().includes(search) || s.artist?.toLowerCase().includes(search);
+        const matchesStudent = s.student_name?.toLowerCase().includes(search);
+        if (!matchesSong && !matchesStudent) return false;
+      }
+      return true;
+    });
+
+    this.renderStudentSongs(filtered);
+  }
+
+  renderStudentSongs(songs) {
+    const listEl = document.getElementById('student-songs-list');
+    if (!listEl) return;
+
+    if (!songs || songs.length === 0) {
+      listEl.innerHTML = `
+        <div class="empty-state">
+          <p>No songs found.</p>
+          ${!this.teacherStudentSongs?.length ? '<p style="color:var(--text-secondary);font-size:0.875rem;">Your students haven\'t added any songs to learn yet.</p>' : ''}
+        </div>`;
+      return;
+    }
+
+    // Group by song + instrument so we can show all learners per song
+    const grouped = new Map();
+    songs.forEach(row => {
+      const key = `${row.song_id}__${row.instrument_id}`;
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          song_id: row.song_id,
+          title: row.title,
+          artist: row.artist,
+          instrument_id: row.instrument_id,
+          instrument_name: row.instrument_name,
+          instrument_icon: row.instrument_icon,
+          students: []
+        });
+      }
+      grouped.get(key).students.push({
+        id: row.student_id,
+        name: row.student_name,
+        class_name: row.class_name,
+        date_started: row.date_started
+      });
+    });
+
+    const items = [...grouped.values()].sort((a, b) => a.title.localeCompare(b.title));
+
+    listEl.innerHTML = items.map(item => {
+      const studentTags = item.students
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(s => `<span class="student-tag" title="${s.class_name || ''}">${this.escapeHtml(s.name)}</span>`)
+        .join('');
+
+      return `
+        <div class="student-song-item">
+          <div class="student-song-info">
+            <div class="student-song-title">${this.escapeHtml(item.title)}</div>
+            <div class="student-song-artist">${this.escapeHtml(item.artist)}</div>
+          </div>
+          <div class="student-song-instrument">
+            <span class="instrument-badge">${item.instrument_icon} ${this.escapeHtml(item.instrument_name)}</span>
+          </div>
+          <div class="student-song-students">
+            ${studentTags}
+          </div>
+          <div class="student-song-count">${item.students.length} student${item.students.length !== 1 ? 's' : ''}</div>
+        </div>`;
+    }).join('');
   }
 
   // ============================================

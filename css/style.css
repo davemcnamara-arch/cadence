@@ -3362,3 +3362,89 @@ body {
 .delete-warning p {
   margin: 0;
 }
+
+/* ============================================
+   TEACHER: Student Songs View
+   ============================================ */
+
+.student-songs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.student-song-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  transition: border-color 0.15s;
+}
+
+.student-song-item:hover {
+  border-color: var(--primary-color);
+}
+
+.student-song-title {
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.student-song-artist {
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  margin-top: 0.125rem;
+}
+
+.student-song-instrument .instrument-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
+  background: var(--bg-secondary);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.student-song-students {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  justify-content: flex-end;
+  max-width: 320px;
+}
+
+.student-tag {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  background: var(--primary-light, #ede9fe);
+  color: var(--primary-color);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.student-song-count {
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  text-align: right;
+  min-width: 5rem;
+}
+
+@media (max-width: 640px) {
+  .student-song-item {
+    grid-template-columns: 1fr;
+  }
+  .student-song-students {
+    justify-content: flex-start;
+    max-width: none;
+  }
+}
