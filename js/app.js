@@ -6248,6 +6248,14 @@ class CadenceApp {
       banner.classList.add('hidden');
     }
 
+    // Clear any song library filters set during student preview (e.g. via "My Pathway")
+    const filterLevel = document.getElementById('filter-level');
+    if (filterLevel) filterLevel.value = '';
+    const filterInstrument = document.getElementById('filter-instrument');
+    if (filterInstrument) filterInstrument.value = '';
+    const filterBanner = document.getElementById('filter-banner');
+    if (filterBanner) filterBanner.remove();
+
     // Reload teacher's classes to ensure fresh data
     const user = auth.getCurrentUser();
     if (user.role === 'teacher' || user.role === 'admin') {
