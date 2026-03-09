@@ -9795,20 +9795,51 @@ class CadenceApp {
   // ============================================
 
   async loadSchoolView() {
-    const { data, error } = await supabase.rpc('get_my_school');
+    const { data, error } = await supabase.rpc('get_my_schools');
     if (error) {
-      console.error('Error loading school:', error);
+      console.error('Error loading schools:', error);
       this.showSchoolSetup();
       return;
     }
 
-    if (!data) {
+    const schools = Array.isArray(data) ? data : [];
+
+    if (schools.length === 0) {
       this.currentSchool = null;
       this.showSchoolSetup();
-    } else {
-      this.currentSchool = data;
-      await this.loadSchoolDashboard();
+      return;
     }
+
+    // Populate the school selector (visible only when teacher has >1 school)
+    const selector = document.getElementById('school-selector');
+    if (selector) {
+      if (schools.length > 1) {
+        selector.innerHTML = schools.map(s =>
+          `<option value="${s.id}">${s.name}</option>`
+        ).join('');
+        selector.classList.remove('hidden');
+      } else {
+        selector.classList.add('hidden');
+        selector.innerHTML = '';
+      }
+    }
+
+    // Default to the first (earliest-joined) school, or keep the current one
+    // if the user has already picked one via the selector
+    if (!this.currentSchool || !schools.find(s => s.id === this.currentSchool.id)) {
+      this.currentSchool = schools[0];
+    }
+
+    await this.loadSchoolDashboard();
+  }
+
+  async switchSchoolView(schoolId) {
+    const { data, error } = await supabase.rpc('get_my_schools');
+    if (error || !Array.isArray(data)) return;
+    const school = data.find(s => s.id === schoolId);
+    if (!school) return;
+    this.currentSchool = school;
+    await this.loadSchoolDashboard();
   }
 
   showSchoolSetup() {
