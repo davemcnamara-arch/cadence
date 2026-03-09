@@ -9664,6 +9664,12 @@ class CadenceApp {
     if (!data) {
       this.currentSchool = null;
       this.showSchoolSetup();
+      // Populate admin contact link in pending message
+      const { data: adminContact } = await supabase.rpc('get_admin_contact');
+      const contactEl = document.getElementById('school-pending-contact');
+      if (contactEl && adminContact?.email) {
+        contactEl.innerHTML = `Contact <a href="mailto:${adminContact.email}">${adminContact.name || adminContact.email}</a> to get started.`;
+      }
     } else {
       this.currentSchool = data;
       await this.loadSchoolDashboard();
