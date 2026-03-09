@@ -6208,6 +6208,10 @@ class CadenceApp {
     if (banner) {
       banner.classList.remove('hidden');
       document.getElementById('preview-student-name').textContent = studentName;
+      const classNameEl = document.getElementById('preview-class-name');
+      if (classNameEl) {
+        classNameEl.textContent = this.currentClass ? ` · ${this.currentClass.name}` : '';
+      }
     }
 
     // In preview mode, replace school selector with static school name (students belong to one school)
@@ -7667,7 +7671,7 @@ class CadenceApp {
     // Use direct fetch to bypass stale Supabase client connections
     const { data: memberships, error } = await this.callSelectDirect(
       'class_members',
-      '*,classes(id,name,class_code,year_level)',
+      '*,classes(id,name,class_code,year_level,schools(name))',
       { eq: { user_id: userId } },
       { order: 'joined_at.desc' }
     );
@@ -7687,9 +7691,12 @@ class CadenceApp {
     container.classList.remove('hidden');
     container.innerHTML = memberships.map(m => {
       const cls = m.classes;
+      const schoolName = cls.schools?.name;
       const titleParts = [cls.name];
       if (cls.year_level) titleParts.push(cls.year_level);
-      return `<span class="class-badge" title="${titleParts.join(' - ')}">${cls.name}</span>`;
+      if (schoolName) titleParts.push(schoolName);
+      const label = schoolName ? `${cls.name} · ${schoolName}` : cls.name;
+      return `<span class="class-badge" title="${titleParts.join(' - ')}">${label}</span>`;
     }).join('');
   }
 
