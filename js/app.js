@@ -4816,6 +4816,10 @@ class CadenceApp {
       if (yearLevelEl) {
         yearLevelEl.textContent = data.year_level || '';
       }
+      const schoolEl = document.getElementById('class-detail-school');
+      if (schoolEl) {
+        schoolEl.textContent = this.currentClass.school_name ? `School: ${this.currentClass.school_name}` : '';
+      }
 
       // Close modal and show success
       document.getElementById('edit-class-modal').classList.add('hidden');
@@ -5305,6 +5309,8 @@ class CadenceApp {
         studentCountText += ` <span class="roster-pending-badge">${pendingCount} pending</span>`;
       }
 
+      const schoolLabel = cls.school_name ? `<p class="class-school-label">School: ${cls.school_name}</p>` : '';
+
       if (isArchived) {
         // Archived class card with unarchive button
         return `
@@ -5314,6 +5320,7 @@ class CadenceApp {
                 <h3>${cls.name} <span style="background-color: var(--text-secondary); color: white; padding: 0.125rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: normal;">ARCHIVED</span></h3>
                 ${cls.year_level ? `<p style="color: var(--text-secondary); font-size: 0.875rem;">${cls.year_level}</p>` : ''}
                 ${teacherLabel}
+                ${schoolLabel}
               </div>
               <span class="class-code-badge">${cls.class_code}</span>
             </div>
@@ -5335,6 +5342,7 @@ class CadenceApp {
                 <h3>${cls.name}</h3>
                 ${cls.year_level ? `<p style="color: var(--text-secondary); font-size: 0.875rem;">${cls.year_level}</p>` : ''}
                 ${teacherLabel}
+                ${schoolLabel}
               </div>
               <span class="class-code-badge">${cls.class_code}</span>
             </div>
@@ -5396,6 +5404,10 @@ class CadenceApp {
     if (yearLevelEl) {
       const teacherInfo = isAdmin && this.currentClass.teacher_name ? ` — Teacher: ${this.currentClass.teacher_name}` : '';
       yearLevelEl.textContent = (this.currentClass.year_level || '') + teacherInfo;
+    }
+    const schoolEl = document.getElementById('class-detail-school');
+    if (schoolEl) {
+      schoolEl.textContent = this.currentClass.school_name ? `School: ${this.currentClass.school_name}` : '';
     }
     document.getElementById('class-detail-code').textContent = this.currentClass.class_code;
 
@@ -7484,24 +7496,19 @@ class CadenceApp {
   // ============================================
 
   async loadStudentClasses() {
-    const user = auth.getCurrentUser();
     const container = document.getElementById('student-classes-list');
 
-    // Use direct fetch to bypass stale Supabase client connections
-    const { data: memberships, error } = await this.callSelectDirect(
-      'class_members',
-      '*,classes(id,name,class_code,year_level,created_at)',
-      { eq: { user_id: user.id } },
-      { order: 'joined_at.desc' }
-    );
-
-    if (error) {
+    let classes;
+    try {
+      const result = await this.callRpcDirect('get_student_classes', {});
+      classes = result.data;
+    } catch (error) {
       console.error('Error loading student classes:', error);
       container.innerHTML = '<p style="color: var(--text-secondary); margin-top: 1rem;">Unable to load your classes</p>';
       return;
     }
 
-    if (!memberships || memberships.length === 0) {
+    if (!classes || classes.length === 0) {
       container.innerHTML = '<p style="color: var(--text-secondary); margin-top: 1rem;">You haven\'t joined any classes yet</p>';
       return;
     }
@@ -7510,15 +7517,15 @@ class CadenceApp {
       <div style="margin-top: 1.5rem;">
         <h4 style="margin-bottom: 0.75rem; font-size: 0.875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary);">Your Classes</h4>
         <div class="student-classes-grid">
-          ${memberships.map(m => {
-            const cls = m.classes;
-            const joinDate = new Date(m.joined_at).toLocaleDateString('en-GB');
+          ${classes.map(cls => {
+            const joinDate = new Date(cls.joined_at).toLocaleDateString('en-GB');
             return `
               <div class="student-class-card">
                 <div class="class-card-header">
-                  <strong>${cls.name}</strong>
+                  <strong>${cls.class_name}</strong>
                   ${cls.year_level ? `<span class="class-year-badge">${cls.year_level}</span>` : ''}
                 </div>
+                ${cls.school_name ? `<p class="class-school-label">School: ${cls.school_name}</p>` : ''}
                 <div class="class-card-meta">
                   <span>Code: <strong>${cls.class_code}</strong></span>
                   <span>Joined: ${joinDate}</span>
@@ -7570,7 +7577,9 @@ class CadenceApp {
     container.classList.remove('hidden');
     container.innerHTML = memberships.map(m => {
       const cls = m.classes;
-      return `<span class="class-badge" title="${cls.name}${cls.year_level ? ' - ' + cls.year_level : ''}">${cls.name}</span>`;
+      const titleParts = [cls.name];
+      if (cls.year_level) titleParts.push(cls.year_level);
+      return `<span class="class-badge" title="${titleParts.join(' - ')}">${cls.name}</span>`;
     }).join('');
   }
 
