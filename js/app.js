@@ -4597,12 +4597,23 @@ class CadenceApp {
       teacherGroup.classList.add('hidden');
     }
 
-    // Show school picker if user belongs to multiple schools
-    const { data: mySchools } = await this.callSelectDirect('school_members', 'school_id, joined_at, schools(id, name)', { eq: { user_id: user.id } });
-    if (mySchools && mySchools.length > 1) {
-      const sorted = [...mySchools].sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at));
-      schoolSelect.innerHTML = sorted.map(sm =>
-        `<option value="${sm.schools.id}">${sm.schools.name}</option>`
+    // Show school picker for admins (using get_all_schools which bypasses RLS)
+    // or for teachers who belong to multiple schools
+    let schoolOptions = [];
+    if (user.role === 'admin') {
+      const result = await this.callRpcDirect('get_all_schools', {});
+      schoolOptions = (result.data?.schools || []).map(s => ({ id: s.id, name: s.name }));
+    } else {
+      const { data: mySchools } = await this.callSelectDirect('school_members', 'school_id,joined_at,schools(id,name)', { eq: { user_id: user.id } });
+      if (mySchools && mySchools.length > 1) {
+        schoolOptions = [...mySchools]
+          .sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at))
+          .map(sm => ({ id: sm.schools.id, name: sm.schools.name }));
+      }
+    }
+    if (schoolOptions.length > 1) {
+      schoolSelect.innerHTML = schoolOptions.map(s =>
+        `<option value="${s.id}">${s.name}</option>`
       ).join('');
       schoolGroup.classList.remove('hidden');
     } else {
