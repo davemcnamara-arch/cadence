@@ -7666,36 +7666,30 @@ class CadenceApp {
       return;
     }
 
-    const userId = user.id;
-
-    // Use direct fetch to bypass stale Supabase client connections
-    const { data: memberships, error } = await this.callSelectDirect(
-      'class_members',
-      '*,classes(id,name,class_code,year_level,schools(name))',
-      { eq: { user_id: userId } },
-      { order: 'joined_at.desc' }
-    );
-
-    if (error) {
+    // Use get_student_classes RPC (avoids RLS recursion on school_members from direct join)
+    let classes;
+    try {
+      const result = await this.callRpcDirect('get_student_classes', {});
+      classes = result.data;
+    } catch (error) {
       console.error('Error loading student classes for header:', error);
       container.classList.add('hidden');
       return;
     }
 
-    if (!memberships || memberships.length === 0) {
+    if (!classes || classes.length === 0) {
       container.classList.add('hidden');
       return;
     }
 
     // Show class badges
     container.classList.remove('hidden');
-    container.innerHTML = memberships.map(m => {
-      const cls = m.classes;
-      const schoolName = cls.schools?.name;
-      const titleParts = [cls.name];
+    container.innerHTML = classes.map(cls => {
+      const schoolName = cls.school_name;
+      const titleParts = [cls.class_name];
       if (cls.year_level) titleParts.push(cls.year_level);
       if (schoolName) titleParts.push(schoolName);
-      const label = schoolName ? `${cls.name} · ${schoolName}` : cls.name;
+      const label = schoolName ? `${cls.class_name} · ${schoolName}` : cls.class_name;
       return `<span class="class-badge" title="${titleParts.join(' - ')}">${label}</span>`;
     }).join('');
   }
