@@ -32,6 +32,7 @@ class CadenceApp {
 
     // School properties
     this.currentSchool = null;
+    this.teacherSchools = [];
     this.schoolDashboardData = null;
     this.schoolStudents = null;
 
@@ -674,6 +675,52 @@ class CadenceApp {
   async loadTeacherData() {
     // Load teacher's classes
     await this.loadClasses();
+    await this.initHeaderSchoolContext();
+  }
+
+  async initHeaderSchoolContext() {
+    const container = document.getElementById('header-school-context');
+    if (!container) return;
+
+    const { data, error } = await supabase.rpc('get_my_schools');
+    if (error || !Array.isArray(data) || data.length === 0) {
+      container.classList.add('hidden');
+      return;
+    }
+
+    this.teacherSchools = data;
+
+    // Preserve current school selection if valid, else default to first
+    if (!this.currentSchool || !data.find(s => s.id === this.currentSchool.id)) {
+      this.currentSchool = data[0];
+    }
+
+    if (data.length === 1) {
+      container.innerHTML = `
+        <span class="school-label">School:</span>
+        <span class="school-name-static">${data[0].name}</span>
+      `;
+    } else {
+      const options = data.map(s =>
+        `<option value="${s.id}"${s.id === this.currentSchool.id ? ' selected' : ''}>${s.name}</option>`
+      ).join('');
+      container.innerHTML = `
+        <span class="school-label">School:</span>
+        <select class="header-school-select" onchange="app.switchHeaderSchool(this.value)">${options}</select>
+      `;
+    }
+
+    container.classList.remove('hidden');
+  }
+
+  switchHeaderSchool(schoolId) {
+    const school = this.teacherSchools.find(s => s.id === schoolId);
+    if (!school) return;
+    this.currentSchool = school;
+    // If the school view is active, refresh it too
+    if (this.currentView === 'school') {
+      this.loadSchoolDashboard();
+    }
   }
 
   // ============================================
@@ -4615,26 +4662,21 @@ class CadenceApp {
       teacherGroup.classList.add('hidden');
     }
 
-    // Show school picker for admins (using get_all_schools which bypasses RLS)
-    // or for teachers who belong to multiple schools
-    let schoolOptions = [];
+    // Admins can pick any school; teachers use the header school context (no picker in modal)
     if (user.role === 'admin') {
       const result = await this.callRpcDirect('get_all_schools', {});
-      schoolOptions = (result.data?.schools || []).map(s => ({ id: s.id, name: s.name }));
-    } else {
-      const { data: mySchools } = await this.callSelectDirect('school_members', 'school_id,joined_at,schools(id,name)', { eq: { user_id: user.id } });
-      if (mySchools && mySchools.length > 1) {
-        schoolOptions = [...mySchools]
-          .sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at))
-          .map(sm => ({ id: sm.schools.id, name: sm.schools.name }));
+      const schoolOptions = (result.data?.schools || []).map(s => ({ id: s.id, name: s.name }));
+      if (schoolOptions.length > 0) {
+        schoolSelect.innerHTML = `<option value="">-- No school --</option>` + schoolOptions.map(s =>
+          `<option value="${s.id}">${s.name}</option>`
+        ).join('');
+        schoolGroup.classList.remove('hidden');
+      } else {
+        schoolGroup.classList.add('hidden');
+        schoolSelect.innerHTML = '';
       }
-    }
-    if (schoolOptions.length > 1) {
-      schoolSelect.innerHTML = schoolOptions.map(s =>
-        `<option value="${s.id}">${s.name}</option>`
-      ).join('');
-      schoolGroup.classList.remove('hidden');
     } else {
+      // Teachers: school is determined by the header selector — no picker needed in modal
       schoolGroup.classList.add('hidden');
       schoolSelect.innerHTML = '';
     }
@@ -4708,9 +4750,10 @@ class CadenceApp {
       const teacherSelect = document.getElementById('class-teacher');
       const teacherId = teacherSelect ? teacherSelect.value : null;
       const schoolSelect = document.getElementById('class-school');
-      const schoolId = schoolSelect && !document.getElementById('class-school-group')?.classList.contains('hidden')
+      const schoolGroupHidden = document.getElementById('class-school-group')?.classList.contains('hidden');
+      const schoolId = !schoolGroupHidden && schoolSelect
         ? schoolSelect.value || null
-        : null;
+        : this.currentSchool?.id || null;
 
       if (!className || className.trim() === '') {
         this.showToast('Please enter a class name', 'error');

@@ -561,6 +561,36 @@ body {
   color: var(--text-secondary);
 }
 
+.header-school-context {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.header-school-context .school-label {
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.header-school-context .school-name-static {
+  font-weight: 500;
+  color: var(--text-color);
+  white-space: nowrap;
+}
+
+.header-school-select {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--card-background);
+  color: var(--text-color);
+  cursor: pointer;
+  max-width: 180px;
+}
+
 .student-classes-header {
   display: flex;
   gap: 0.5rem;
