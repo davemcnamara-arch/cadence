@@ -9889,7 +9889,7 @@ class CadenceApp {
     container.innerHTML = teachers.map(teacher => {
       const isAdmin = teacher.school_role === 'admin';
       const isSelf = teacher.user_id === currentUserId;
-      const removeBtn = prefix === 'admin-school' && !isSelf
+      const removeBtn = prefix === 'admin-school'
         ? `<button class="btn btn-danger btn-sm school-remove-btn" onclick="app.removeTeacherFromSchool('${teacher.user_id}', '${teacher.name}')">Remove</button>`
         : '';
 
