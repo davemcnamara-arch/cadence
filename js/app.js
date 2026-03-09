@@ -4561,7 +4561,17 @@ class CadenceApp {
       return;
     }
 
-    this.classes = data || [];
+    const raw = data || [];
+    // Deduplicate by id in case the DB has duplicate rows
+    const seen = new Set();
+    this.classes = raw.filter(cls => {
+      if (seen.has(cls.id)) return false;
+      seen.add(cls.id);
+      return true;
+    });
+    if (raw.length !== this.classes.length) {
+      console.warn(`[loadClasses] Deduplicated ${raw.length - this.classes.length} duplicate class rows from server`);
+    }
     if (this.currentView === 'classes') {
       this.renderClassesList();
     }
