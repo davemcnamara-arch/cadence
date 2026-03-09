@@ -4586,6 +4586,8 @@ class CadenceApp {
     const user = auth.getCurrentUser();
     const teacherGroup = document.getElementById('class-teacher-group');
     const teacherSelect = document.getElementById('class-teacher');
+    const schoolGroup = document.getElementById('class-school-group');
+    const schoolSelect = document.getElementById('class-school');
 
     // Show teacher dropdown for admins
     if (user && user.role === 'admin') {
@@ -4593,6 +4595,19 @@ class CadenceApp {
       await this.loadTeachersForDropdown(teacherSelect);
     } else {
       teacherGroup.classList.add('hidden');
+    }
+
+    // Show school picker if user belongs to multiple schools
+    const { data: mySchools } = await this.callSelectDirect('school_members', 'school_id, joined_at, schools(id, name)', { eq: { user_id: user.id } });
+    if (mySchools && mySchools.length > 1) {
+      const sorted = [...mySchools].sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at));
+      schoolSelect.innerHTML = sorted.map(sm =>
+        `<option value="${sm.schools.id}">${sm.schools.name}</option>`
+      ).join('');
+      schoolGroup.classList.remove('hidden');
+    } else {
+      schoolGroup.classList.add('hidden');
+      schoolSelect.innerHTML = '';
     }
 
     document.getElementById('create-class-modal').classList.remove('hidden');
@@ -4663,6 +4678,10 @@ class CadenceApp {
       const yearLevel = document.getElementById('class-year-level').value;
       const teacherSelect = document.getElementById('class-teacher');
       const teacherId = teacherSelect ? teacherSelect.value : null;
+      const schoolSelect = document.getElementById('class-school');
+      const schoolId = schoolSelect && !document.getElementById('class-school-group')?.classList.contains('hidden')
+        ? schoolSelect.value || null
+        : null;
 
       if (!className || className.trim() === '') {
         this.showToast('Please enter a class name', 'error');
@@ -4671,14 +4690,14 @@ class CadenceApp {
 
       form._submitting = true;
       try {
-        await this.createClass(className, yearLevel, teacherId || null);
+        await this.createClass(className, yearLevel, teacherId || null, schoolId);
       } finally {
         form._submitting = false;
       }
     });
   }
 
-  async createClass(className, yearLevel, teacherId = null) {
+  async createClass(className, yearLevel, teacherId = null, schoolId = null) {
     try {
       const user = auth.getCurrentUser();
 
@@ -4714,15 +4733,18 @@ class CadenceApp {
       }
 
       // Create the class
+      const insertPayload = {
+        class_code: classCode,
+        name: className,
+        teacher_id: assignedTeacherId,
+        year_level: yearLevel || null,
+        pending_teacher_email: pendingTeacherEmail
+      };
+      if (schoolId) insertPayload.school_id = schoolId;
+
       const { data, error } = await supabase
         .from('classes')
-        .insert([{
-          class_code: classCode,
-          name: className,
-          teacher_id: assignedTeacherId,
-          year_level: yearLevel || null,
-          pending_teacher_email: pendingTeacherEmail
-        }])
+        .insert([insertPayload])
         .select()
         .single();
 
