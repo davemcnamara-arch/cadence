@@ -7955,7 +7955,7 @@ class CadenceApp {
 
     let query = supabase
       .from('songs')
-      .select('*, users(name), instruments(icon, name)')
+      .select('*, users(name), song_ratings(instruments(icon, name))')
       .order('created_at', { ascending: false });
 
     if (statusFilter === 'approved') {
@@ -8013,8 +8013,16 @@ class CadenceApp {
           </div>
           <div class="content-mod-details">
             <div class="content-mod-detail-item">
-              <div class="content-mod-detail-label">Instrument</div>
-              <div class="content-mod-detail-value">${song.instruments?.icon || ''} ${song.instruments?.name || 'N/A'}</div>
+              <div class="content-mod-detail-label">Graded For</div>
+              <div class="content-mod-detail-value">${(() => {
+                const instruments = (song.song_ratings || [])
+                  .map(r => r.instruments)
+                  .filter(Boolean)
+                  .filter((inst, i, arr) => arr.findIndex(x => x.name === inst.name) === i);
+                return instruments.length > 0
+                  ? instruments.map(inst => `${inst.icon || ''} ${inst.name}`).join(', ')
+                  : 'Not yet graded';
+              })()}</div>
             </div>
             <div class="content-mod-detail-item">
               <div class="content-mod-detail-label">Resources</div>
@@ -8054,7 +8062,15 @@ class CadenceApp {
         <p style="color: var(--text-secondary);">${song.artist}</p>
       </div>
       <div style="display: grid; gap: 0.75rem; margin-bottom: 1rem;">
-        <div><strong>Instrument:</strong> ${song.instruments?.icon || ''} ${song.instruments?.name || 'N/A'}</div>
+        <div><strong>Graded For:</strong> ${(() => {
+          const instruments = (song.song_ratings || [])
+            .map(r => r.instruments)
+            .filter(Boolean)
+            .filter((inst, i, arr) => arr.findIndex(x => x.name === inst.name) === i);
+          return instruments.length > 0
+            ? instruments.map(inst => `${inst.icon || ''} ${inst.name}`).join(', ')
+            : 'Not yet graded';
+        })()}</div>
         <div><strong>Added by:</strong> ${song.users?.name || 'Unknown'}</div>
         <div><strong>Status:</strong> ${song.approved ? 'Approved' : 'Pending'}</div>
         ${song.chords_url ? `<div><strong>Chords:</strong> <a href="${song.chords_url}" target="_blank">Link</a></div>` : ''}
