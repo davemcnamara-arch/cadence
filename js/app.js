@@ -7784,6 +7784,8 @@ class CadenceApp {
       } else if (sectionName === 'users') {
         this.loadUsersManagement();
         this.loadPendingTeacherAccounts();
+      } else if (sectionName === 'school') {
+        this.loadAdminSchoolSection();
       }
     }
   }
@@ -9588,6 +9590,66 @@ class CadenceApp {
   }
 
   // ============================================
+  // ADMIN: School Management Section
+  // ============================================
+
+  async loadAdminSchoolSection() {
+    const { data, error } = await supabase.rpc('get_my_school');
+    if (error) {
+      console.error('Error loading school:', error);
+    }
+
+    const createEl = document.getElementById('admin-school-create');
+    const dashEl = document.getElementById('admin-school-dashboard');
+
+    if (!data) {
+      createEl?.classList.remove('hidden');
+      dashEl?.classList.add('hidden');
+      return;
+    }
+
+    this.currentSchool = data;
+    createEl?.classList.add('hidden');
+    dashEl?.classList.remove('hidden');
+
+    const nameEl = document.getElementById('admin-school-name');
+    const codeEl = document.getElementById('admin-school-code');
+    if (nameEl) nameEl.textContent = data.name;
+    if (codeEl) codeEl.textContent = `Join code: ${data.join_code}`;
+
+    const { data: dashData, error: dashError } = await supabase.rpc('get_school_dashboard', {
+      p_school_id: data.id
+    });
+
+    if (dashError || !dashData?.success) {
+      this.showToast('Failed to load school data', 'error');
+      return;
+    }
+
+    this.renderSchoolStats(dashData.stats, 'admin-school');
+    this.renderSchoolInstruments(dashData.stats?.instrument_counts, 'admin-school');
+    this.renderSchoolTeachers(dashData.teachers || [], 'admin-school');
+  }
+
+  async adminCreateSchool() {
+    const nameInput = document.getElementById('admin-create-school-name');
+    const name = nameInput?.value?.trim();
+    if (!name) {
+      this.showToast('Please enter a school name', 'error');
+      return;
+    }
+
+    const { data, error } = await supabase.rpc('create_school', { p_name: name });
+    if (error || !data?.success) {
+      this.showToast(data?.message || 'Failed to create school', 'error');
+      return;
+    }
+
+    this.showToast('School created!', 'success');
+    await this.loadAdminSchoolSection();
+  }
+
+  // ============================================
   // SCHOOL: Setup, Dashboard, Management
   // ============================================
 
@@ -9609,15 +9671,12 @@ class CadenceApp {
   }
 
   showSchoolSetup() {
-    document.getElementById('school-setup')?.classList.remove('hidden');
+    document.getElementById('school-pending')?.classList.remove('hidden');
     document.getElementById('school-dashboard')?.classList.add('hidden');
-    // Only admins can create schools; teachers can only join
-    const isAdmin = this.currentUser?.role === 'admin';
-    document.getElementById('school-create-section')?.classList.toggle('hidden', !isAdmin);
   }
 
   showSchoolDashboardPanel() {
-    document.getElementById('school-setup')?.classList.add('hidden');
+    document.getElementById('school-pending')?.classList.add('hidden');
     document.getElementById('school-dashboard')?.classList.remove('hidden');
   }
 
@@ -9665,16 +9724,7 @@ class CadenceApp {
     const schoolName = document.getElementById('school-dashboard-name');
     const schoolCode = document.getElementById('school-dashboard-code');
     if (schoolName) schoolName.textContent = this.currentSchool.name;
-    if (schoolCode) {
-      const isAdmin = this.currentSchool.school_role === 'admin';
-      schoolCode.textContent = isAdmin
-        ? `Join code: ${this.currentSchool.join_code}`
-        : 'School member';
-    }
-
-    // Show/hide leave button appropriately
-    const leaveBtn = document.getElementById('school-leave-btn');
-    if (leaveBtn) leaveBtn.style.display = '';
+    if (schoolCode) schoolCode.classList.add('hidden');
 
     this.showSchoolDashboardPanel();
 
@@ -9693,8 +9743,8 @@ class CadenceApp {
     this.renderSchoolTeachers(data.teachers || []);
   }
 
-  renderSchoolStats(stats) {
-    const container = document.getElementById('school-stats');
+  renderSchoolStats(stats, prefix = 'school') {
+    const container = document.getElementById(`${prefix}-stats`);
     if (!container || !stats) return;
 
     container.innerHTML = `
@@ -9713,9 +9763,9 @@ class CadenceApp {
     `;
   }
 
-  renderSchoolInstruments(instrumentCounts) {
-    const section = document.getElementById('school-instruments');
-    const container = document.getElementById('school-instruments-list');
+  renderSchoolInstruments(instrumentCounts, prefix = 'school') {
+    const section = document.getElementById(`${prefix}-instruments`);
+    const container = document.getElementById(`${prefix}-instruments-list`);
     if (!container || !instrumentCounts?.length) {
       section?.classList.add('hidden');
       return;
@@ -9731,11 +9781,10 @@ class CadenceApp {
     `).join('');
   }
 
-  renderSchoolTeachers(teachers) {
-    const container = document.getElementById('school-teachers-list');
+  renderSchoolTeachers(teachers, prefix = 'school') {
+    const container = document.getElementById(`${prefix}-teachers-list`);
     if (!container) return;
 
-    const isSchoolAdmin = this.currentSchool?.school_role === 'admin';
     const currentUserId = auth.getCurrentUser()?.id;
 
     if (!teachers.length) {
@@ -9746,16 +9795,6 @@ class CadenceApp {
     container.innerHTML = teachers.map(teacher => {
       const isAdmin = teacher.school_role === 'admin';
       const isSelf = teacher.user_id === currentUserId;
-
-      const adminControls = isSchoolAdmin && !isSelf ? `
-        <div class="school-teacher-actions">
-          ${isAdmin
-            ? `<button class="btn btn-secondary btn-sm" onclick="app.changeSchoolMemberRole('${teacher.user_id}', 'teacher')">Remove Admin</button>`
-            : `<button class="btn btn-secondary btn-sm" onclick="app.changeSchoolMemberRole('${teacher.user_id}', 'admin')">Make Admin</button>`
-          }
-          <button class="btn btn-secondary btn-sm" style="color: var(--warning-color);" onclick="app.removeFromSchool('${teacher.user_id}', '${teacher.name.replace(/'/g, "\\'")}')">Remove</button>
-        </div>
-      ` : '';
 
       return `
         <div class="school-teacher-card">
@@ -9772,37 +9811,35 @@ class CadenceApp {
               <span>${teacher.student_count} student${teacher.student_count !== 1 ? 's' : ''}</span>
             </div>
           </div>
-          ${adminControls}
         </div>
       `;
     }).join('');
   }
 
-  async loadSchoolStudents() {
+  async loadSchoolStudents(prefix = 'school') {
     if (!this.currentSchool) return;
 
-    const container = document.getElementById('school-students-list');
+    const container = document.getElementById(`${prefix}-students-list`);
     if (container) container.innerHTML = '<p style="color: var(--text-secondary); padding: 1rem;">Loading students...</p>';
 
     if (this.schoolStudents) {
-      this.renderSchoolStudents(this.schoolStudents);
-      return;
+      this.renderSchoolStudents(this.schoolStudents, prefix);
+    } else {
+      const { data, error } = await supabase.rpc('get_school_students', {
+        p_school_id: this.currentSchool.id
+      });
+
+      if (error || !data?.success) {
+        this.showToast('Failed to load students', 'error');
+        return;
+      }
+
+      this.schoolStudents = data.students || [];
+      this.renderSchoolStudents(this.schoolStudents, prefix);
     }
-
-    const { data, error } = await supabase.rpc('get_school_students', {
-      p_school_id: this.currentSchool.id
-    });
-
-    if (error || !data?.success) {
-      this.showToast('Failed to load students', 'error');
-      return;
-    }
-
-    this.schoolStudents = data.students || [];
-    this.renderSchoolStudents(this.schoolStudents);
 
     // Set up search
-    const searchInput = document.getElementById('school-student-search');
+    const searchInput = document.getElementById(`${prefix}-student-search`);
     if (searchInput) {
       searchInput.oninput = () => {
         const q = searchInput.value.toLowerCase();
@@ -9811,13 +9848,13 @@ class CadenceApp {
           s.class_name?.toLowerCase().includes(q) ||
           s.teacher_name?.toLowerCase().includes(q)
         );
-        this.renderSchoolStudents(filtered);
+        this.renderSchoolStudents(filtered, prefix);
       };
     }
   }
 
-  renderSchoolStudents(students) {
-    const container = document.getElementById('school-students-list');
+  renderSchoolStudents(students, prefix = 'school') {
+    const container = document.getElementById(`${prefix}-students-list`);
     if (!container) return;
 
     if (!students.length) {
@@ -9861,7 +9898,27 @@ class CadenceApp {
     }
 
     if (tabName === 'students' && !this.schoolStudents) {
-      this.loadSchoolStudents();
+      this.loadSchoolStudents('school');
+    }
+  }
+
+  switchAdminSchoolTab(tabName) {
+    document.querySelectorAll('.admin-school-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.tab === tabName);
+    });
+    document.querySelectorAll('.admin-school-tab-pane').forEach(pane => {
+      pane.classList.add('hidden');
+      pane.classList.remove('active');
+    });
+
+    const target = document.getElementById(`admin-school-${tabName}-tab`);
+    if (target) {
+      target.classList.remove('hidden');
+      target.classList.add('active');
+    }
+
+    if (tabName === 'students') {
+      this.loadSchoolStudents('admin-school');
     }
   }
 

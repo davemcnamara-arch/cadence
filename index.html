@@ -413,36 +413,12 @@
 
       <!-- Teacher: School View -->
       <div id="school-view" class="view teacher-view hidden">
-        <!-- Setup state: shown when not yet in a school -->
-        <div id="school-setup" class="school-setup hidden">
+        <!-- Pending state: shown when no school has been set up -->
+        <div id="school-pending" class="school-setup hidden">
           <div class="school-setup-container">
             <div class="school-setup-icon">🏫</div>
             <h2>School Area</h2>
-            <p class="school-setup-subtitle">Connect with other teachers at your school for school-wide reporting and management.</p>
-
-            <div class="school-setup-cards">
-              <div id="school-create-section">
-                <div class="school-setup-card">
-                  <h3>Create a School</h3>
-                  <p>Set up a new school and invite other teachers to join.</p>
-                  <div class="school-form-group">
-                    <input type="text" id="create-school-name" class="school-input" placeholder="School name" maxlength="100">
-                  </div>
-                  <button class="btn btn-primary" onclick="app.createSchool()">Create School</button>
-                </div>
-
-                <div class="school-setup-divider">or</div>
-              </div>
-
-              <div class="school-setup-card">
-                <h3>Join a School</h3>
-                <p>Enter the join code shared by your school admin.</p>
-                <div class="school-form-group">
-                  <input type="text" id="join-school-code" class="school-input school-code-input" placeholder="Join code" maxlength="6">
-                </div>
-                <button class="btn btn-primary" onclick="app.joinSchool()">Join School</button>
-              </div>
-            </div>
+            <p class="school-setup-subtitle">No school has been set up yet. Contact your admin to get started.</p>
           </div>
         </div>
 
@@ -455,7 +431,6 @@
             </div>
             <div style="display: flex; gap: 0.5rem; align-items: center;">
               <button id="school-export-btn" class="btn btn-secondary" onclick="app.exportSchoolData()">Export All Data</button>
-              <button id="school-leave-btn" class="btn btn-secondary" style="color: var(--warning-color);" onclick="app.leaveSchool()">Leave School</button>
             </div>
           </div>
 
@@ -514,6 +489,7 @@
           <button class="admin-section-tab" data-section="instruments">Instruments</button>
           <button class="admin-section-tab" data-section="content">Content Moderation</button>
           <button class="admin-section-tab" data-section="users">User Management</button>
+          <button class="admin-section-tab" data-section="school">School</button>
         </div>
 
         <!-- Levels & Checklists Section -->
@@ -591,6 +567,77 @@
           <div id="users-list" class="users-list">
             <!-- Populated by JS -->
           </div>
+        </div>
+
+        <!-- School Section -->
+        <div id="school-section" class="admin-section">
+
+          <!-- No school yet: create form -->
+          <div id="admin-school-create">
+            <div class="admin-section-header">
+              <h3>School Management</h3>
+            </div>
+            <div class="school-setup-container">
+              <div class="school-setup-icon">🏫</div>
+              <p class="school-setup-subtitle">Set up your school to give all teachers access to school-wide reporting and management.</p>
+              <div class="school-setup-card" style="max-width: 360px; margin: 1.5rem auto 0;">
+                <h3>Create a School</h3>
+                <p>Enter a name for your school to get started.</p>
+                <div class="school-form-group">
+                  <input type="text" id="admin-create-school-name" class="school-input" placeholder="School name" maxlength="100">
+                </div>
+                <button class="btn btn-primary" onclick="app.adminCreateSchool()">Create School</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- School exists: full dashboard -->
+          <div id="admin-school-dashboard" class="hidden">
+            <div class="admin-section-header">
+              <div>
+                <h3 id="admin-school-name">School</h3>
+                <p id="admin-school-code" class="school-join-code-display"></p>
+              </div>
+              <button class="btn btn-secondary" onclick="app.exportSchoolData()">Export All Data</button>
+            </div>
+
+            <!-- Stats -->
+            <div id="admin-school-stats" class="school-stats-grid">
+              <!-- Populated by JS -->
+            </div>
+
+            <!-- Instrument distribution -->
+            <div id="admin-school-instruments" class="school-instruments hidden">
+              <h3 class="school-section-title">Instruments Across School</h3>
+              <div id="admin-school-instruments-list" class="school-instruments-list">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="school-tabs">
+              <button class="admin-school-tab active" data-tab="teachers" onclick="app.switchAdminSchoolTab('teachers')">Teachers</button>
+              <button class="admin-school-tab" data-tab="students" onclick="app.switchAdminSchoolTab('students')">All Students</button>
+            </div>
+
+            <!-- Teachers tab -->
+            <div id="admin-school-teachers-tab" class="admin-school-tab-pane active">
+              <div id="admin-school-teachers-list" class="school-teachers-grid">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+
+            <!-- Students tab -->
+            <div id="admin-school-students-tab" class="admin-school-tab-pane hidden">
+              <div class="song-filters" style="margin-bottom: 1rem;">
+                <input type="text" id="admin-school-student-search" class="search-input" placeholder="Search students...">
+              </div>
+              <div id="admin-school-students-list" class="school-students-list">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </main>
