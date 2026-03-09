@@ -9978,7 +9978,7 @@ class CadenceApp {
   }
 
   switchAdminSchoolTab(tabName) {
-    document.querySelectorAll('.admin-school-tab').forEach(tab => {
+    document.querySelectorAll('#admin-school-view .school-tab').forEach(tab => {
       tab.classList.toggle('active', tab.dataset.tab === tabName);
     });
     document.querySelectorAll('.admin-school-tab-pane').forEach(pane => {
@@ -9997,6 +9997,26 @@ class CadenceApp {
     } else if (tabName === 'assign') {
       this.loadAssignTeachersPanel();
     }
+  }
+
+  renderAssignList(items, checkboxClass, metaFn) {
+    return items.map(item => `
+      <label class="assign-teacher-row" data-name="${item.name.toLowerCase()}" data-meta="${metaFn(item).toLowerCase()}">
+        <input type="checkbox" class="${checkboxClass}" value="${item.user_id}">
+        <div class="assign-teacher-info">
+          <span class="assign-teacher-name">${item.name}</span>
+          <span class="assign-teacher-meta">${metaFn(item)}</span>
+        </div>
+      </label>
+    `).join('');
+  }
+
+  filterAssignList(inputId, listId) {
+    const q = document.getElementById(inputId)?.value.toLowerCase() || '';
+    document.querySelectorAll(`#${listId} .assign-teacher-row`).forEach(row => {
+      const match = row.dataset.name.includes(q) || row.dataset.meta.includes(q);
+      row.style.display = match ? '' : 'none';
+    });
   }
 
   async loadAssignTeachersPanel() {
@@ -10021,16 +10041,9 @@ class CadenceApp {
              <button class="btn btn-primary btn-sm" onclick="app.bulkAssignTeachersToSchool()">Assign Selected</button>
            </div>
          </div>
-         <div class="assign-teachers-list">
-           ${teachers.map(t => `
-             <label class="assign-teacher-row">
-               <input type="checkbox" class="assign-teacher-checkbox" value="${t.user_id}">
-               <div class="assign-teacher-info">
-                 <span class="assign-teacher-name">${t.name}</span>
-                 <span class="assign-teacher-meta">${t.email} &middot; ${t.class_count} class${t.class_count !== 1 ? 'es' : ''}</span>
-               </div>
-             </label>
-           `).join('')}
+         <input type="text" class="search-input assign-search" placeholder="Search teachers…" oninput="app.filterAssignList('assign-teacher-search', 'assign-teacher-list')" id="assign-teacher-search" style="margin-bottom:0.5rem;">
+         <div id="assign-teacher-list" class="assign-teachers-list">
+           ${this.renderAssignList(teachers, 'assign-teacher-checkbox', t => `${t.email} · ${t.class_count} class${t.class_count !== 1 ? 'es' : ''}`)}
          </div>`
       : '<p style="color:var(--text-secondary);margin:0 0 0.5rem;">All teachers are already assigned.</p>';
 
@@ -10043,16 +10056,9 @@ class CadenceApp {
              <button class="btn btn-primary btn-sm" onclick="app.bulkAssignStudentsToSchool()">Assign Selected</button>
            </div>
          </div>
-         <div class="assign-teachers-list">
-           ${students.map(s => `
-             <label class="assign-teacher-row">
-               <input type="checkbox" class="assign-student-checkbox" value="${s.user_id}">
-               <div class="assign-teacher-info">
-                 <span class="assign-teacher-name">${s.name}</span>
-                 <span class="assign-teacher-meta">${s.email}${s.class_name ? ' &middot; ' + s.class_name : ''}</span>
-               </div>
-             </label>
-           `).join('')}
+         <input type="text" class="search-input assign-search" placeholder="Search students…" oninput="app.filterAssignList('assign-student-search', 'assign-student-list')" id="assign-student-search" style="margin-bottom:0.5rem;">
+         <div id="assign-student-list" class="assign-teachers-list">
+           ${this.renderAssignList(students, 'assign-student-checkbox', s => s.class_name ? `${s.email} · ${s.class_name}` : s.email)}
          </div>`
       : '<p style="color:var(--text-secondary);margin:0;">All students are already assigned.</p>';
 
@@ -10069,7 +10075,10 @@ class CadenceApp {
   }
 
   toggleAssignCheckboxes(className, checked) {
-    document.querySelectorAll(`.${className}`).forEach(cb => { cb.checked = checked; });
+    document.querySelectorAll(`.${className}`).forEach(cb => {
+      // only toggle visible rows
+      if (cb.closest('.assign-teacher-row')?.style.display !== 'none') cb.checked = checked;
+    });
   }
 
   async bulkAssignTeachersToSchool() {
