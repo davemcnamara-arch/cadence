@@ -7841,12 +7841,13 @@ class CadenceApp {
   async loadAdminStats() {
     // Get system-wide statistics using data length for reliability
     // Use callSelectDirect to bypass stale Supabase client connections
+    // Use callRpcDirect for schools: RLS blocks direct SELECT for admins (they are not school members)
     const [usersRes, songsRes, ratingsRes, classesRes, schoolsRes] = await Promise.all([
       this.callSelectDirect('users', 'id, role'),
       this.callSelectDirect('songs', 'id'),
       this.callSelectDirect('song_ratings', 'id'),
       this.callSelectDirect('classes', 'id'),
-      this.callSelectDirect('schools', 'id')
+      this.callRpcDirect('get_all_schools', {})
     ]);
 
     const users = usersRes.data || [];
@@ -7859,7 +7860,7 @@ class CadenceApp {
       songs: songsRes.data?.length ?? 0,
       ratings: ratingsRes.data?.length ?? 0,
       classes: classesRes.data?.length ?? 0,
-      schools: schoolsRes.data?.length ?? 0
+      schools: (schoolsRes.data?.schools ?? []).length
     };
 
     this.renderAdminStats(this.adminStats);
