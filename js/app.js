@@ -1452,8 +1452,10 @@ class CadenceApp {
       } else if (viewName === 'student-songs') {
         loadViewAsync(() => this.loadStudentSongs());
       } else if (viewName === 'flagged') {
-        // Load flagged ratings
-        if (this.classes.length > 0) {
+        // Load flagged ratings. Admins bypass the class guard because they
+        // also review submissions from students not linked to any class.
+        const currentUser = auth.getCurrentUser();
+        if (this.classes.length > 0 || currentUser?.role === 'admin') {
           loadViewAsync(() => this.loadFlaggedRatings());
         }
       } else if (viewName === 'accounts') {
