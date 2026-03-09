@@ -717,6 +717,10 @@ class CadenceApp {
     const school = this.teacherSchools.find(s => s.id === schoolId);
     if (!school) return;
     this.currentSchool = school;
+    // Reset cached cross-school student list so next search re-fetches scoped to new school
+    this.allTeacherStudents = null;
+    // Reload classes filtered to the new school
+    this.loadClasses();
     // If the school view is active, refresh it too
     if (this.currentView === 'school') {
       this.loadSchoolDashboard();
@@ -4615,10 +4619,14 @@ class CadenceApp {
     // Use direct RPC call to bypass stale Supabase client connections
     let data;
     try {
-      const result = await this.callRpcDirect('get_teacher_classes', {
+      const params = {
         p_teacher_id: user.id,
         p_include_archived: showArchived
-      });
+      };
+      if (this.currentSchool?.id) {
+        params.p_school_id = this.currentSchool.id;
+      }
+      const result = await this.callRpcDirect('get_teacher_classes', params);
       data = result.data;
     } catch (error) {
       console.error('Error loading classes:', error);
@@ -5707,7 +5715,8 @@ class CadenceApp {
     // Lazy-load all students on first search
     if (!this.allTeacherStudents) {
       try {
-        const result = await this.callRpcDirect('search_teacher_students', {});
+        const params = this.currentSchool?.id ? { p_school_id: this.currentSchool.id } : {};
+        const result = await this.callRpcDirect('search_teacher_students', params);
         this.allTeacherStudents = result.data || [];
       } catch (err) {
         // Fallback to the simpler RPC if the new one isn't deployed yet
