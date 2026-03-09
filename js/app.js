@@ -9611,6 +9611,9 @@ class CadenceApp {
   showSchoolSetup() {
     document.getElementById('school-setup')?.classList.remove('hidden');
     document.getElementById('school-dashboard')?.classList.add('hidden');
+    // Only admins can create schools; teachers can only join
+    const isAdmin = this.currentUser?.role === 'admin';
+    document.getElementById('school-create-section')?.classList.toggle('hidden', !isAdmin);
   }
 
   showSchoolDashboardPanel() {
