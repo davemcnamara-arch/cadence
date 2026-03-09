@@ -119,8 +119,8 @@
           <button class="nav-tab teacher-tab admin-tab hidden" data-view="classes">Classes</button>
           <button class="nav-tab teacher-tab hidden" data-view="student-songs">Student Songs</button>
           <button class="nav-tab teacher-tab hidden" data-view="flagged">Review <span id="flagged-count-badge" class="tab-notification-badge hidden"></span></button>
-          <!-- Account management tab (shown to teachers and admins) -->
-          <button class="nav-tab teacher-tab admin-tab hidden" data-view="accounts">Accounts</button>
+          <!-- Account management tab (shown to teachers only) -->
+          <button class="nav-tab teacher-tab hidden" data-view="accounts">Accounts</button>
           <!-- Admin tabs (shown only to admins) -->
           <button class="nav-tab admin-tab hidden" data-view="admin">Admin</button>
         </nav>
@@ -385,20 +385,10 @@
         </div>
       </div>
 
-      <!-- Account Management View (Teachers & Admins) -->
+      <!-- Account Management View (Teachers only) -->
       <div id="accounts-view" class="view hidden">
         <div class="view-header">
           <h2>Account Management</h2>
-          <button id="create-teacher-btn" class="btn btn-primary hidden">+ Create Teacher Account</button>
-        </div>
-
-        <!-- Pre-registered accounts (pending sign-in) -->
-        <div id="pending-accounts-section" class="accounts-section hidden">
-          <h3>Pending Teacher Accounts</h3>
-          <p class="section-description">These accounts have been created but the user hasn't signed in yet.</p>
-          <div id="pending-accounts-list" class="accounts-list">
-            <!-- Populated by JS -->
-          </div>
         </div>
 
         <!-- Existing user accounts -->
@@ -498,7 +488,18 @@
               </select>
               <input type="text" id="user-search" class="search-input" placeholder="Search by name or email...">
             </div>
+            <button id="create-teacher-btn" class="btn btn-primary">+ Create Teacher Account</button>
           </div>
+
+          <!-- Pre-registered accounts (pending sign-in) -->
+          <div id="pending-accounts-section" class="accounts-section hidden">
+            <h3>Pending Teacher Accounts</h3>
+            <p class="section-description">These accounts have been created but the user hasn't signed in yet.</p>
+            <div id="pending-accounts-list" class="accounts-list">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
           <div id="users-list" class="users-list">
             <!-- Populated by JS -->
           </div>
