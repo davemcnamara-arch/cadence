@@ -7713,11 +7713,12 @@ class CadenceApp {
   async loadAdminStats() {
     // Get system-wide statistics using data length for reliability
     // Use callSelectDirect to bypass stale Supabase client connections
-    const [usersRes, songsRes, ratingsRes, classesRes] = await Promise.all([
+    const [usersRes, songsRes, ratingsRes, classesRes, schoolsRes] = await Promise.all([
       this.callSelectDirect('users', 'id, role'),
       this.callSelectDirect('songs', 'id'),
       this.callSelectDirect('song_ratings', 'id'),
-      this.callSelectDirect('classes', 'id')
+      this.callSelectDirect('classes', 'id'),
+      this.callSelectDirect('schools', 'id')
     ]);
 
     const users = usersRes.data || [];
@@ -7729,7 +7730,8 @@ class CadenceApp {
       teachers,
       songs: songsRes.data?.length ?? 0,
       ratings: ratingsRes.data?.length ?? 0,
-      classes: classesRes.data?.length ?? 0
+      classes: classesRes.data?.length ?? 0,
+      schools: schoolsRes.data?.length ?? 0
     };
 
     this.renderAdminStats(this.adminStats);
@@ -7740,6 +7742,10 @@ class CadenceApp {
     if (!container) return;
 
     const html = `
+      <div class="admin-stat-card">
+        <div class="admin-stat-value">${stats.schools ?? 0}</div>
+        <div class="admin-stat-label">Schools</div>
+      </div>
       <div class="admin-stat-card">
         <div class="admin-stat-value">${stats.students}</div>
         <div class="admin-stat-label">Students</div>
