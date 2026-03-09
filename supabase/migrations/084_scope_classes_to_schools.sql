@@ -274,7 +274,44 @@ BEGIN
 END;
 $$;
 
+-- ============================================================
+-- 7. FUNCTION: auto_assign_student_to_school (updated)
+--    Use the class's own school_id instead of looking up the
+--    teacher's school_members row (which is non-deterministic
+--    when a teacher belongs to multiple schools).
+-- ============================================================
+CREATE OR REPLACE FUNCTION auto_assign_student_to_school()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_school_id UUID;
+BEGIN
+  -- Use the class's school_id, set at class creation time
+  SELECT school_id INTO v_school_id FROM classes WHERE id = NEW.class_id;
+
+  IF v_school_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  INSERT INTO school_students (school_id, user_id)
+  VALUES (v_school_id, NEW.user_id)
+  ON CONFLICT (school_id, user_id) DO NOTHING;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_auto_assign_student_to_school ON class_members;
+CREATE TRIGGER trg_auto_assign_student_to_school
+  AFTER INSERT ON class_members
+  FOR EACH ROW
+  EXECUTE FUNCTION auto_assign_student_to_school();
+
 GRANT EXECUTE ON FUNCTION set_class_school_id() TO authenticated;
 GRANT EXECUTE ON FUNCTION auto_assign_teacher_to_school() TO authenticated;
+GRANT EXECUTE ON FUNCTION auto_assign_student_to_school() TO authenticated;
 GRANT EXECUTE ON FUNCTION get_school_dashboard(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_all_schools() TO authenticated;
