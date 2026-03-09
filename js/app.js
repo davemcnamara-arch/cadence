@@ -4647,6 +4647,8 @@ class CadenceApp {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
+      if (form._submitting) return;
+
       const className = document.getElementById('class-name').value;
       const yearLevel = document.getElementById('class-year-level').value;
       const teacherSelect = document.getElementById('class-teacher');
@@ -4657,7 +4659,12 @@ class CadenceApp {
         return;
       }
 
-      await this.createClass(className, yearLevel, teacherId || null);
+      form._submitting = true;
+      try {
+        await this.createClass(className, yearLevel, teacherId || null);
+      } finally {
+        form._submitting = false;
+      }
     });
   }
 
