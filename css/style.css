@@ -1911,6 +1911,27 @@ body {
   text-overflow: ellipsis;
 }
 
+.class-card--archived {
+  opacity: 0.7;
+}
+
+.class-row-meta-label {
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: normal;
+  margin-left: 0.75rem;
+}
+
+.class-archived-badge {
+  background: var(--text-secondary);
+  color: white;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .class-code-badge {
   background: var(--primary-light);
   color: white;

@@ -5400,46 +5400,29 @@ class CadenceApp {
     const html = sortedClasses.map(cls => {
       const memberCount = cls.student_count || 0;
       const pendingCount = cls.pending_count || 0;
-      const isArchived = cls.archived;
+      const dateStr = new Date(cls.created_at).toLocaleDateString('en-GB');
 
-      // Build student count text with pending indicator
-      let studentCountText = `${memberCount} student${memberCount !== 1 ? 's' : ''}`;
-      if (pendingCount > 0) {
-        studentCountText += ` <span class="roster-pending-badge">${pendingCount} pending</span>`;
-      }
+      const yearLabel = cls.year_level ? `<span class="class-row-meta-label">${cls.year_level}</span>` : '';
+      const teacherLabel = isAdmin && cls.teacher_name ? `<span class="class-row-meta-label">· ${cls.teacher_name}</span>` : '';
+      const pendingBadge = pendingCount > 0 ? `<span class="roster-pending-badge">${pendingCount} pending</span>` : '';
+      const archivedBadge = cls.archived ? `<span class="class-archived-badge">ARCHIVED</span>` : '';
+      const unarchiveBtn = cls.archived ? `<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); app.unarchiveClass('${cls.id}')" style="flex-shrink: 0;">Unarchive</button>` : '';
 
-      const yearLabel = cls.year_level ? `<span style="color: var(--text-secondary); font-size: 0.8125rem; margin-left: 0.4rem;">${cls.year_level}</span>` : '';
-      const teacherLabel = isAdmin && cls.teacher_name ? `<span style="color: var(--text-secondary); font-size: 0.8125rem; margin-left: 0.4rem;">· ${cls.teacher_name}</span>` : '';
-
-      if (isArchived) {
-        return `
-          <div class="class-card" style="opacity: 0.7;">
-            <div class="class-card-header">
-              <h3>${cls.name}${yearLabel}${teacherLabel}</h3>
-              <span style="background: var(--text-secondary); color: white; padding: 0.125rem 0.5rem; border-radius: 4px; font-size: 0.75rem; white-space: nowrap;">ARCHIVED</span>
-            </div>
-            <span class="class-code-badge">${cls.class_code}</span>
-            <div class="class-card-meta">
-              <span>${studentCountText}</span>
-              <span>${new Date(cls.created_at).toLocaleDateString('en-GB')}</span>
-            </div>
-            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); app.unarchiveClass('${cls.id}')" style="flex-shrink: 0;">Unarchive</button>
+      return `
+        <div class="class-card${cls.archived ? ' class-card--archived' : ''}" ${!cls.archived ? `onclick="app.viewClass('${cls.id}')"` : ''}>
+          <div class="class-card-header">
+            <h3>${cls.name}${yearLabel}${teacherLabel}</h3>
+            ${archivedBadge}
           </div>
-        `;
-      } else {
-        return `
-          <div class="class-card" onclick="app.viewClass('${cls.id}')">
-            <div class="class-card-header">
-              <h3>${cls.name}${yearLabel}${teacherLabel}</h3>
-            </div>
-            <span class="class-code-badge">${cls.class_code}</span>
-            <div class="class-card-meta">
-              <span>${studentCountText}</span>
-              <span>${new Date(cls.created_at).toLocaleDateString('en-GB')}</span>
-            </div>
+          <span class="class-code-badge">${cls.class_code}</span>
+          <div class="class-card-meta">
+            <span>${memberCount} student${memberCount !== 1 ? 's' : ''}</span>
+            <span>${pendingBadge}</span>
+            <span>${dateStr}</span>
           </div>
-        `;
-      }
+          ${unarchiveBtn}
+        </div>
+      `;
     }).join('');
 
     container.innerHTML = html;
