@@ -3781,6 +3781,52 @@ body {
   /* No special base styling needed */
 }
 
+/* Admin school list cards */
+.admin-school-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  margin-bottom: 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.admin-school-card:hover {
+  background: var(--bg-hover);
+}
+
+.admin-school-card-info {
+  flex: 1;
+}
+
+.admin-school-card-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.admin-school-card-meta {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin-top: 0.15rem;
+}
+
+.admin-school-card-stats {
+  display: flex;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.admin-school-card-arrow {
+  font-size: 1.4rem;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
 /* Assign teachers panel */
 .assign-teachers-list {
   display: flex;
