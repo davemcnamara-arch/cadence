@@ -219,10 +219,18 @@ class CadenceApp {
       exitPreviewBtn.addEventListener('click', () => this.exitStudentPreview());
     }
 
-    // Navigation
-    document.querySelectorAll('.nav-tab').forEach(tab => {
+    // Navigation - direct tabs
+    document.querySelectorAll('.nav-tab[data-view]').forEach(tab => {
       tab.addEventListener('click', (e) => {
         const view = e.target.dataset.view;
+        this.switchView(view);
+      });
+    });
+
+    // Navigation - dropdown items
+    document.querySelectorAll('.nav-dropdown-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        const view = e.currentTarget.dataset.view;
         this.switchView(view);
       });
     });
@@ -590,7 +598,7 @@ class CadenceApp {
     const savedView = sessionStorage.getItem('cadence_currentView');
     const validViews = {
       student: ['pathway', 'songs', 'progress'],
-      teacher: ['songs', 'classes', 'student-songs', 'flagged', 'accounts'],
+      teacher: ['songs', 'classes', 'student-songs', 'flagged', 'accounts', 'school'],
       admin: ['songs', 'classes', 'flagged', 'accounts', 'admin']
     };
     const restoredView = savedView && validViews[user.role]?.includes(savedView) ? savedView : null;
@@ -1407,9 +1415,19 @@ class CadenceApp {
     this._viewSwitchId = (this._viewSwitchId || 0) + 1;
     const switchId = this._viewSwitchId;
 
-    // Update nav tabs
-    document.querySelectorAll('.nav-tab').forEach(tab => {
+    // Update direct nav tabs
+    document.querySelectorAll('.nav-tab[data-view]').forEach(tab => {
       tab.classList.toggle('active', tab.dataset.view === viewName);
+    });
+
+    // Update dropdown group triggers (active when a child item matches the view)
+    document.querySelectorAll('.nav-dropdown-group').forEach(group => {
+      const trigger = group.querySelector('.nav-dropdown-trigger');
+      const activeItem = group.querySelector(`.nav-dropdown-item[data-view="${viewName}"]`);
+      trigger.classList.toggle('active', !!activeItem);
+      group.querySelectorAll('.nav-dropdown-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.view === viewName);
+      });
     });
 
     // Update views

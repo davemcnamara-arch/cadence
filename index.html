@@ -115,14 +115,23 @@
           <button class="nav-tab student-tab hidden" data-view="pathway">My Pathway</button>
           <button class="nav-tab student-tab teacher-tab admin-tab hidden" data-view="songs">Song Library</button>
           <button class="nav-tab student-tab hidden" data-view="progress">My Progress</button>
-          <!-- Teacher tabs (shown only to teachers) -->
-          <button class="nav-tab teacher-tab admin-tab hidden" data-view="classes">Classes</button>
-          <button class="nav-tab teacher-tab hidden" data-view="student-songs">Student Songs</button>
+          <!-- Teaching dropdown: Classes + Student Songs -->
+          <div class="nav-dropdown-group teacher-tab admin-tab hidden">
+            <button class="nav-tab nav-dropdown-trigger">Teaching <span class="dropdown-arrow">▾</span></button>
+            <div class="nav-dropdown-menu">
+              <button class="nav-dropdown-item teacher-tab admin-tab hidden" data-view="classes">Classes</button>
+              <button class="nav-dropdown-item teacher-tab hidden" data-view="student-songs">Student Songs</button>
+            </div>
+          </div>
           <button class="nav-tab teacher-tab admin-tab hidden" data-view="flagged">Review <span id="flagged-count-badge" class="tab-notification-badge hidden"></span></button>
-          <!-- Account management tab (shown to teachers only) -->
-          <button class="nav-tab teacher-tab hidden" data-view="accounts">Accounts</button>
-          <!-- School tab (shown to teachers) -->
-          <button class="nav-tab teacher-tab hidden" data-view="school">School</button>
+          <!-- Management dropdown: Accounts + School -->
+          <div class="nav-dropdown-group teacher-tab admin-tab hidden">
+            <button class="nav-tab nav-dropdown-trigger">Management <span class="dropdown-arrow">▾</span></button>
+            <div class="nav-dropdown-menu">
+              <button class="nav-dropdown-item teacher-tab admin-tab hidden" data-view="accounts">Accounts</button>
+              <button class="nav-dropdown-item teacher-tab hidden" data-view="school">School</button>
+            </div>
+          </div>
           <!-- Admin tabs (shown only to admins) -->
           <button class="nav-tab admin-tab hidden" data-view="admin">Admin</button>
         </nav>
