@@ -4826,10 +4826,9 @@ class CadenceApp {
         return;
       }
 
-      this.classes.push(data);
       document.getElementById('create-class-modal').classList.add('hidden');
       document.getElementById('create-class-form').reset();
-      this.renderClassesList();
+      await this.loadClasses();
       this.showToast(`Class created! Code: ${classCode}`, 'success');
     } catch (error) {
       console.error('Unexpected error creating class:', error);
