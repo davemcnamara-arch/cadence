@@ -9996,70 +9996,106 @@ class CadenceApp {
     const panel = document.getElementById('admin-school-assign-panel');
     if (panel) panel.innerHTML = '<p style="color:var(--text-secondary);padding:1rem;">Loading...</p>';
 
-    const { data, error } = await supabase.rpc('get_assignable_teachers', {
-      p_school_id: this.currentSchool.id
-    });
+    const [teacherRes, studentRes] = await Promise.all([
+      supabase.rpc('get_assignable_teachers', { p_school_id: this.currentSchool.id }),
+      supabase.rpc('get_assignable_students', { p_school_id: this.currentSchool.id })
+    ]);
 
-    if (error || !data?.success) {
-      if (panel) panel.innerHTML = '<p style="color:var(--text-secondary);padding:1rem;">Failed to load teachers.</p>';
-      return;
-    }
+    const teachers = teacherRes.data?.teachers || [];
+    const students = studentRes.data?.students || [];
 
-    const teachers = data.teachers || [];
-    if (!teachers.length) {
-      if (panel) panel.innerHTML = '<p style="color:var(--text-secondary);padding:1rem;">All teachers are already assigned to this school.</p>';
-      return;
-    }
+    const teacherHtml = teachers.length
+      ? `<div class="assign-section-toolbar">
+           <span style="color:var(--text-secondary);">${teachers.length} unassigned teacher${teachers.length !== 1 ? 's' : ''}</span>
+           <div style="display:flex;gap:0.5rem;">
+             <button class="btn btn-secondary btn-sm" onclick="app.toggleAssignCheckboxes('assign-teacher-checkbox', true)">Select All</button>
+             <button class="btn btn-secondary btn-sm" onclick="app.toggleAssignCheckboxes('assign-teacher-checkbox', false)">Deselect All</button>
+             <button class="btn btn-primary btn-sm" onclick="app.bulkAssignTeachersToSchool()">Assign Selected</button>
+           </div>
+         </div>
+         <div class="assign-teachers-list">
+           ${teachers.map(t => `
+             <label class="assign-teacher-row">
+               <input type="checkbox" class="assign-teacher-checkbox" value="${t.user_id}">
+               <div class="assign-teacher-info">
+                 <span class="assign-teacher-name">${t.name}</span>
+                 <span class="assign-teacher-meta">${t.email} &middot; ${t.class_count} class${t.class_count !== 1 ? 'es' : ''}</span>
+               </div>
+             </label>
+           `).join('')}
+         </div>`
+      : '<p style="color:var(--text-secondary);margin:0 0 0.5rem;">All teachers are already assigned.</p>';
+
+    const studentHtml = students.length
+      ? `<div class="assign-section-toolbar">
+           <span style="color:var(--text-secondary);">${students.length} unassigned student${students.length !== 1 ? 's' : ''}</span>
+           <div style="display:flex;gap:0.5rem;">
+             <button class="btn btn-secondary btn-sm" onclick="app.toggleAssignCheckboxes('assign-student-checkbox', true)">Select All</button>
+             <button class="btn btn-secondary btn-sm" onclick="app.toggleAssignCheckboxes('assign-student-checkbox', false)">Deselect All</button>
+             <button class="btn btn-primary btn-sm" onclick="app.bulkAssignStudentsToSchool()">Assign Selected</button>
+           </div>
+         </div>
+         <div class="assign-teachers-list">
+           ${students.map(s => `
+             <label class="assign-teacher-row">
+               <input type="checkbox" class="assign-student-checkbox" value="${s.user_id}">
+               <div class="assign-teacher-info">
+                 <span class="assign-teacher-name">${s.name}</span>
+                 <span class="assign-teacher-meta">${s.email}${s.class_name ? ' &middot; ' + s.class_name : ''}</span>
+               </div>
+             </label>
+           `).join('')}
+         </div>`
+      : '<p style="color:var(--text-secondary);margin:0;">All students are already assigned.</p>';
 
     panel.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-        <p style="color:var(--text-secondary);margin:0;">${teachers.length} teacher${teachers.length !== 1 ? 's' : ''} not yet assigned</p>
-        <div style="display:flex;gap:0.5rem;align-items:center;">
-          <button class="btn btn-secondary btn-sm" onclick="app.toggleAllAssignCheckboxes(true)">Select All</button>
-          <button class="btn btn-secondary btn-sm" onclick="app.toggleAllAssignCheckboxes(false)">Deselect All</button>
-          <button class="btn btn-primary btn-sm" onclick="app.bulkAssignTeachersToSchool()">Assign Selected</button>
-        </div>
+      <div class="assign-section">
+        <h4 class="assign-section-title">Teachers</h4>
+        ${teacherHtml}
       </div>
-      <div id="assign-teachers-list" class="assign-teachers-list">
-        ${teachers.map(t => `
-          <label class="assign-teacher-row">
-            <input type="checkbox" class="assign-teacher-checkbox" value="${t.user_id}">
-            <div class="assign-teacher-info">
-              <span class="assign-teacher-name">${t.name}</span>
-              <span class="assign-teacher-meta">${t.email} &middot; ${t.class_count} class${t.class_count !== 1 ? 'es' : ''}</span>
-            </div>
-          </label>
-        `).join('')}
+      <div class="assign-section" style="margin-top:1.5rem;">
+        <h4 class="assign-section-title">Students</h4>
+        ${studentHtml}
       </div>
     `;
   }
 
-  toggleAllAssignCheckboxes(checked) {
-    document.querySelectorAll('.assign-teacher-checkbox').forEach(cb => { cb.checked = checked; });
+  toggleAssignCheckboxes(className, checked) {
+    document.querySelectorAll(`.${className}`).forEach(cb => { cb.checked = checked; });
   }
 
   async bulkAssignTeachersToSchool() {
     if (!this.currentSchool) return;
     const checked = [...document.querySelectorAll('.assign-teacher-checkbox:checked')].map(cb => cb.value);
-    if (!checked.length) {
-      this.showToast('Select at least one teacher to assign', 'error');
-      return;
-    }
+    if (!checked.length) { this.showToast('Select at least one teacher', 'error'); return; }
 
     const { data, error } = await supabase.rpc('bulk_assign_teachers_to_school', {
       p_school_id: this.currentSchool.id,
       p_user_ids: checked
     });
-
-    if (error || !data?.success) {
-      this.showToast(data?.message || 'Failed to assign teachers', 'error');
-      return;
-    }
+    if (error || !data?.success) { this.showToast(data?.message || 'Failed to assign teachers', 'error'); return; }
 
     this.showToast(data.message, 'success');
-    // Refresh both the assign panel and the teachers list
     this.schoolDashboardData = null;
-    await this.loadAdminSchoolSection();
+    await this.openAdminSchool(this.currentSchool);
+    this.switchAdminSchoolTab('assign');
+  }
+
+  async bulkAssignStudentsToSchool() {
+    if (!this.currentSchool) return;
+    const checked = [...document.querySelectorAll('.assign-student-checkbox:checked')].map(cb => cb.value);
+    if (!checked.length) { this.showToast('Select at least one student', 'error'); return; }
+
+    const { data, error } = await supabase.rpc('bulk_assign_students_to_school', {
+      p_school_id: this.currentSchool.id,
+      p_user_ids: checked
+    });
+    if (error || !data?.success) { this.showToast(data?.message || 'Failed to assign students', 'error'); return; }
+
+    this.showToast(data.message, 'success');
+    this.schoolDashboardData = null;
+    this.schoolStudents = null;
+    await this.openAdminSchool(this.currentSchool);
     this.switchAdminSchoolTab('assign');
   }
 

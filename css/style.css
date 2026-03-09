@@ -3765,7 +3765,26 @@ body {
   line-height: 1;
 }
 
-/* Assign teachers panel */
+/* Assign members panel */
+.assign-section-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin: 0 0 0.75rem;
+}
+
+.assign-section-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+
 .assign-teachers-list {
   display: flex;
   flex-direction: column;
