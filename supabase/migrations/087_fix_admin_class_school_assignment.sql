@@ -41,20 +41,8 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- For admins (not in school_members): use the school they created,
-  -- or fall back to the most common school_id among their existing classes
-  SELECT school_id INTO v_school_id
-  FROM schools
-  WHERE created_by = NEW.teacher_id
-  ORDER BY created_at ASC
-  LIMIT 1;
-
-  IF v_school_id IS NOT NULL THEN
-    NEW.school_id := v_school_id;
-    RETURN NEW;
-  END IF;
-
-  -- Last resort: pick the school_id most used by this teacher's existing classes
+  -- For admins not in school_members: pick the school_id most used
+  -- by this teacher's existing classes (most classes = their primary school)
   SELECT school_id INTO v_school_id
   FROM classes
   WHERE teacher_id = NEW.teacher_id
