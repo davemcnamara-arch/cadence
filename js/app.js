@@ -9889,6 +9889,9 @@ class CadenceApp {
     container.innerHTML = teachers.map(teacher => {
       const isAdmin = teacher.school_role === 'admin';
       const isSelf = teacher.user_id === currentUserId;
+      const removeBtn = prefix === 'admin-school' && !isSelf
+        ? `<button class="btn btn-danger btn-sm school-remove-btn" onclick="app.removeTeacherFromSchool('${teacher.user_id}', '${teacher.name}')">Remove</button>`
+        : '';
 
       return `
         <div class="school-teacher-card">
@@ -9905,6 +9908,7 @@ class CadenceApp {
               <span>${teacher.student_count} student${teacher.student_count !== 1 ? 's' : ''}</span>
             </div>
           </div>
+          ${removeBtn}
         </div>
       `;
     }).join('');
@@ -9960,17 +9964,21 @@ class CadenceApp {
       const instruments = (student.instruments || []).map(inst =>
         `<span class="school-instrument-chip school-instrument-chip--sm" title="${inst.instrument_name} — Level ${inst.current_level}">${inst.instrument_icon} L${inst.current_level}</span>`
       ).join('');
+      const removeBtn = prefix === 'admin-school'
+        ? `<button class="btn btn-danger btn-sm school-remove-btn" onclick="app.removeStudentFromSchool('${student.user_id}', '${student.name}')">Remove</button>`
+        : '';
 
       return `
         <div class="school-student-row">
           <div class="school-student-name">${student.name}</div>
-          <div class="school-student-class" title="Teacher: ${student.teacher_name}">${student.class_name}</div>
+          <div class="school-student-class" title="Teacher: ${student.teacher_name}">${student.class_name || '—'}</div>
           <div class="school-student-instruments">${instruments || '<span style="color:var(--text-secondary)">—</span>'}</div>
           <div class="school-student-counts">
             <span title="Learning">${student.songs_learning} learning</span>
             <span>·</span>
             <span title="Mastered">${student.songs_mastered} mastered</span>
           </div>
+          ${removeBtn}
         </div>
       `;
     }).join('');
@@ -10124,6 +10132,39 @@ class CadenceApp {
     this.schoolStudents = null;
     await this.openAdminSchool(this.currentSchool);
     this.switchAdminSchoolTab('assign');
+  }
+
+  async removeTeacherFromSchool(userId, name) {
+    if (!this.currentSchool) return;
+    if (!confirm(`Remove ${name} from this school? Their classes and students will not be affected.`)) return;
+
+    const { data, error } = await supabase.rpc('remove_teacher_from_school', {
+      p_school_id: this.currentSchool.id,
+      p_user_id: userId
+    });
+    if (error || !data?.success) { this.showToast(data?.message || 'Failed to remove teacher', 'error'); return; }
+
+    this.showToast(data.message, 'success');
+    this.schoolDashboardData = null;
+    await this.openAdminSchool(this.currentSchool);
+    this.switchAdminSchoolTab('teachers');
+  }
+
+  async removeStudentFromSchool(userId, name) {
+    if (!this.currentSchool) return;
+    if (!confirm(`Remove ${name} from this school?`)) return;
+
+    const { data, error } = await supabase.rpc('remove_student_from_school', {
+      p_school_id: this.currentSchool.id,
+      p_user_id: userId
+    });
+    if (error || !data?.success) { this.showToast(data?.message || 'Failed to remove student', 'error'); return; }
+
+    this.showToast(data.message, 'success');
+    this.schoolDashboardData = null;
+    this.schoolStudents = null;
+    await this.openAdminSchool(this.currentSchool);
+    this.switchAdminSchoolTab('students');
   }
 
   async changeSchoolMemberRole(userId, newRole) {

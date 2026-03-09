@@ -3973,13 +3973,27 @@ body {
 
 .school-student-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1.5fr 1fr;
+  grid-template-columns: 1fr 1fr 1.5fr 1fr auto;
   align-items: center;
   gap: 1rem;
   padding: 0.75rem 1rem;
   background: var(--bg-primary);
   border-bottom: 1px solid var(--border);
   font-size: 0.875rem;
+}
+
+.school-remove-btn {
+  white-space: nowrap;
+}
+
+.btn-danger {
+  background: var(--color-danger, #dc3545);
+  color: #fff;
+  border: none;
+}
+
+.btn-danger:hover {
+  background: var(--color-danger-hover, #b02a37);
 }
 
 .school-student-row:last-child {
@@ -4027,7 +4041,7 @@ body {
     grid-template-columns: 1fr 1fr;
   }
   .school-student-row {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr auto;
     grid-template-rows: auto auto;
   }
   .school-student-instruments,
