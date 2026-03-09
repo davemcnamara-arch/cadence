@@ -673,9 +673,9 @@ class CadenceApp {
   }
 
   async loadTeacherData() {
-    // Load teacher's classes
-    await this.loadClasses();
+    // Initialize school context first so loadClasses can filter by the default school
     await this.initHeaderSchoolContext();
+    await this.loadClasses();
   }
 
   async initHeaderSchoolContext() {
@@ -5401,7 +5401,6 @@ class CadenceApp {
       const memberCount = cls.student_count || 0;
       const pendingCount = cls.pending_count || 0;
       const isArchived = cls.archived;
-      const teacherLabel = isAdmin && cls.teacher_name ? `<p style="color: var(--text-secondary); font-size: 0.8125rem;">Teacher: ${cls.teacher_name}</p>` : '';
 
       // Build student count text with pending indicator
       let studentCountText = `${memberCount} student${memberCount !== 1 ? 's' : ''}`;
@@ -5409,46 +5408,34 @@ class CadenceApp {
         studentCountText += ` <span class="roster-pending-badge">${pendingCount} pending</span>`;
       }
 
-      const schoolLabel = cls.school_name ? `<p class="class-school-label">School: ${cls.school_name}</p>` : '';
+      const yearLabel = cls.year_level ? `<span style="color: var(--text-secondary); font-size: 0.8125rem; margin-left: 0.4rem;">${cls.year_level}</span>` : '';
+      const teacherLabel = isAdmin && cls.teacher_name ? `<span style="color: var(--text-secondary); font-size: 0.8125rem; margin-left: 0.4rem;">· ${cls.teacher_name}</span>` : '';
 
       if (isArchived) {
-        // Archived class card with unarchive button
         return `
-          <div class="class-card" style="opacity: 0.7; position: relative;">
+          <div class="class-card" style="opacity: 0.7;">
             <div class="class-card-header">
-              <div>
-                <h3>${cls.name} <span style="background-color: var(--text-secondary); color: white; padding: 0.125rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: normal;">ARCHIVED</span></h3>
-                ${cls.year_level ? `<p style="color: var(--text-secondary); font-size: 0.875rem;">${cls.year_level}</p>` : ''}
-                ${teacherLabel}
-                ${schoolLabel}
-              </div>
-              <span class="class-code-badge">${cls.class_code}</span>
+              <h3>${cls.name}${yearLabel}${teacherLabel}</h3>
+              <span style="background: var(--text-secondary); color: white; padding: 0.125rem 0.5rem; border-radius: 4px; font-size: 0.75rem; white-space: nowrap;">ARCHIVED</span>
             </div>
+            <span class="class-code-badge">${cls.class_code}</span>
             <div class="class-card-meta">
               <span>${studentCountText}</span>
-              <span>Created ${new Date(cls.created_at).toLocaleDateString('en-GB')}</span>
+              <span>${new Date(cls.created_at).toLocaleDateString('en-GB')}</span>
             </div>
-            <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">
-              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); app.unarchiveClass('${cls.id}')" style="width: 100%;">Unarchive Class</button>
-            </div>
+            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); app.unarchiveClass('${cls.id}')" style="flex-shrink: 0;">Unarchive</button>
           </div>
         `;
       } else {
-        // Active class card (clickable)
         return `
           <div class="class-card" onclick="app.viewClass('${cls.id}')">
             <div class="class-card-header">
-              <div>
-                <h3>${cls.name}</h3>
-                ${cls.year_level ? `<p style="color: var(--text-secondary); font-size: 0.875rem;">${cls.year_level}</p>` : ''}
-                ${teacherLabel}
-                ${schoolLabel}
-              </div>
-              <span class="class-code-badge">${cls.class_code}</span>
+              <h3>${cls.name}${yearLabel}${teacherLabel}</h3>
             </div>
+            <span class="class-code-badge">${cls.class_code}</span>
             <div class="class-card-meta">
               <span>${studentCountText}</span>
-              <span>Created ${new Date(cls.created_at).toLocaleDateString('en-GB')}</span>
+              <span>${new Date(cls.created_at).toLocaleDateString('en-GB')}</span>
             </div>
           </div>
         `;
