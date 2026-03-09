@@ -3506,3 +3506,353 @@ body {
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+/* ============================================
+   SCHOOL VIEW
+   ============================================ */
+
+/* Setup: create/join flow */
+.school-setup {
+  display: flex;
+  justify-content: center;
+  padding: 3rem 1rem;
+}
+
+.school-setup-container {
+  max-width: 700px;
+  width: 100%;
+  text-align: center;
+}
+
+.school-setup-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.school-setup-container h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.school-setup-subtitle {
+  color: var(--text-secondary);
+  margin-bottom: 2.5rem;
+  font-size: 1rem;
+}
+
+.school-setup-cards {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.school-setup-card {
+  flex: 1;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  padding: 1.75rem;
+  text-align: left;
+  box-shadow: var(--shadow-sm);
+}
+
+.school-setup-card h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.school-setup-card p {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
+}
+
+.school-setup-divider {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding-top: 3rem;
+  flex-shrink: 0;
+}
+
+.school-form-group {
+  margin-bottom: 1rem;
+}
+
+.school-input {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  font-size: 0.9375rem;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  box-sizing: border-box;
+}
+
+.school-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.school-code-input {
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-family: monospace;
+  font-size: 1.1rem;
+}
+
+/* Dashboard header */
+.school-join-code-display {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  font-family: monospace;
+  letter-spacing: 0.1em;
+}
+
+/* Stats */
+.school-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.school-stat-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  padding: 1.25rem 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.school-stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  line-height: 1;
+  margin-bottom: 0.375rem;
+}
+
+.school-stat-label {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+/* Instruments */
+.school-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.8125rem;
+}
+
+.school-instruments {
+  margin-bottom: 1.5rem;
+}
+
+.school-instruments-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.school-instrument-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 2rem;
+  padding: 0.375rem 0.875rem;
+  font-size: 0.875rem;
+}
+
+.school-instrument-chip--sm {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.school-instrument-count {
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+/* Tabs */
+.school-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+
+.school-tab {
+  background: none;
+  border: none;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.school-tab:hover {
+  color: var(--text-primary);
+}
+
+.school-tab.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+.school-tab-pane {
+  /* No special base styling needed */
+}
+
+/* Teacher cards */
+.school-teachers-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.school-teacher-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  padding: 1rem 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.school-teacher-info {
+  flex: 1;
+}
+
+.school-teacher-name {
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.school-teacher-meta {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.school-teacher-stats {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.school-teacher-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.school-role-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--primary-color);
+  color: white;
+  padding: 0.15rem 0.5rem;
+  border-radius: 2rem;
+}
+
+.school-role-badge--self {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+/* Students list */
+.school-students-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.school-student-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.5fr 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+
+.school-student-row:last-child {
+  border-bottom: none;
+}
+
+.school-student-row:nth-child(even) {
+  background: var(--bg-secondary);
+}
+
+.school-student-name {
+  font-weight: 500;
+}
+
+.school-student-class {
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.school-student-instruments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.school-student-counts {
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  display: flex;
+  gap: 0.25rem;
+}
+
+@media (max-width: 600px) {
+  .school-setup-cards {
+    flex-direction: column;
+  }
+  .school-setup-divider {
+    padding-top: 0;
+    text-align: center;
+  }
+  .school-stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .school-student-row {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+  }
+  .school-student-instruments,
+  .school-student-counts {
+    grid-column: 1 / -1;
+  }
+}

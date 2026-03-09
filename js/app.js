@@ -30,6 +30,11 @@ class CadenceApp {
     this.teacherSongStudentCounts = null;
     this.flaggedRatings = [];
 
+    // School properties
+    this.currentSchool = null;
+    this.schoolDashboardData = null;
+    this.schoolStudents = null;
+
     // Trending songs cache
     this._trendingSongs = null;
     this._trendingSongsCacheKey = undefined; // undefined = never loaded
@@ -1457,6 +1462,8 @@ class CadenceApp {
         }
       } else if (viewName === 'accounts') {
         loadViewAsync(() => this.loadAccountsData());
+      } else if (viewName === 'school') {
+        loadViewAsync(() => this.loadSchoolView());
       } else if (viewName === 'admin') {
         // Load admin data
         this.renderAdminStats(this.adminStats || {students: 0, teachers: 0, songs: 0, classes: 0});
@@ -9581,6 +9588,368 @@ class CadenceApp {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  // ============================================
+  // SCHOOL: Setup, Dashboard, Management
+  // ============================================
+
+  async loadSchoolView() {
+    const { data, error } = await supabase.rpc('get_my_school');
+    if (error) {
+      console.error('Error loading school:', error);
+      this.showSchoolSetup();
+      return;
+    }
+
+    if (!data) {
+      this.currentSchool = null;
+      this.showSchoolSetup();
+    } else {
+      this.currentSchool = data;
+      await this.loadSchoolDashboard();
+    }
+  }
+
+  showSchoolSetup() {
+    document.getElementById('school-setup')?.classList.remove('hidden');
+    document.getElementById('school-dashboard')?.classList.add('hidden');
+  }
+
+  showSchoolDashboardPanel() {
+    document.getElementById('school-setup')?.classList.add('hidden');
+    document.getElementById('school-dashboard')?.classList.remove('hidden');
+  }
+
+  async createSchool() {
+    const nameInput = document.getElementById('create-school-name');
+    const name = nameInput?.value?.trim();
+    if (!name) {
+      this.showToast('Please enter a school name', 'error');
+      return;
+    }
+
+    const { data, error } = await supabase.rpc('create_school', { p_name: name });
+    if (error || !data?.success) {
+      this.showToast(data?.message || 'Failed to create school', 'error');
+      return;
+    }
+
+    this.showToast('School created!', 'success');
+    this.currentSchool = null; // Will reload
+    await this.loadSchoolView();
+  }
+
+  async joinSchool() {
+    const codeInput = document.getElementById('join-school-code');
+    const code = codeInput?.value?.trim().toUpperCase();
+    if (!code) {
+      this.showToast('Please enter a join code', 'error');
+      return;
+    }
+
+    const { data, error } = await supabase.rpc('join_school', { p_join_code: code });
+    if (error || !data?.success) {
+      this.showToast(data?.message || 'Failed to join school', 'error');
+      return;
+    }
+
+    this.showToast(data.message || 'Joined school!', 'success');
+    this.currentSchool = null;
+    await this.loadSchoolView();
+  }
+
+  async loadSchoolDashboard() {
+    if (!this.currentSchool) return;
+
+    const schoolName = document.getElementById('school-dashboard-name');
+    const schoolCode = document.getElementById('school-dashboard-code');
+    if (schoolName) schoolName.textContent = this.currentSchool.name;
+    if (schoolCode) {
+      const isAdmin = this.currentSchool.school_role === 'admin';
+      schoolCode.textContent = isAdmin
+        ? `Join code: ${this.currentSchool.join_code}`
+        : 'School member';
+    }
+
+    // Show/hide leave button appropriately
+    const leaveBtn = document.getElementById('school-leave-btn');
+    if (leaveBtn) leaveBtn.style.display = '';
+
+    this.showSchoolDashboardPanel();
+
+    const { data, error } = await supabase.rpc('get_school_dashboard', {
+      p_school_id: this.currentSchool.id
+    });
+
+    if (error || !data?.success) {
+      this.showToast('Failed to load school data', 'error');
+      return;
+    }
+
+    this.schoolDashboardData = data;
+    this.renderSchoolStats(data.stats);
+    this.renderSchoolInstruments(data.stats?.instrument_counts);
+    this.renderSchoolTeachers(data.teachers || []);
+  }
+
+  renderSchoolStats(stats) {
+    const container = document.getElementById('school-stats');
+    if (!container || !stats) return;
+
+    container.innerHTML = `
+      <div class="school-stat-card">
+        <div class="school-stat-value">${stats.teacher_count ?? 0}</div>
+        <div class="school-stat-label">Teachers</div>
+      </div>
+      <div class="school-stat-card">
+        <div class="school-stat-value">${stats.class_count ?? 0}</div>
+        <div class="school-stat-label">Active Classes</div>
+      </div>
+      <div class="school-stat-card">
+        <div class="school-stat-value">${stats.student_count ?? 0}</div>
+        <div class="school-stat-label">Students</div>
+      </div>
+    `;
+  }
+
+  renderSchoolInstruments(instrumentCounts) {
+    const section = document.getElementById('school-instruments');
+    const container = document.getElementById('school-instruments-list');
+    if (!container || !instrumentCounts?.length) {
+      section?.classList.add('hidden');
+      return;
+    }
+
+    section?.classList.remove('hidden');
+    container.innerHTML = instrumentCounts.map(inst => `
+      <div class="school-instrument-chip">
+        <span>${inst.icon || '🎵'}</span>
+        <span>${inst.name}</span>
+        <span class="school-instrument-count">${inst.count}</span>
+      </div>
+    `).join('');
+  }
+
+  renderSchoolTeachers(teachers) {
+    const container = document.getElementById('school-teachers-list');
+    if (!container) return;
+
+    const isSchoolAdmin = this.currentSchool?.school_role === 'admin';
+    const currentUserId = auth.getCurrentUser()?.id;
+
+    if (!teachers.length) {
+      container.innerHTML = '<p style="color: var(--text-secondary); padding: 1rem;">No teachers yet.</p>';
+      return;
+    }
+
+    container.innerHTML = teachers.map(teacher => {
+      const isAdmin = teacher.school_role === 'admin';
+      const isSelf = teacher.user_id === currentUserId;
+
+      const adminControls = isSchoolAdmin && !isSelf ? `
+        <div class="school-teacher-actions">
+          ${isAdmin
+            ? `<button class="btn btn-secondary btn-sm" onclick="app.changeSchoolMemberRole('${teacher.user_id}', 'teacher')">Remove Admin</button>`
+            : `<button class="btn btn-secondary btn-sm" onclick="app.changeSchoolMemberRole('${teacher.user_id}', 'admin')">Make Admin</button>`
+          }
+          <button class="btn btn-secondary btn-sm" style="color: var(--warning-color);" onclick="app.removeFromSchool('${teacher.user_id}', '${teacher.name.replace(/'/g, "\\'")}')">Remove</button>
+        </div>
+      ` : '';
+
+      return `
+        <div class="school-teacher-card">
+          <div class="school-teacher-info">
+            <div class="school-teacher-name">
+              ${teacher.name}
+              ${isAdmin ? '<span class="school-role-badge">Admin</span>' : ''}
+              ${isSelf ? '<span class="school-role-badge school-role-badge--self">You</span>' : ''}
+            </div>
+            <div class="school-teacher-meta">${teacher.email}</div>
+            <div class="school-teacher-stats">
+              <span>${teacher.class_count} class${teacher.class_count !== 1 ? 'es' : ''}</span>
+              <span>·</span>
+              <span>${teacher.student_count} student${teacher.student_count !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
+          ${adminControls}
+        </div>
+      `;
+    }).join('');
+  }
+
+  async loadSchoolStudents() {
+    if (!this.currentSchool) return;
+
+    const container = document.getElementById('school-students-list');
+    if (container) container.innerHTML = '<p style="color: var(--text-secondary); padding: 1rem;">Loading students...</p>';
+
+    if (this.schoolStudents) {
+      this.renderSchoolStudents(this.schoolStudents);
+      return;
+    }
+
+    const { data, error } = await supabase.rpc('get_school_students', {
+      p_school_id: this.currentSchool.id
+    });
+
+    if (error || !data?.success) {
+      this.showToast('Failed to load students', 'error');
+      return;
+    }
+
+    this.schoolStudents = data.students || [];
+    this.renderSchoolStudents(this.schoolStudents);
+
+    // Set up search
+    const searchInput = document.getElementById('school-student-search');
+    if (searchInput) {
+      searchInput.oninput = () => {
+        const q = searchInput.value.toLowerCase();
+        const filtered = this.schoolStudents.filter(s =>
+          s.name.toLowerCase().includes(q) ||
+          s.class_name?.toLowerCase().includes(q) ||
+          s.teacher_name?.toLowerCase().includes(q)
+        );
+        this.renderSchoolStudents(filtered);
+      };
+    }
+  }
+
+  renderSchoolStudents(students) {
+    const container = document.getElementById('school-students-list');
+    if (!container) return;
+
+    if (!students.length) {
+      container.innerHTML = '<p style="color: var(--text-secondary); padding: 1rem;">No students found.</p>';
+      return;
+    }
+
+    container.innerHTML = students.map(student => {
+      const instruments = (student.instruments || []).map(inst =>
+        `<span class="school-instrument-chip school-instrument-chip--sm" title="${inst.instrument_name} — Level ${inst.current_level}">${inst.instrument_icon} L${inst.current_level}</span>`
+      ).join('');
+
+      return `
+        <div class="school-student-row">
+          <div class="school-student-name">${student.name}</div>
+          <div class="school-student-class" title="Teacher: ${student.teacher_name}">${student.class_name}</div>
+          <div class="school-student-instruments">${instruments || '<span style="color:var(--text-secondary)">—</span>'}</div>
+          <div class="school-student-counts">
+            <span title="Learning">${student.songs_learning} learning</span>
+            <span>·</span>
+            <span title="Mastered">${student.songs_mastered} mastered</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  switchSchoolTab(tabName) {
+    document.querySelectorAll('.school-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.tab === tabName);
+    });
+    document.querySelectorAll('.school-tab-pane').forEach(pane => {
+      pane.classList.add('hidden');
+      pane.classList.remove('active');
+    });
+
+    const target = document.getElementById(`school-${tabName}-tab`);
+    if (target) {
+      target.classList.remove('hidden');
+      target.classList.add('active');
+    }
+
+    if (tabName === 'students' && !this.schoolStudents) {
+      this.loadSchoolStudents();
+    }
+  }
+
+  async changeSchoolMemberRole(userId, newRole) {
+    if (!this.currentSchool) return;
+    const { data, error } = await supabase.rpc('update_school_member_role', {
+      p_school_id: this.currentSchool.id,
+      p_user_id: userId,
+      p_new_role: newRole
+    });
+    if (error || !data?.success) {
+      this.showToast(data?.message || 'Failed to update role', 'error');
+      return;
+    }
+    this.showToast(data.message, 'success');
+    this.schoolDashboardData = null;
+    await this.loadSchoolDashboard();
+  }
+
+  async removeFromSchool(userId, userName) {
+    if (!this.currentSchool) return;
+    if (!confirm(`Remove ${userName} from the school?`)) return;
+
+    const { data, error } = await supabase.rpc('remove_from_school', {
+      p_school_id: this.currentSchool.id,
+      p_user_id: userId
+    });
+    if (error || !data?.success) {
+      this.showToast(data?.message || 'Failed to remove member', 'error');
+      return;
+    }
+    this.showToast(data.message, 'success');
+    this.schoolDashboardData = null;
+    await this.loadSchoolDashboard();
+  }
+
+  async leaveSchool() {
+    if (!this.currentSchool) return;
+    if (!confirm('Leave this school? You will no longer have access to school-wide data.')) return;
+
+    const { data, error } = await supabase.rpc('leave_school', {
+      p_school_id: this.currentSchool.id
+    });
+    if (error || !data?.success) {
+      this.showToast(data?.message || 'Failed to leave school', 'error');
+      return;
+    }
+    this.showToast(data.message, 'success');
+    this.currentSchool = null;
+    this.schoolDashboardData = null;
+    this.schoolStudents = null;
+    this.showSchoolSetup();
+  }
+
+  exportSchoolData() {
+    if (!this.schoolStudents?.length) {
+      this.showToast('Load the Students tab first', 'error');
+      return;
+    }
+
+    const rows = [['Student', 'Class', 'Teacher', 'Instrument', 'Level', 'Songs Learning', 'Songs Mastered']];
+
+    for (const student of this.schoolStudents) {
+      if (!student.instruments?.length) {
+        rows.push([student.name, student.class_name, student.teacher_name, '—', '—', student.songs_learning, student.songs_mastered]);
+      } else {
+        student.instruments.forEach((inst, i) => {
+          rows.push([
+            i === 0 ? student.name : '',
+            i === 0 ? student.class_name : '',
+            i === 0 ? student.teacher_name : '',
+            inst.instrument_name,
+            inst.current_level,
+            i === 0 ? student.songs_learning : '',
+            i === 0 ? student.songs_mastered : ''
+          ]);
+        });
+      }
+    }
+
+    const csv = rows.map(r => r.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${this.currentSchool?.name || 'school'}-students.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   showToast(message, type = 'info') {
