@@ -618,6 +618,7 @@
             <div class="school-tabs">
               <button class="admin-school-tab active" data-tab="teachers" onclick="app.switchAdminSchoolTab('teachers')">Teachers</button>
               <button class="admin-school-tab" data-tab="students" onclick="app.switchAdminSchoolTab('students')">All Students</button>
+              <button class="admin-school-tab" data-tab="assign" onclick="app.switchAdminSchoolTab('assign')">Assign Teachers</button>
             </div>
 
             <!-- Teachers tab -->
@@ -633,6 +634,13 @@
                 <input type="text" id="admin-school-student-search" class="search-input" placeholder="Search students...">
               </div>
               <div id="admin-school-students-list" class="school-students-list">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+
+            <!-- Assign Teachers tab -->
+            <div id="admin-school-assign-tab" class="admin-school-tab-pane hidden">
+              <div id="admin-school-assign-panel">
                 <!-- Populated by JS -->
               </div>
             </div>

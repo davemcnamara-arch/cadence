@@ -9927,7 +9927,81 @@ class CadenceApp {
 
     if (tabName === 'students') {
       this.loadSchoolStudents('admin-school');
+    } else if (tabName === 'assign') {
+      this.loadAssignTeachersPanel();
     }
+  }
+
+  async loadAssignTeachersPanel() {
+    if (!this.currentSchool) return;
+    const panel = document.getElementById('admin-school-assign-panel');
+    if (panel) panel.innerHTML = '<p style="color:var(--text-secondary);padding:1rem;">Loading...</p>';
+
+    const { data, error } = await supabase.rpc('get_assignable_teachers', {
+      p_school_id: this.currentSchool.id
+    });
+
+    if (error || !data?.success) {
+      if (panel) panel.innerHTML = '<p style="color:var(--text-secondary);padding:1rem;">Failed to load teachers.</p>';
+      return;
+    }
+
+    const teachers = data.teachers || [];
+    if (!teachers.length) {
+      if (panel) panel.innerHTML = '<p style="color:var(--text-secondary);padding:1rem;">All teachers are already assigned to this school.</p>';
+      return;
+    }
+
+    panel.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <p style="color:var(--text-secondary);margin:0;">${teachers.length} teacher${teachers.length !== 1 ? 's' : ''} not yet assigned</p>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <button class="btn btn-secondary btn-sm" onclick="app.toggleAllAssignCheckboxes(true)">Select All</button>
+          <button class="btn btn-secondary btn-sm" onclick="app.toggleAllAssignCheckboxes(false)">Deselect All</button>
+          <button class="btn btn-primary btn-sm" onclick="app.bulkAssignTeachersToSchool()">Assign Selected</button>
+        </div>
+      </div>
+      <div id="assign-teachers-list" class="assign-teachers-list">
+        ${teachers.map(t => `
+          <label class="assign-teacher-row">
+            <input type="checkbox" class="assign-teacher-checkbox" value="${t.user_id}">
+            <div class="assign-teacher-info">
+              <span class="assign-teacher-name">${t.name}</span>
+              <span class="assign-teacher-meta">${t.email} &middot; ${t.class_count} class${t.class_count !== 1 ? 'es' : ''}</span>
+            </div>
+          </label>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  toggleAllAssignCheckboxes(checked) {
+    document.querySelectorAll('.assign-teacher-checkbox').forEach(cb => { cb.checked = checked; });
+  }
+
+  async bulkAssignTeachersToSchool() {
+    if (!this.currentSchool) return;
+    const checked = [...document.querySelectorAll('.assign-teacher-checkbox:checked')].map(cb => cb.value);
+    if (!checked.length) {
+      this.showToast('Select at least one teacher to assign', 'error');
+      return;
+    }
+
+    const { data, error } = await supabase.rpc('bulk_assign_teachers_to_school', {
+      p_school_id: this.currentSchool.id,
+      p_user_ids: checked
+    });
+
+    if (error || !data?.success) {
+      this.showToast(data?.message || 'Failed to assign teachers', 'error');
+      return;
+    }
+
+    this.showToast(data.message, 'success');
+    // Refresh both the assign panel and the teachers list
+    this.schoolDashboardData = null;
+    await this.loadAdminSchoolSection();
+    this.switchAdminSchoolTab('assign');
   }
 
   async changeSchoolMemberRole(userId, newRole) {
