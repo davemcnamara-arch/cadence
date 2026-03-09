@@ -623,10 +623,6 @@ class CadenceApp {
       const classesTitle = document.getElementById('classes-view-title');
       if (classesTitle) classesTitle.textContent = 'Classes';
 
-      // Show admin-only account management features
-      document.getElementById('create-teacher-btn')?.classList.remove('hidden');
-      document.getElementById('pending-accounts-section')?.classList.remove('hidden');
-
       await this.loadAdminData();
       await this.loadClasses();
 
@@ -7780,6 +7776,7 @@ class CadenceApp {
         this.loadContentModeration();
       } else if (sectionName === 'users') {
         this.loadUsersManagement();
+        this.loadPendingTeacherAccounts();
       }
     }
   }
