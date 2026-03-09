@@ -6210,6 +6210,15 @@ class CadenceApp {
       document.getElementById('preview-student-name').textContent = studentName;
     }
 
+    // In preview mode, replace school selector with static school name (students belong to one school)
+    const headerSchoolCtx = document.getElementById('header-school-context');
+    if (headerSchoolCtx && this.currentSchool) {
+      headerSchoolCtx.innerHTML = `
+        <span class="school-label">School:</span>
+        <span class="school-name-static">${this.currentSchool.name}</span>
+      `;
+    }
+
     // Hide teacher tabs and show student tabs
     document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.add('hidden'));
     document.querySelectorAll('.student-tab').forEach(tab => tab.classList.remove('hidden'));
