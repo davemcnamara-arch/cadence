@@ -572,29 +572,36 @@
         <!-- School Section -->
         <div id="school-section" class="admin-section">
 
-          <!-- No school yet: create form -->
-          <div id="admin-school-create">
+          <!-- Panel 1: School list -->
+          <div id="admin-school-list-panel">
             <div class="admin-section-header">
               <h3>School Management</h3>
+              <button class="btn btn-primary" onclick="app.showAdminCreateSchoolForm()">+ Add School</button>
             </div>
-            <div class="school-setup-container">
-              <div class="school-setup-icon">🏫</div>
-              <p class="school-setup-subtitle">Set up a school to give all teachers access to school-wide reporting and management.</p>
-              <div class="school-setup-card" style="max-width: 360px; margin: 1.5rem auto 0;">
-                <h3>Create a School</h3>
-                <p>Enter a name for the school to get started.</p>
-                <div class="school-form-group">
-                  <input type="text" id="admin-create-school-name" class="school-input" placeholder="School name" maxlength="100">
-                </div>
-                <button class="btn btn-primary" onclick="app.adminCreateSchool()">Create School</button>
+
+            <!-- Inline create form (hidden until button clicked) -->
+            <div id="admin-school-create-form" class="school-setup-card hidden" style="margin-bottom:1.5rem;">
+              <h4 style="margin:0 0 0.75rem;">New School</h4>
+              <div class="school-form-group">
+                <input type="text" id="admin-create-school-name" class="school-input" placeholder="School name" maxlength="100">
               </div>
+              <div style="display:flex;gap:0.5rem;">
+                <button class="btn btn-primary" onclick="app.adminCreateSchool()">Create</button>
+                <button class="btn btn-secondary" onclick="app.hideAdminCreateSchoolForm()">Cancel</button>
+              </div>
+            </div>
+
+            <!-- School cards populated by JS -->
+            <div id="admin-school-cards">
+              <!-- Populated by JS -->
             </div>
           </div>
 
-          <!-- School exists: full dashboard -->
+          <!-- Panel 2: Selected school dashboard -->
           <div id="admin-school-dashboard" class="hidden">
             <div class="admin-section-header">
               <div>
+                <button class="btn btn-secondary btn-sm" onclick="app.backToSchoolList()" style="margin-bottom:0.5rem;">&larr; All Schools</button>
                 <h3 id="admin-school-name">School</h3>
                 <p id="admin-school-code" class="school-join-code-display"></p>
               </div>

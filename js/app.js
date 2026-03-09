@@ -9602,31 +9602,66 @@ class CadenceApp {
   // ============================================
 
   async loadAdminSchoolSection() {
-    const { data, error } = await supabase.rpc('get_my_school');
+    const { data, error } = await supabase.rpc('get_all_schools');
     if (error) {
-      console.error('Error loading school:', error);
+      console.error('Error loading schools:', error);
     }
 
-    const createEl = document.getElementById('admin-school-create');
-    const dashEl = document.getElementById('admin-school-dashboard');
+    const schools = data?.schools || [];
 
-    if (!data) {
-      createEl?.classList.remove('hidden');
-      dashEl?.classList.add('hidden');
+    // Always show list panel; hide dashboard until a school is selected
+    document.getElementById('admin-school-list-panel')?.classList.remove('hidden');
+    document.getElementById('admin-school-dashboard')?.classList.add('hidden');
+
+    const container = document.getElementById('admin-school-cards');
+    if (!container) return;
+
+    if (!schools.length) {
+      container.innerHTML = `
+        <div class="school-setup-container" style="padding: 2rem 0;">
+          <div class="school-setup-icon">🏫</div>
+          <p class="school-setup-subtitle">No schools yet. Click <strong>+ Add School</strong> to create your first one.</p>
+        </div>
+      `;
       return;
     }
 
-    this.currentSchool = data;
-    createEl?.classList.add('hidden');
-    dashEl?.classList.remove('hidden');
+    container.innerHTML = schools.map(s => `
+      <div class="admin-school-card" onclick="app.openAdminSchool(${JSON.stringify(s).replace(/"/g, '&quot;')})">
+        <div class="admin-school-card-info">
+          <div class="admin-school-card-name">${s.name}</div>
+          <div class="admin-school-card-meta">Join code: <strong>${s.join_code}</strong></div>
+        </div>
+        <div class="admin-school-card-stats">
+          <span>${s.teacher_count} teacher${s.teacher_count !== 1 ? 's' : ''}</span>
+          <span>·</span>
+          <span>${s.class_count} class${s.class_count !== 1 ? 'es' : ''}</span>
+          <span>·</span>
+          <span>${s.student_count} student${s.student_count !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="admin-school-card-arrow">›</div>
+      </div>
+    `).join('');
+  }
+
+  async openAdminSchool(school) {
+    this.currentSchool = school;
+    this.schoolDashboardData = null;
+    this.schoolStudents = null;
+
+    document.getElementById('admin-school-list-panel')?.classList.add('hidden');
+    document.getElementById('admin-school-dashboard')?.classList.remove('hidden');
 
     const nameEl = document.getElementById('admin-school-name');
     const codeEl = document.getElementById('admin-school-code');
-    if (nameEl) nameEl.textContent = data.name;
-    if (codeEl) codeEl.textContent = `Join code: ${data.join_code}`;
+    if (nameEl) nameEl.textContent = school.name;
+    if (codeEl) codeEl.textContent = `Join code: ${school.join_code}`;
+
+    // Reset to teachers tab
+    this.switchAdminSchoolTab('teachers');
 
     const { data: dashData, error: dashError } = await supabase.rpc('get_school_dashboard', {
-      p_school_id: data.id
+      p_school_id: school.id
     });
 
     if (dashError || !dashData?.success) {
@@ -9634,9 +9669,29 @@ class CadenceApp {
       return;
     }
 
+    this.schoolDashboardData = dashData;
     this.renderSchoolStats(dashData.stats, 'admin-school');
     this.renderSchoolInstruments(dashData.stats?.instrument_counts, 'admin-school');
     this.renderSchoolTeachers(dashData.teachers || [], 'admin-school');
+  }
+
+  backToSchoolList() {
+    this.currentSchool = null;
+    this.schoolDashboardData = null;
+    this.schoolStudents = null;
+    document.getElementById('admin-school-list-panel')?.classList.remove('hidden');
+    document.getElementById('admin-school-dashboard')?.classList.add('hidden');
+  }
+
+  showAdminCreateSchoolForm() {
+    document.getElementById('admin-school-create-form')?.classList.remove('hidden');
+    document.getElementById('admin-create-school-name')?.focus();
+  }
+
+  hideAdminCreateSchoolForm() {
+    document.getElementById('admin-school-create-form')?.classList.add('hidden');
+    const input = document.getElementById('admin-create-school-name');
+    if (input) input.value = '';
   }
 
   async adminCreateSchool() {
@@ -9654,6 +9709,7 @@ class CadenceApp {
     }
 
     this.showToast('School created!', 'success');
+    this.hideAdminCreateSchoolForm();
     await this.loadAdminSchoolSection();
   }
 
@@ -9796,7 +9852,10 @@ class CadenceApp {
     const currentUserId = auth.getCurrentUser()?.id;
 
     if (!teachers.length) {
-      container.innerHTML = '<p style="color: var(--text-secondary); padding: 1rem;">No teachers yet.</p>';
+      const assignAction = prefix === 'admin-school'
+        ? `<button class="btn btn-primary btn-sm" style="margin-top:0.75rem;" onclick="app.switchAdminSchoolTab('assign')">Assign Teachers →</button>`
+        : '';
+      container.innerHTML = `<div style="color:var(--text-secondary);padding:1rem;">No teachers assigned to this school yet.${assignAction}</div>`;
       return;
     }
 
@@ -9866,7 +9925,7 @@ class CadenceApp {
     if (!container) return;
 
     if (!students.length) {
-      container.innerHTML = '<p style="color: var(--text-secondary); padding: 1rem;">No students found.</p>';
+      container.innerHTML = '<p style="color: var(--text-secondary); padding: 1rem;">No students yet. Students appear here once teachers are assigned to the school and have students enrolled in their classes.</p>';
       return;
     }
 
