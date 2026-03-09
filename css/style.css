@@ -3781,6 +3781,52 @@ body {
   /* No special base styling needed */
 }
 
+/* Assign teachers panel */
+.assign-teachers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.assign-teacher-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.assign-teacher-row:hover {
+  background: var(--bg-hover);
+}
+
+.assign-teacher-row input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.assign-teacher-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.assign-teacher-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.assign-teacher-meta {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
 /* Teacher cards */
 .school-teachers-grid {
   display: flex;
