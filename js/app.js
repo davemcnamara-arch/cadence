@@ -5428,13 +5428,17 @@ class CadenceApp {
       a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
     );
 
+    const currentUser = auth.getCurrentUser();
+    const sharedVisibility = this.currentSchool?.shared_class_visibility === true;
+
     const html = sortedClasses.map(cls => {
       const memberCount = cls.student_count || 0;
       const pendingCount = cls.pending_count || 0;
       const dateStr = new Date(cls.created_at).toLocaleDateString('en-GB');
+      const isPeerClass = sharedVisibility && cls.teacher_id !== currentUser?.id;
 
       const yearLabel = cls.year_level ? `<span class="class-row-meta-label">${cls.year_level}</span>` : '';
-      const teacherLabel = isAdmin && cls.teacher_name ? `<span class="class-row-meta-label">· ${cls.teacher_name}</span>` : '';
+      const teacherLabel = (isAdmin || isPeerClass) && cls.teacher_name ? `<span class="class-row-meta-label">· ${cls.teacher_name}</span>` : '';
       const pendingBadge = pendingCount > 0 ? `<span class="roster-pending-badge">${pendingCount} pending</span>` : '';
       const archivedBadge = cls.archived ? `<span class="class-archived-badge">ARCHIVED</span>` : '';
       const unarchiveBtn = cls.archived ? `<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); app.unarchiveClass('${cls.id}')" style="flex-shrink: 0;">Unarchive</button>` : '';
@@ -5506,11 +5510,15 @@ class CadenceApp {
     const currentUser = auth.getCurrentUser();
     const isAdmin = currentUser?.role === 'admin';
     const isOwnClass = this.currentClass.teacher_id === currentUser?.id;
+    const sharedVisibility = this.currentSchool?.shared_class_visibility === true;
+    // With shared visibility, peer teachers can edit any class in the school
+    const canManage = isOwnClass || (sharedVisibility && !isAdmin);
 
     document.getElementById('class-detail-name').textContent = this.currentClass.name;
     const yearLevelEl = document.getElementById('class-detail-year-level');
     if (yearLevelEl) {
-      const teacherInfo = isAdmin && this.currentClass.teacher_name ? ` — Teacher: ${this.currentClass.teacher_name}` : '';
+      const teacherInfo = (isAdmin || (sharedVisibility && !isOwnClass)) && this.currentClass.teacher_name
+        ? ` — Teacher: ${this.currentClass.teacher_name}` : '';
       yearLevelEl.textContent = (this.currentClass.year_level || '') + teacherInfo;
     }
     const schoolEl = document.getElementById('class-detail-school');
@@ -5519,11 +5527,12 @@ class CadenceApp {
     }
     document.getElementById('class-detail-code').textContent = this.currentClass.class_code;
 
-    // Show/hide class management buttons based on ownership
-    // Admins can bulk add to any class but shouldn't edit/archive other teachers' classes
-    document.getElementById('edit-class-btn')?.classList.toggle('hidden', isAdmin && !isOwnClass);
-    document.getElementById('archive-class-btn')?.classList.toggle('hidden', isAdmin && !isOwnClass);
-    document.getElementById('export-class-data-btn')?.classList.toggle('hidden', isAdmin && !isOwnClass);
+    // Show/hide class management buttons based on ownership or shared visibility
+    // Admins can bulk-add but don't edit other teachers' classes; shared-visibility peers can
+    const hideManagement = isAdmin ? !isOwnClass : !canManage;
+    document.getElementById('edit-class-btn')?.classList.toggle('hidden', hideManagement);
+    document.getElementById('archive-class-btn')?.classList.toggle('hidden', hideManagement);
+    document.getElementById('export-class-data-btn')?.classList.toggle('hidden', hideManagement);
 
     // Load class data
     await this.loadClassStudents();
@@ -9958,6 +9967,10 @@ class CadenceApp {
     }
 
     this.schoolDashboardData = dashData;
+    // Persist shared_class_visibility into currentSchool so other views can read it
+    if (this.currentSchool) {
+      this.currentSchool.shared_class_visibility = dashData.shared_class_visibility ?? false;
+    }
     this.renderSchoolStats(dashData.stats, 'admin-school');
     this.renderSchoolInstruments(dashData.stats?.instrument_counts, 'admin-school');
     this.renderSchoolTeachers(dashData.teachers || [], 'admin-school');
@@ -10105,9 +10118,20 @@ class CadenceApp {
     }
 
     this.schoolDashboardData = data;
+    // Persist shared_class_visibility into currentSchool so other views can read it
+    if (this.currentSchool) {
+      this.currentSchool.shared_class_visibility = data.shared_class_visibility ?? false;
+    }
     this.renderSchoolStats(data.stats);
     this.renderSchoolInstruments(data.stats?.instrument_counts);
     this.renderSchoolTeachers(data.teachers || []);
+
+    // Show settings tab for school admins
+    const settingsTabBtn = document.getElementById('school-settings-tab-btn');
+    if (settingsTabBtn) {
+      const isSchoolAdmin = this.currentSchool?.school_role === 'admin';
+      settingsTabBtn.classList.toggle('hidden', !isSchoolAdmin);
+    }
   }
 
   renderSchoolStats(stats, prefix = 'school') {
@@ -10277,6 +10301,8 @@ class CadenceApp {
 
     if (tabName === 'students' && !this.schoolStudents) {
       this.loadSchoolStudents('school');
+    } else if (tabName === 'settings') {
+      this.renderSchoolSettings('school');
     }
   }
 
@@ -10299,7 +10325,64 @@ class CadenceApp {
       this.loadSchoolStudents('admin-school');
     } else if (tabName === 'assign') {
       this.loadAssignTeachersPanel();
+    } else if (tabName === 'settings') {
+      this.renderSchoolSettings('admin-school');
     }
+  }
+
+  renderSchoolSettings(prefix) {
+    const panelId = prefix === 'admin-school' ? 'admin-school-settings-panel' : 'school-settings-panel';
+    const container = document.getElementById(panelId);
+    if (!container || !this.currentSchool) return;
+
+    const schoolId = this.currentSchool.id;
+    const isOn = this.currentSchool.shared_class_visibility === true;
+    const toggleId = `${prefix}-shared-visibility-toggle`;
+
+    container.innerHTML = `
+      <div style="padding: 1rem 0;">
+        <h3 class="school-section-title">School Settings</h3>
+        <div class="school-setting-row">
+          <div class="school-setting-info">
+            <strong>Shared Class Visibility</strong>
+            <p>When enabled, all teachers at this school can view and edit any class — in line with the no-hierarchy policy.</p>
+          </div>
+          <label class="toggle-switch" title="Toggle shared class visibility">
+            <input type="checkbox" id="${toggleId}" ${isOn ? 'checked' : ''}
+              onchange="app.toggleSharedClassVisibility(this.checked, '${prefix}')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    `;
+  }
+
+  async toggleSharedClassVisibility(enabled, prefix) {
+    if (!this.currentSchool) return;
+
+    const { data, error } = await supabase.rpc('set_school_shared_visibility', {
+      p_school_id: this.currentSchool.id,
+      p_enabled: enabled
+    });
+
+    if (error || !data?.success) {
+      this.showToast(data?.message || 'Failed to update setting', 'error');
+      // Revert toggle
+      const toggleId = `${prefix}-shared-visibility-toggle`;
+      const toggle = document.getElementById(toggleId);
+      if (toggle) toggle.checked = !enabled;
+      return;
+    }
+
+    this.currentSchool.shared_class_visibility = enabled;
+    // Also update in teacherSchools array so switchHeaderSchool preserves it
+    const schoolInList = this.teacherSchools?.find(s => s.id === this.currentSchool.id);
+    if (schoolInList) schoolInList.shared_class_visibility = enabled;
+
+    this.showToast(data.message, 'success');
+
+    // Reload classes so the list reflects the new visibility immediately
+    await this.loadClasses();
   }
 
   renderAssignList(items, checkboxClass, metaFn) {

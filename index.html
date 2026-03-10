@@ -484,6 +484,7 @@
           <div class="school-tabs">
             <button class="school-tab active" data-tab="teachers" onclick="app.switchSchoolTab('teachers')">Teachers</button>
             <button class="school-tab" data-tab="students" onclick="app.switchSchoolTab('students')">All Students</button>
+            <button class="school-tab hidden" id="school-settings-tab-btn" data-tab="settings" onclick="app.switchSchoolTab('settings')">Settings</button>
           </div>
 
           <!-- Teachers tab -->
@@ -499,6 +500,13 @@
               <input type="text" id="school-student-search" class="search-input" placeholder="Search students...">
             </div>
             <div id="school-students-list" class="school-students-list">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Settings tab -->
+          <div id="school-settings-tab" class="school-tab-pane hidden">
+            <div id="school-settings-panel">
               <!-- Populated by JS -->
             </div>
           </div>
@@ -659,6 +667,7 @@
               <button class="school-tab active" data-tab="teachers" onclick="app.switchAdminSchoolTab('teachers')">Teachers</button>
               <button class="school-tab" data-tab="students" onclick="app.switchAdminSchoolTab('students')">All Students</button>
               <button class="school-tab" data-tab="assign" onclick="app.switchAdminSchoolTab('assign')">Assign Members</button>
+              <button class="school-tab" data-tab="settings" onclick="app.switchAdminSchoolTab('settings')">Settings</button>
             </div>
 
             <!-- Teachers tab -->
@@ -681,6 +690,13 @@
             <!-- Assign Teachers tab -->
             <div id="admin-school-assign-tab" class="admin-school-tab-pane hidden">
               <div id="admin-school-assign-panel">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+
+            <!-- Settings tab -->
+            <div id="admin-school-settings-tab" class="admin-school-tab-pane hidden">
+              <div id="admin-school-settings-panel">
                 <!-- Populated by JS -->
               </div>
             </div>
