@@ -338,6 +338,7 @@
               <button id="edit-class-btn" class="btn btn-secondary">Edit Class</button>
               <button id="export-class-data-btn" class="btn btn-secondary">Export Class Data</button>
               <button id="archive-class-btn" class="btn btn-secondary" style="color: var(--warning-color);">Archive Class</button>
+              <button id="delete-class-btn" class="btn btn-danger hidden">Delete Class</button>
             </div>
           </div>
 
@@ -662,6 +663,7 @@
             <!-- Tabs -->
             <div class="school-tabs">
               <button class="school-tab active" data-tab="teachers" onclick="app.switchAdminSchoolTab('teachers')">Teachers</button>
+              <button class="school-tab" data-tab="classes" onclick="app.switchAdminSchoolTab('classes')">Classes</button>
               <button class="school-tab" data-tab="students" onclick="app.switchAdminSchoolTab('students')">All Students</button>
               <button class="school-tab" data-tab="assign" onclick="app.switchAdminSchoolTab('assign')">Assign Members</button>
               <button class="school-tab" data-tab="settings" onclick="app.switchAdminSchoolTab('settings')">Settings</button>
@@ -670,6 +672,17 @@
             <!-- Teachers tab -->
             <div id="admin-school-teachers-tab" class="admin-school-tab-pane active">
               <div id="admin-school-teachers-list" class="school-teachers-grid">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+
+            <!-- Classes tab -->
+            <div id="admin-school-classes-tab" class="admin-school-tab-pane hidden">
+              <div class="admin-section-header" style="margin-bottom: 1rem;">
+                <input type="text" id="admin-school-class-search" class="search-input" placeholder="Search classes...">
+                <button class="btn btn-primary btn-sm" onclick="app.showCreateClassModal()">+ Create Class</button>
+              </div>
+              <div id="admin-school-classes-list">
                 <!-- Populated by JS -->
               </div>
             </div>

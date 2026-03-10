@@ -386,6 +386,12 @@ class CadenceApp {
       archiveClassBtn.addEventListener('click', () => this.showArchiveClassModal());
     }
 
+    // Admin: Delete class
+    const deleteClassBtn = document.getElementById('delete-class-btn');
+    if (deleteClassBtn) {
+      deleteClassBtn.addEventListener('click', () => this.confirmDeleteCurrentClass());
+    }
+
     // Teacher: Bulk add students
     const bulkAddStudentsBtn = document.getElementById('bulk-add-students-btn');
     if (bulkAddStudentsBtn) {
@@ -4708,8 +4714,9 @@ class CadenceApp {
       const result = await this.callRpcDirect('get_all_schools', {});
       const schoolOptions = (result.data?.schools || []).map(s => ({ id: s.id, name: s.name }));
       if (schoolOptions.length > 0) {
+        const currentSchoolId = this.currentSchool?.id || '';
         schoolSelect.innerHTML = `<option value="">-- No school --</option>` + schoolOptions.map(s =>
-          `<option value="${s.id}">${s.name}</option>`
+          `<option value="${s.id}"${s.id === currentSchoolId ? ' selected' : ''}>${s.name}</option>`
         ).join('');
         schoolGroup.classList.remove('hidden');
       } else {
@@ -4882,6 +4889,11 @@ class CadenceApp {
       document.getElementById('create-class-modal').classList.add('hidden');
       document.getElementById('create-class-form').reset();
       await this.loadClasses();
+      // If admin is viewing the school classes tab, refresh it too
+      const schoolClassesTab = document.getElementById('admin-school-classes-tab');
+      if (schoolClassesTab && !schoolClassesTab.classList.contains('hidden')) {
+        await this.loadAdminSchoolClasses();
+      }
       this.showToast(`Class created! Code: ${classCode}`, 'success');
     } catch (error) {
       console.error('Unexpected error creating class:', error);
@@ -5543,11 +5555,13 @@ class CadenceApp {
     document.getElementById('class-detail-code').textContent = this.currentClass.class_code;
 
     // Show/hide class management buttons based on ownership or shared visibility
-    // Admins can bulk-add but don't edit other teachers' classes; shared-visibility peers can
-    const hideManagement = isAdmin ? !isOwnClass : !canManage;
+    // System admins can manage all classes; shared-visibility peers can manage school classes
+    const hideManagement = isAdmin ? false : !canManage;
     document.getElementById('edit-class-btn')?.classList.toggle('hidden', hideManagement);
     document.getElementById('archive-class-btn')?.classList.toggle('hidden', hideManagement);
     document.getElementById('export-class-data-btn')?.classList.toggle('hidden', hideManagement);
+    // Delete button is only shown to system admin (for any class)
+    document.getElementById('delete-class-btn')?.classList.toggle('hidden', !isAdmin);
 
     // Load class data
     await this.loadClassStudents();
@@ -10331,11 +10345,146 @@ class CadenceApp {
 
     if (tabName === 'students') {
       this.loadSchoolStudents('admin-school');
+    } else if (tabName === 'classes') {
+      this.loadAdminSchoolClasses();
     } else if (tabName === 'assign') {
       this.loadAssignTeachersPanel();
     } else if (tabName === 'settings') {
       this.renderSchoolSettings('admin-school');
     }
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // SYSTEM ADMIN: Classes management for a school
+  // ──────────────────────────────────────────────────────────
+
+  async loadAdminSchoolClasses() {
+    if (!this.currentSchool) return;
+
+    const container = document.getElementById('admin-school-classes-list');
+    if (!container) return;
+    container.innerHTML = '<p style="color:var(--text-secondary);padding:1rem;">Loading classes...</p>';
+
+    const { data, error } = await supabase.rpc('admin_get_school_classes', {
+      p_school_id: this.currentSchool.id,
+      p_include_archived: true
+    });
+
+    if (error || !data?.success) {
+      container.innerHTML = '<p style="color:var(--error-color);padding:1rem;">Failed to load classes</p>';
+      return;
+    }
+
+    const classes = data.classes || [];
+    this._adminSchoolClasses = classes;
+    this.renderAdminSchoolClasses(classes);
+
+    const searchInput = document.getElementById('admin-school-class-search');
+    if (searchInput) {
+      searchInput.oninput = () => {
+        const q = searchInput.value.toLowerCase();
+        const filtered = this._adminSchoolClasses.filter(c =>
+          c.name.toLowerCase().includes(q) ||
+          c.teacher_name?.toLowerCase().includes(q) ||
+          c.class_code?.toLowerCase().includes(q)
+        );
+        this.renderAdminSchoolClasses(filtered);
+      };
+    }
+  }
+
+  renderAdminSchoolClasses(classes) {
+    const container = document.getElementById('admin-school-classes-list');
+    if (!container) return;
+
+    if (!classes.length) {
+      container.innerHTML = '<p style="color:var(--text-secondary);padding:1rem;">No classes for this school yet.</p>';
+      return;
+    }
+
+    container.innerHTML = classes.map(cls => {
+      const archivedBadge = cls.archived ? '<span class="class-archived-badge">ARCHIVED</span>' : '';
+      const yearLabel = cls.year_level ? `<span class="class-row-meta-label">${cls.year_level}</span>` : '';
+      return `
+        <div class="school-teacher-card" style="align-items:center;">
+          <div class="school-teacher-info" style="flex:1;">
+            <div class="school-teacher-name">${cls.name} ${archivedBadge}</div>
+            <div class="school-teacher-meta">
+              ${yearLabel}
+              Teacher: ${cls.teacher_name || '—'} &nbsp;·&nbsp;
+              Code: <strong>${cls.class_code}</strong> &nbsp;·&nbsp;
+              ${cls.student_count} student${cls.student_count !== 1 ? 's' : ''}
+            </div>
+          </div>
+          <div style="display:flex;gap:0.5rem;flex-shrink:0;">
+            ${cls.archived
+              ? `<button class="btn btn-secondary btn-sm" onclick="app.adminUnarchiveSchoolClass('${cls.id}')">Unarchive</button>`
+              : `<button class="btn btn-secondary btn-sm" onclick="app.adminArchiveSchoolClass('${cls.id}', '${cls.name.replace(/'/g, "\\'")}')">Archive</button>`
+            }
+            <button class="btn btn-danger btn-sm" onclick="app.adminDeleteSchoolClass('${cls.id}', '${cls.name.replace(/'/g, "\\'")}')">Delete</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async adminArchiveSchoolClass(classId, className) {
+    if (!confirm(`Archive class "${className}"? Students will no longer see it.`)) return;
+
+    const { error } = await supabase
+      .from('classes')
+      .update({ archived: true })
+      .eq('id', classId);
+
+    if (error) {
+      this.showToast('Failed to archive class', 'error');
+      return;
+    }
+    this.showToast(`"${className}" archived`, 'success');
+    await this.loadAdminSchoolClasses();
+  }
+
+  async adminUnarchiveSchoolClass(classId) {
+    const { data, error } = await supabase
+      .from('classes')
+      .update({ archived: false })
+      .eq('id', classId)
+      .select('name')
+      .single();
+
+    if (error) {
+      this.showToast('Failed to unarchive class', 'error');
+      return;
+    }
+    this.showToast(`"${data.name}" unarchived`, 'success');
+    await this.loadAdminSchoolClasses();
+  }
+
+  async adminDeleteSchoolClass(classId, className) {
+    if (!confirm(`Permanently delete class "${className}"? This cannot be undone and will remove all enrolled students from the class.`)) return;
+    await this._performAdminDeleteClass(classId, className, () => this.loadAdminSchoolClasses());
+  }
+
+  confirmDeleteCurrentClass() {
+    if (!this.currentClass) return;
+    const { name, id } = this.currentClass;
+    if (!confirm(`Permanently delete class "${name}"? This cannot be undone and will remove all enrolled students from the class.`)) return;
+    this._performAdminDeleteClass(id, name, () => {
+      this.showClassesList();
+      this.loadClasses();
+    });
+  }
+
+  async _performAdminDeleteClass(classId, className, onSuccess) {
+    const { data, error } = await supabase.rpc('admin_delete_class', { p_class_id: classId });
+
+    if (error || !data?.success) {
+      this.showToast(data?.message || 'Failed to delete class', 'error');
+      return;
+    }
+
+    this.showToast(`Class "${className}" deleted`, 'success');
+    if (onSuccess) await onSuccess();
   }
 
   renderSchoolSettings(prefix) {
