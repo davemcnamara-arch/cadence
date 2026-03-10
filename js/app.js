@@ -348,10 +348,17 @@ class CadenceApp {
       createClassBtn.addEventListener('click', () => this.showCreateClassModal());
     }
 
-    // Teacher: Class tabs
+    // Teacher: Class detail tabs (Roster / Progress / Timeline)
     document.querySelectorAll('.class-tab').forEach(tab => {
       tab.addEventListener('click', (e) => {
         this.switchClassTab(e.target.dataset.tab);
+      });
+    });
+
+    // Teacher: Top-level Classes view tabs (My Classes / All Students)
+    document.querySelectorAll('.classes-view-tab').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        this.switchClassesViewTab(e.currentTarget.dataset.classesTab);
       });
     });
 
@@ -599,7 +606,7 @@ class CadenceApp {
     const savedView = sessionStorage.getItem('cadence_currentView');
     const validViews = {
       student: ['pathway', 'songs', 'progress'],
-      teacher: ['songs', 'classes', 'student-songs', 'flagged', 'accounts', 'school'],
+      teacher: ['songs', 'classes', 'student-songs', 'flagged', 'school'],
       admin: ['songs', 'classes', 'flagged', 'accounts', 'admin']
     };
     const restoredView = savedView && validViews[user.role]?.includes(savedView) ? savedView : null;
@@ -5458,6 +5465,13 @@ class CadenceApp {
     }
     this.allTeacherStudents = null;
 
+    // Ensure My Classes tab is active and All Students is hidden
+    document.getElementById('all-students-content')?.classList.add('hidden');
+    document.getElementById('my-classes-content')?.classList.remove('hidden');
+    document.querySelectorAll('.classes-view-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.classesTab === 'my-classes');
+    });
+
     // Hide classes list, show class detail
     // Push a history entry so the phone back button returns to the classes list
     // instead of whatever view was in the initial history placeholder
@@ -5500,6 +5514,12 @@ class CadenceApp {
 
     document.getElementById('class-detail-view').classList.add('hidden');
     document.getElementById('classes-list').classList.remove('hidden');
+    // Restore My Classes tab
+    document.getElementById('all-students-content')?.classList.add('hidden');
+    document.getElementById('my-classes-content')?.classList.remove('hidden');
+    document.querySelectorAll('.classes-view-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.classesTab === 'my-classes');
+    });
     // Clear student search state
     const studentSearch = document.getElementById('student-search');
     if (studentSearch) studentSearch.value = '';
@@ -5541,6 +5561,141 @@ class CadenceApp {
       document.getElementById('timeline-tab').classList.add('active');
       this.renderClassTimeline();
     }
+  }
+
+  switchClassesViewTab(tabName) {
+    // Update tab button active states
+    document.querySelectorAll('.classes-view-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.classesTab === tabName);
+    });
+
+    const myClassesContent = document.getElementById('my-classes-content');
+    const allStudentsContent = document.getElementById('all-students-content');
+
+    if (tabName === 'all-students') {
+      // Hide class detail if open
+      document.getElementById('class-detail-view')?.classList.add('hidden');
+      myClassesContent?.classList.add('hidden');
+      allStudentsContent?.classList.remove('hidden');
+      this.loadAllStudents();
+    } else {
+      allStudentsContent?.classList.add('hidden');
+      myClassesContent?.classList.remove('hidden');
+    }
+  }
+
+  async loadAllStudents() {
+    const container = document.getElementById('all-students-list');
+    if (!container) return;
+    container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">Loading students...</p>';
+
+    let students = [];
+    try {
+      const params = this.currentSchool?.id ? { p_school_id: this.currentSchool.id } : {};
+      const result = await this.callRpcDirect('search_teacher_students', params);
+      students = result.data || [];
+    } catch (err) {
+      try {
+        const fallback = await this.callRpcDirect('get_all_teacher_students', {});
+        students = (fallback.data || []).map(s => ({ ...s, class_id: null, class_name: null, is_pending: false }));
+      } catch (e) {
+        container.innerHTML = '<p style="color: var(--error-color); text-align: center; padding: 2rem;">Failed to load students</p>';
+        return;
+      }
+    }
+
+    // Set up search input
+    const searchInput = document.getElementById('all-students-search');
+    if (searchInput) {
+      searchInput.oninput = () => this.renderAllStudents(students, searchInput.value);
+    }
+
+    this.renderAllStudents(students, searchInput?.value || '');
+  }
+
+  renderAllStudents(allStudents, searchTerm = '') {
+    const container = document.getElementById('all-students-list');
+    if (!container) return;
+    const currentUserRole = auth.getCurrentUser()?.role;
+
+    // Deduplicate by user_id / email
+    const studentMap = new Map();
+    const pendingMap = new Map();
+
+    allStudents.forEach(row => {
+      if (row.is_pending) {
+        const key = row.email?.toLowerCase();
+        if (!pendingMap.has(key)) {
+          pendingMap.set(key, { name: row.name, email: row.email, classes: [] });
+        }
+        if (row.class_name) pendingMap.get(key).classes.push({ id: row.class_id, name: row.class_name });
+      } else {
+        if (!studentMap.has(row.user_id)) {
+          studentMap.set(row.user_id, { user_id: row.user_id, name: row.name, email: row.email, classes: [] });
+        }
+        if (row.class_name) studentMap.get(row.user_id).classes.push({ id: row.class_id, name: row.class_name });
+      }
+    });
+
+    let activeStudents = Array.from(studentMap.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    let pendingStudents = Array.from(pendingMap.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+
+    // Apply search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      activeStudents = activeStudents.filter(s => s.name.toLowerCase().includes(term) || s.email?.toLowerCase().includes(term));
+      pendingStudents = pendingStudents.filter(s => s.name.toLowerCase().includes(term) || s.email?.toLowerCase().includes(term));
+    }
+
+    const total = activeStudents.length + pendingStudents.length;
+    if (total === 0) {
+      container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No students found</p>';
+      return;
+    }
+
+    const activeHtml = activeStudents.map(student => {
+      const firstClassId = student.classes[0]?.id || '';
+      const classBadges = student.classes.map(c =>
+        `<span class="class-code-badge" style="font-size: 0.75rem; cursor: pointer;" onclick="event.stopPropagation(); app.viewClass('${c.id}')">${this.escapeHtml(c.name)}</span>`
+      ).join(' ');
+      const canDelete = currentUserRole === 'teacher' || currentUserRole === 'admin';
+      return `
+        <div class="account-card" onclick="app.viewStudentFromSearch('${student.user_id}', '${firstClassId}')" style="cursor: pointer;">
+          <div class="account-info">
+            <div class="account-name">${this.escapeHtml(student.name)}</div>
+            <div class="account-email">${this.escapeHtml(student.email || '')}</div>
+          </div>
+          <div class="account-meta" style="gap: 0.5rem; align-items: center;">
+            ${classBadges}
+            ${canDelete ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); app.confirmDeleteAccount('${student.user_id}', '${student.name.replace(/'/g, "\\'")}', 'student')">Delete</button>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const pendingHtml = pendingStudents.map(student => {
+      const classBadges = student.classes.map(c =>
+        `<span class="class-code-badge" style="font-size: 0.75rem;">${this.escapeHtml(c.name)}</span>`
+      ).join(' ');
+      return `
+        <div class="account-card">
+          <div class="account-info">
+            <div class="account-name">${this.escapeHtml(student.name)} <span class="roster-pending-badge">Pending</span></div>
+            <div class="account-email">${this.escapeHtml(student.email || '')}</div>
+          </div>
+          <div class="account-meta" style="gap: 0.5rem;">
+            ${classBadges}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = `
+      <p style="color: var(--text-secondary); margin-bottom: 0.75rem; font-size: 0.875rem;">
+        ${total} student${total !== 1 ? 's' : ''}${pendingStudents.length > 0 ? ` (${pendingStudents.length} pending)` : ''}
+      </p>
+      ${activeHtml}${pendingHtml}
+    `;
   }
 
   // ============================================
