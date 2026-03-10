@@ -124,11 +124,11 @@
             </div>
           </div>
           <button class="nav-tab teacher-tab admin-tab hidden" data-view="flagged">Review <span id="flagged-count-badge" class="tab-notification-badge hidden"></span></button>
-          <!-- Management dropdown: Accounts + School -->
+          <!-- Management dropdown: School (teachers) + Accounts (admins) -->
           <div class="nav-dropdown-group teacher-tab admin-tab hidden">
             <button class="nav-tab nav-dropdown-trigger">Management <span class="dropdown-arrow">▾</span></button>
             <div class="nav-dropdown-menu">
-              <button class="nav-dropdown-item teacher-tab admin-tab hidden" data-view="accounts">Accounts</button>
+              <button class="nav-dropdown-item admin-tab hidden" data-view="accounts">Accounts</button>
               <button class="nav-dropdown-item teacher-tab hidden" data-view="school">School</button>
             </div>
           </div>
@@ -277,21 +277,40 @@
           <button id="create-class-btn" class="btn btn-primary">+ Create New Class</button>
         </div>
 
-        <div class="song-filters">
-          <input type="text" id="class-search" placeholder="Search classes..." class="search-input">
-          <input type="text" id="student-search" placeholder="Search all students..." class="search-input">
-          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-            <input type="checkbox" id="show-archived-classes" style="cursor: pointer;">
-            <span>Show archived classes</span>
-          </label>
+        <!-- Top-level tabs: My Classes | All Students -->
+        <div class="class-tabs" id="classes-view-tabs">
+          <button class="classes-view-tab active" data-classes-tab="my-classes">My Classes</button>
+          <button class="classes-view-tab" data-classes-tab="all-students">All Students</button>
         </div>
 
-        <div id="student-search-results" class="class-roster hidden">
-          <!-- Populated by JS when student search is active -->
+        <!-- My Classes content -->
+        <div id="my-classes-content">
+          <div class="song-filters">
+            <input type="text" id="class-search" placeholder="Search classes..." class="search-input">
+            <input type="text" id="student-search" placeholder="Search all students..." class="search-input">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+              <input type="checkbox" id="show-archived-classes" style="cursor: pointer;">
+              <span>Show archived classes</span>
+            </label>
+          </div>
+
+          <div id="student-search-results" class="class-roster hidden">
+            <!-- Populated by JS when student search is active -->
+          </div>
+
+          <div id="classes-list" class="classes-grid">
+            <!-- Populated by JS -->
+          </div>
         </div>
 
-        <div id="classes-list" class="classes-grid">
-          <!-- Populated by JS -->
+        <!-- All Students content -->
+        <div id="all-students-content" class="hidden">
+          <div class="accounts-filters" style="margin-bottom: 1rem;">
+            <input type="text" id="all-students-search" placeholder="Search by name or email..." class="search-input">
+          </div>
+          <div id="all-students-list" class="accounts-list">
+            <!-- Populated by JS -->
+          </div>
         </div>
 
         <!-- Class Detail View (shown when a class is selected) -->
