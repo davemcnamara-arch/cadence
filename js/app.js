@@ -717,8 +717,9 @@ class CadenceApp {
     const school = this.teacherSchools.find(s => s.id === schoolId);
     if (!school) return;
     this.currentSchool = school;
-    // Reset cached cross-school student list so next search re-fetches scoped to new school
+    // Reset cached student lists so next fetch is scoped to the new school
     this.allTeacherStudents = null;
+    this.schoolStudents = null;
     // Reload classes filtered to the new school
     this.loadClasses();
     // If the school view is active, refresh it too
@@ -9842,35 +9843,12 @@ class CadenceApp {
       return;
     }
 
-    // Populate the school selector (visible only when teacher has >1 school)
-    const selector = document.getElementById('school-selector');
-    if (selector) {
-      if (schools.length > 1) {
-        selector.innerHTML = schools.map(s =>
-          `<option value="${s.id}">${s.name}</option>`
-        ).join('');
-        selector.classList.remove('hidden');
-      } else {
-        selector.classList.add('hidden');
-        selector.innerHTML = '';
-      }
-    }
-
     // Default to the first (earliest-joined) school, or keep the current one
-    // if the user has already picked one via the selector
+    // if the user has already picked one via the header selector
     if (!this.currentSchool || !schools.find(s => s.id === this.currentSchool.id)) {
       this.currentSchool = schools[0];
     }
 
-    await this.loadSchoolDashboard();
-  }
-
-  async switchSchoolView(schoolId) {
-    const { data, error } = await supabase.rpc('get_my_schools');
-    if (error || !Array.isArray(data)) return;
-    const school = data.find(s => s.id === schoolId);
-    if (!school) return;
-    this.currentSchool = school;
     await this.loadSchoolDashboard();
   }
 
@@ -9929,6 +9907,13 @@ class CadenceApp {
     const schoolCode = document.getElementById('school-dashboard-code');
     if (schoolName) schoolName.textContent = this.currentSchool.name;
     if (schoolCode) schoolCode.classList.add('hidden');
+
+    // Clear stale student data from any previous school
+    this.schoolStudents = null;
+    const studentsList = document.getElementById('school-students-list');
+    if (studentsList) studentsList.innerHTML = '';
+    // Reset to Teachers tab so students tab always shows fresh data on re-entry
+    this.switchSchoolTab('teachers');
 
     this.showSchoolDashboardPanel();
 
