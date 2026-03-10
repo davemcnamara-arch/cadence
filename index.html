@@ -293,6 +293,10 @@
               <input type="checkbox" id="show-archived-classes" style="cursor: pointer;">
               <span>Show archived classes</span>
             </label>
+            <label id="show-all-school-classes-label" style="display: none; align-items: center; gap: 0.5rem; cursor: pointer;">
+              <input type="checkbox" id="show-all-school-classes" style="cursor: pointer;">
+              <span>Show all school classes</span>
+            </label>
           </div>
 
           <div id="student-search-results" class="class-roster hidden">
@@ -484,7 +488,6 @@
           <div class="school-tabs">
             <button class="school-tab active" data-tab="teachers" onclick="app.switchSchoolTab('teachers')">Teachers</button>
             <button class="school-tab" data-tab="students" onclick="app.switchSchoolTab('students')">All Students</button>
-            <button class="school-tab hidden" id="school-settings-tab-btn" data-tab="settings" onclick="app.switchSchoolTab('settings')">Settings</button>
           </div>
 
           <!-- Teachers tab -->
@@ -504,12 +507,6 @@
             </div>
           </div>
 
-          <!-- Settings tab -->
-          <div id="school-settings-tab" class="school-tab-pane hidden">
-            <div id="school-settings-panel">
-              <!-- Populated by JS -->
-            </div>
-          </div>
         </div>
       </div>
 

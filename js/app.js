@@ -414,6 +414,12 @@ class CadenceApp {
       showArchivedCheckbox.addEventListener('change', () => this.loadClasses());
     }
 
+    // Teacher: Show all school classes toggle
+    const showAllSchoolCheckbox = document.getElementById('show-all-school-classes');
+    if (showAllSchoolCheckbox) {
+      showAllSchoolCheckbox.addEventListener('change', () => this.loadClasses());
+    }
+
     // Student: Join class
     const joinClassBtn = document.getElementById('join-class-btn');
     if (joinClassBtn) {
@@ -718,6 +724,10 @@ class CadenceApp {
     }
 
     container.classList.remove('hidden');
+
+    // Show "Show all school classes" checkbox now that the teacher has a school
+    const allSchoolLabel = document.getElementById('show-all-school-classes-label');
+    if (allSchoolLabel) allSchoolLabel.style.display = 'flex';
   }
 
   switchHeaderSchool(schoolId) {
@@ -727,6 +737,9 @@ class CadenceApp {
     // Reset cached student lists so next fetch is scoped to the new school
     this.allTeacherStudents = null;
     this.schoolStudents = null;
+    // Reset "show all school classes" when switching schools
+    const allSchoolCheckbox = document.getElementById('show-all-school-classes');
+    if (allSchoolCheckbox) allSchoolCheckbox.checked = false;
     // Navigate to classes view and reload — switching schools should always
     // show the new school's classes, regardless of which view is currently active
     this.switchView('classes');
@@ -4627,13 +4640,15 @@ class CadenceApp {
 
     // Check if we should include archived classes
     const showArchived = document.getElementById('show-archived-classes')?.checked || false;
+    const showAllSchool = document.getElementById('show-all-school-classes')?.checked || false;
 
     // Use direct RPC call to bypass stale Supabase client connections
     let data;
     try {
       const params = {
         p_teacher_id: user.id,
-        p_include_archived: showArchived
+        p_include_archived: showArchived,
+        p_show_all_school: showAllSchool
       };
       if (this.currentSchool?.id) {
         params.p_school_id = this.currentSchool.id;
@@ -5429,7 +5444,7 @@ class CadenceApp {
     );
 
     const currentUser = auth.getCurrentUser();
-    const sharedVisibility = this.currentSchool?.shared_class_visibility === true;
+    const sharedVisibility = document.getElementById('show-all-school-classes')?.checked || false;
 
     const html = sortedClasses.map(cls => {
       const memberCount = cls.student_count || 0;
@@ -5510,8 +5525,8 @@ class CadenceApp {
     const currentUser = auth.getCurrentUser();
     const isAdmin = currentUser?.role === 'admin';
     const isOwnClass = this.currentClass.teacher_id === currentUser?.id;
-    const sharedVisibility = this.currentSchool?.shared_class_visibility === true;
-    // With shared visibility, peer teachers can edit any class in the school
+    const sharedVisibility = document.getElementById('show-all-school-classes')?.checked || false;
+    // With show-all active, peer teachers can edit any class in the school
     const canManage = isOwnClass || (sharedVisibility && !isAdmin);
 
     document.getElementById('class-detail-name').textContent = this.currentClass.name;
@@ -10125,13 +10140,6 @@ class CadenceApp {
     this.renderSchoolStats(data.stats);
     this.renderSchoolInstruments(data.stats?.instrument_counts);
     this.renderSchoolTeachers(data.teachers || []);
-
-    // Show settings tab for school admins
-    const settingsTabBtn = document.getElementById('school-settings-tab-btn');
-    if (settingsTabBtn) {
-      const isSchoolAdmin = this.currentSchool?.school_role === 'admin';
-      settingsTabBtn.classList.toggle('hidden', !isSchoolAdmin);
-    }
   }
 
   renderSchoolStats(stats, prefix = 'school') {
