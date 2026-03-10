@@ -124,12 +124,13 @@
             </div>
           </div>
           <button class="nav-tab teacher-tab admin-tab hidden" data-view="flagged">Review <span id="flagged-count-badge" class="tab-notification-badge hidden"></span></button>
-          <!-- Management dropdown: School (teachers) + Accounts (admins) -->
-          <div class="nav-dropdown-group teacher-tab admin-tab hidden">
+          <!-- School: direct nav tab for teachers -->
+          <button class="nav-tab teacher-tab hidden" data-view="school">School</button>
+          <!-- Management dropdown: admin only -->
+          <div class="nav-dropdown-group admin-tab hidden">
             <button class="nav-tab nav-dropdown-trigger">Management <span class="dropdown-arrow">▾</span></button>
             <div class="nav-dropdown-menu">
               <button class="nav-dropdown-item admin-tab hidden" data-view="accounts">Accounts</button>
-              <button class="nav-dropdown-item teacher-tab hidden" data-view="school">School</button>
             </div>
           </div>
           <!-- Admin tabs (shown only to admins) -->
