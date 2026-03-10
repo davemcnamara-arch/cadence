@@ -727,12 +727,10 @@ class CadenceApp {
     // Reset cached student lists so next fetch is scoped to the new school
     this.allTeacherStudents = null;
     this.schoolStudents = null;
-    // Reload classes filtered to the new school
+    // Navigate to classes view and reload — switching schools should always
+    // show the new school's classes, regardless of which view is currently active
+    this.switchView('classes');
     this.loadClasses();
-    // If the school view is active, refresh it too
-    if (this.currentView === 'school') {
-      this.loadSchoolDashboard();
-    }
   }
 
   // ============================================
@@ -4621,6 +4619,12 @@ class CadenceApp {
   async loadClasses() {
     const user = auth.getCurrentUser();
 
+    // Stamp this request so concurrent calls don't clobber each other.
+    // If the school changes while a fetch is in-flight, only the latest
+    // request's result will be applied.
+    this._classesLoadSeq = (this._classesLoadSeq || 0) + 1;
+    const mySeq = this._classesLoadSeq;
+
     // Check if we should include archived classes
     const showArchived = document.getElementById('show-archived-classes')?.checked || false;
 
@@ -4635,8 +4639,11 @@ class CadenceApp {
         params.p_school_id = this.currentSchool.id;
       }
       const result = await this.callRpcDirect('get_teacher_classes', params);
+      // Discard if a newer loadClasses() call is already in-flight
+      if (mySeq !== this._classesLoadSeq) return;
       data = result.data;
     } catch (error) {
+      if (mySeq !== this._classesLoadSeq) return;
       console.error('Error loading classes:', error);
       this.classes = [];
       return;
