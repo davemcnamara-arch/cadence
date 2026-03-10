@@ -10345,7 +10345,7 @@ class CadenceApp {
         <div class="school-setting-row">
           <div class="school-setting-info">
             <strong>Shared Class Visibility</strong>
-            <p>When enabled, all teachers at this school can view and edit any class — in line with the no-hierarchy policy.</p>
+            <p>All teachers at this school can view and edit any class. Admins can disable this to restrict teachers to their own classes only.</p>
           </div>
           <label class="toggle-switch" title="Toggle shared class visibility">
             <input type="checkbox" id="${toggleId}" ${isOn ? 'checked' : ''}
