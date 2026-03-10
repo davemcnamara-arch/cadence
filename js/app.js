@@ -4670,10 +4670,13 @@ class CadenceApp {
     const schoolGroup = document.getElementById('class-school-group');
     const schoolSelect = document.getElementById('class-school');
 
-    // Show teacher dropdown for admins
+    // Show teacher dropdown for admins (all teachers) and for teachers (same-school peers)
     if (user && user.role === 'admin') {
       teacherGroup.classList.remove('hidden');
       await this.loadTeachersForDropdown(teacherSelect);
+    } else if (user && user.role === 'teacher') {
+      // Populate with peer teachers at the same school; hide the group if none exist
+      await this.loadPeerTeachersForDropdown(teacherSelect);
     } else {
       teacherGroup.classList.add('hidden');
     }
@@ -4698,6 +4701,38 @@ class CadenceApp {
     }
 
     document.getElementById('create-class-modal').classList.remove('hidden');
+  }
+
+  async loadPeerTeachersForDropdown(selectElement) {
+    const schoolId = this.currentSchool?.id || null;
+    const params = schoolId ? { p_school_id: schoolId } : {};
+    const { data, error } = await supabase.rpc('get_school_peer_teachers', params);
+
+    const teacherGroup = document.getElementById('class-teacher-group');
+
+    if (error) {
+      console.error('Error loading peer teachers:', error);
+      teacherGroup.classList.add('hidden');
+      return;
+    }
+
+    const peers = data || [];
+
+    if (peers.length === 0) {
+      // No peers at this school — hide the dropdown entirely
+      teacherGroup.classList.add('hidden');
+      return;
+    }
+
+    selectElement.innerHTML = '<option value="">-- Leave empty to assign to yourself --</option>';
+    peers.forEach(teacher => {
+      const option = document.createElement('option');
+      option.value = teacher.id;
+      option.textContent = teacher.name || teacher.email;
+      selectElement.appendChild(option);
+    });
+
+    teacherGroup.classList.remove('hidden');
   }
 
   async loadTeachersForDropdown(selectElement) {
