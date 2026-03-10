@@ -5113,7 +5113,8 @@ class CadenceApp {
       // Use direct RPC call to bypass stale Supabase client connections
       const { data } = await this.callRpcDirect('add_pending_enrollments', {
         p_class_id: this.currentClass.id,
-        p_emails: emails
+        p_emails: emails,
+        ...(this.currentSchool?.id ? { p_school_id: this.currentSchool.id } : {})
       });
 
       if (data.success) {
