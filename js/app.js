@@ -4837,52 +4837,32 @@ class CadenceApp {
         return;
       }
 
-      // Generate unique class code using database function
-      const { data: codeData, error: codeError } = await supabase
-        .rpc('generate_class_code');
-
-      if (codeError) {
-        console.error('Error generating class code:', codeError);
-        this.showToast('Failed to generate class code', 'error');
-        return;
-      }
-
-      const classCode = codeData;
-
-      // Check if assigning to a pending teacher (value starts with 'pending:')
-      let assignedTeacherId = user.id;
+      // Resolve pending-teacher email vs real teacher UUID
+      let resolvedTeacherId = teacherId || null;
       let pendingTeacherEmail = null;
 
       if (teacherId && teacherId.startsWith('pending:')) {
-        // Pending teacher - store email and use admin as temporary owner
         pendingTeacherEmail = teacherId.substring(8); // Remove 'pending:' prefix
-        assignedTeacherId = user.id; // Admin is temporary owner
-      } else if (teacherId) {
-        // Regular teacher - use their ID
-        assignedTeacherId = teacherId;
+        resolvedTeacherId = null;
       }
 
-      // Create the class
-      const insertPayload = {
-        class_code: classCode,
-        name: className,
-        teacher_id: assignedTeacherId,
-        year_level: yearLevel || null,
-        pending_teacher_email: pendingTeacherEmail
-      };
-      if (schoolId) insertPayload.school_id = schoolId;
+      // Use the create_class RPC — SECURITY DEFINER so it bypasses RLS,
+      // which allows teachers to create classes for peer teachers.
+      const { data, error } = await supabase.rpc('create_class', {
+        p_name:                   className,
+        p_year_level:             yearLevel || null,
+        p_teacher_id:             resolvedTeacherId,
+        p_school_id:              schoolId || null,
+        p_pending_teacher_email:  pendingTeacherEmail
+      });
 
-      const { data, error } = await supabase
-        .from('classes')
-        .insert([insertPayload])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating class:', error);
-        this.showToast('Failed to create class', 'error');
+      if (error || !data?.success) {
+        console.error('Error creating class:', error || data);
+        this.showToast(data?.message || 'Failed to create class', 'error');
         return;
       }
+
+      const classCode = data.class_code;
 
       document.getElementById('create-class-modal').classList.add('hidden');
       document.getElementById('create-class-form').reset();
