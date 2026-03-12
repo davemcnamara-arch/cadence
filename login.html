@@ -196,8 +196,13 @@
 
       if (status === 'active' || status === 'trialing') {
         window.location.href = 'index.html';
-      } else {
+      } else if (status === 'expired' || status === 'cancelled') {
+        // Has a subscription but it lapsed — show the renewal banner
         window.location.href = 'subscribe.html?expired=1';
+      } else {
+        // No subscription record at all — send to subscribe page without the
+        // misleading "your subscription has expired" banner
+        window.location.href = 'subscribe.html';
       }
     });
   </script>
