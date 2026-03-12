@@ -4710,9 +4710,7 @@ class CadenceApp {
   }
 
   showLoginScreen() {
-    document.getElementById('login-screen').classList.remove('hidden');
-    document.getElementById('role-selection-screen').classList.add('hidden');
-    document.getElementById('app').classList.add('hidden');
+    window.location.href = 'login.html';
   }
 
   showRoleSelection() {
