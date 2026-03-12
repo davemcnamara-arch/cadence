@@ -68,6 +68,33 @@
       line-height: 1.3;
     }
 
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      padding: 0;
+      margin-bottom: 1rem;
+    }
+
+    .back-link:hover {
+      color: var(--text-primary);
+    }
+
+    .signin-context {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-bottom: 1.25rem;
+    }
+
+    .signin-context strong {
+      color: var(--text-primary);
+    }
   </style>
 </head>
 <body>
@@ -77,12 +104,13 @@
         <h1>🎵 Cadence</h1>
         <p class="tagline">Track Your Musical Journey</p>
       </div>
-      <div class="login-card">
+
+      <!-- Step 1: Role selection -->
+      <div class="login-card" id="step-role">
         <h2>Welcome</h2>
         <p>How will you be using Cadence?</p>
 
-        <!-- Role selector -->
-        <div class="role-selector" id="role-selector">
+        <div class="role-selector">
           <button class="role-card selected" data-role="student" id="role-student">
             <div class="role-icon">🎓</div>
             <strong>I'm a student</strong>
@@ -95,7 +123,22 @@
           </button>
         </div>
 
-        <!-- Google OAuth button -->
+        <button id="continue-btn" class="btn btn-primary btn-full">
+          Continue
+        </button>
+
+        <p class="privacy-link" style="text-align:center; margin-top: 1.25rem;">
+          <a href="privacy.html" target="_blank">Privacy Policy</a>
+        </p>
+      </div>
+
+      <!-- Step 2: Google OAuth -->
+      <div class="login-card hidden" id="step-oauth">
+        <button class="back-link" id="back-btn">&#8592; Back</button>
+
+        <h2>Sign in with Google</h2>
+        <p class="signin-context" id="signin-context"></p>
+
         <button id="google-oauth-btn" class="btn btn-primary btn-google btn-full">
           <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -125,9 +168,9 @@
       }
     })();
 
-    // Role selection state (default: student)
     let selectedRole = 'student';
 
+    // Role card selection
     const roleCards = document.querySelectorAll('.role-card');
     roleCards.forEach(card => {
       card.addEventListener('click', () => {
@@ -135,6 +178,20 @@
         card.classList.add('selected');
         selectedRole = card.dataset.role;
       });
+    });
+
+    // Step 1 → Step 2
+    document.getElementById('continue-btn').addEventListener('click', () => {
+      const label = selectedRole === 'teacher' ? 'Signing in as a <strong>teacher</strong>' : 'Signing in as a <strong>student</strong>';
+      document.getElementById('signin-context').innerHTML = label;
+      document.getElementById('step-role').classList.add('hidden');
+      document.getElementById('step-oauth').classList.remove('hidden');
+    });
+
+    // Step 2 → Step 1 (back)
+    document.getElementById('back-btn').addEventListener('click', () => {
+      document.getElementById('step-oauth').classList.add('hidden');
+      document.getElementById('step-role').classList.remove('hidden');
     });
 
     // Google OAuth: store role then initiate OAuth flow
@@ -148,7 +205,6 @@
         }
       });
     });
-
   </script>
 </body>
 </html>
