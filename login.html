@@ -160,11 +160,27 @@
   <script type="module">
     import { supabase } from './js/config.js';
 
-    // If already signed in, skip to the app
+    const urlParams = new URLSearchParams(window.location.search);
+    const isReturning = urlParams.get('returning') === '1';
+
+    // If already signed in, skip to the app — unless coming from "already a subscriber"
+    // in which case sign them out first so they can choose a different Google account
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        window.location.href = 'index.html';
+        if (isReturning) {
+          await supabase.auth.signOut();
+        } else {
+          window.location.href = 'index.html';
+          return;
+        }
+      }
+
+      // Skip role selection for returning users (e.g. from subscribe.html "Already a subscriber?" link)
+      if (isReturning) {
+        document.getElementById('signin-context').innerHTML = 'Choose the Google account linked to your subscription.';
+        document.getElementById('step-role').classList.add('hidden');
+        document.getElementById('step-oauth').classList.remove('hidden');
       }
     })();
 
@@ -179,13 +195,6 @@
         selectedRole = card.dataset.role;
       });
     });
-
-    // Skip role selection for returning users (e.g. from subscribe.html "Already subscribed?" link)
-    if (new URLSearchParams(window.location.search).get('returning') === '1') {
-      document.getElementById('signin-context').innerHTML = 'Welcome back &mdash; sign in to continue.';
-      document.getElementById('step-role').classList.add('hidden');
-      document.getElementById('step-oauth').classList.remove('hidden');
-    }
 
     // Step 1 → Step 2
     document.getElementById('continue-btn').addEventListener('click', () => {
