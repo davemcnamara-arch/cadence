@@ -14,7 +14,7 @@
 
 DO $$
 DECLARE
-  v_class_id_text TEXT := 'YOUR_CLASS_ID_HERE';   -- ← replace this with your class UUID
+  v_class_id_text TEXT := '7cf41d29-6ac8-4af1-9ee2-2c7c399be779';
   v_count     INT  := 14;                          -- students to add
   v_class_id  UUID;
   v_user_id   UUID;
