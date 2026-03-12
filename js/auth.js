@@ -346,8 +346,9 @@ export class AuthManager {
         // Fall through to manual role selection
       }
 
-      // Auto-assign student role for all new users (teachers are promoted by admin)
-      const result = await this.completeSignupWithRole('student', authUser);
+      // Use role from login.html selector if present, otherwise default to student
+      const signupRole = localStorage.getItem('cadence_signup_role') || 'student';
+      const result = await this.completeSignupWithRole(signupRole, authUser);
       if (result.success) return;
 
       // If auto-creation failed, store pending user and notify
