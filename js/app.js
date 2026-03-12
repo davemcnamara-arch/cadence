@@ -595,10 +595,11 @@ class CadenceApp {
     this.initializing = true;
 
     try {
-    // Handle signup role from login.html role selector (post-OAuth redirect)
-    const signupRole = localStorage.getItem('cadence_signup_role');
+    // Clean up signup role key (used only during new-user creation in auth.js)
     localStorage.removeItem('cadence_signup_role');
-    if (signupRole === 'teacher' && user.role === 'teacher') {
+
+    // Gate all teacher logins: no active subscription → subscribe page
+    if (user.role === 'teacher') {
       const { data: sub } = await auth.rpcDirect('get_my_subscription', {});
       const status = sub?.status;
       if (status !== 'active' && status !== 'trialing') {
