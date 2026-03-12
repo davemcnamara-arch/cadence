@@ -2120,6 +2120,11 @@ class CadenceApp {
     const instrumentName = instrument?.name || '';
     const instrumentIcon = instrument?.icon || '';
 
+    // Chord link details (instrument-specific)
+    const chordsUrlField = this.getChordsUrlField(instrumentName);
+    const chordsLabel = this.getChordsLabelForInstrument(instrumentName);
+    const chordsUrl = song[chordsUrlField] || '';
+
     // Check user role - show "Start Learning" button for students or in preview mode
     const user = auth.getCurrentUser();
     const isStudent = user.role === 'student' || this.previewMode.active;
@@ -2213,6 +2218,18 @@ class CadenceApp {
           ` : `
             <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
           `}
+          <div class="chords-link-container">
+            ${chordsUrl ? `
+              <div class="resource-link-group">
+                <a href="${chordsUrl}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">${chordsLabel}</a>
+                ${!isStudent ? `<button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', '${chordsUrlField}', '${chordsUrl.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit ${chordsLabel.toLowerCase()} link">✎</button>` : ''}
+              </div>
+            ` : this.getMyPendingLink(song.id, chordsUrlField) ? `
+              <span class="btn btn-secondary btn-pending" onclick="event.stopPropagation()" title="Your ${chordsLabel} link is awaiting teacher approval" style="opacity: 0.7; cursor: default; font-style: italic;">⏳ ${chordsLabel} Pending</span>
+            ` : `
+              <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', '${chordsUrlField}', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add ${chordsLabel.toLowerCase()} link">+ ${chordsLabel}</button>
+            `}
+          </div>
           <button class="btn btn-secondary btn-resources ${song.resource_count > 0 ? 'has-resources' : ''}" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}', '${instrument?.id || ''}')" title="View learning resources">
             Learning Resources${song.resource_count > 0 ? ` <span class="resource-count">${song.resource_count}</span>` : ''}
           </button>
@@ -2278,6 +2295,7 @@ class CadenceApp {
       const escapedInstName = instName.replace(/'/g, "\\'");
       const chordsRating = this.formatResourceRating(song.resource_ratings?.chords);
 
+      const isStudentView = auth.getCurrentUser()?.role === 'student' || this.previewMode.active;
       const container = card.querySelector('.chords-link-container');
       if (container) {
         if (url) {
@@ -2286,7 +2304,7 @@ class CadenceApp {
             <div class="resource-link-group">
               <a href="${url}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">${label}</a>
               ${chordsRating}
-              <button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', '${urlField}', '${escapedUrl}', '${escapedTitle}', '${escapedArtist}', '${escapedInstName}')" title="Edit ${label.toLowerCase()} link">✎</button>
+              ${!isStudentView ? `<button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', '${urlField}', '${escapedUrl}', '${escapedTitle}', '${escapedArtist}', '${escapedInstName}')" title="Edit ${label.toLowerCase()} link">✎</button>` : ''}
             </div>`;
         } else {
           container.innerHTML = `
@@ -6925,8 +6943,22 @@ class CadenceApp {
             </div>
             <div class="student-song-header-right">
               ${item.youtube_url
-                ? `<a href="${this.escapeHtml(item.youtube_url)}" target="_blank" class="song-resource-link song-resource-link--youtube">▶ YouTube</a>`
+                ? `<span style="display:inline-flex;align-items:center;gap:4px;"><a href="${this.escapeHtml(item.youtube_url)}" target="_blank" class="song-resource-link song-resource-link--youtube">▶ YouTube</a><button class="btn-icon-small" onclick="app.editSongResource('${item.song_id}', 'youtube_url', '${(item.youtube_url || '').replace(/'/g, "\\'")}', '${escapedTitle}', '${escapedArtist}', '${escapedFirstInstrName}')" title="Edit YouTube link">✎</button></span>`
                 : `<button class="btn btn-secondary btn-add" onclick="app.editSongResource('${item.song_id}', 'youtube_url', '', '${escapedTitle}', '${escapedArtist}', '${escapedFirstInstrName}')" title="Add YouTube link">+ YouTube</button>`}
+              ${(() => {
+                const chordFields = [
+                  { field: 'chords_url', label: 'Chords' },
+                  { field: 'bass_tab_url', label: 'Bass Tab' },
+                  { field: 'drum_notation_url', label: 'Drum Notation' }
+                ];
+                return chordFields
+                  .filter(({ field }) => item[field])
+                  .map(({ field, label }) => {
+                    const escapedUrl = (item[field] || '').replace(/'/g, "\\'");
+                    return `<span style="display:inline-flex;align-items:center;gap:4px;"><a href="${this.escapeHtml(item[field])}" target="_blank" class="btn btn-secondary" style="font-size:0.75rem;">${label}</a><button class="btn-icon-small" onclick="app.editSongResource('${item.song_id}', '${field}', '${escapedUrl}', '${escapedTitle}', '${escapedArtist}', '${escapedFirstInstrName}')" title="Edit ${label.toLowerCase()} link">✎</button></span>`;
+                  })
+                  .join('');
+              })()}
               <button class="btn btn-secondary btn-resources" onclick="app.openSongFromStudentDetail('${item.song_id}', '${firstInstrumentId}')">Learning Resources</button>
               <div class="student-song-count">${totalStudents} student${totalStudents !== 1 ? 's' : ''}</div>
             </div>
