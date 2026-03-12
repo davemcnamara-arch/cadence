@@ -10,67 +10,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    .form-group {
-      margin-bottom: 1rem;
-    }
-
-    .form-group label {
-      display: block;
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: var(--text-primary);
-      margin-bottom: 0.375rem;
-    }
-
-    .form-group input {
-      width: 100%;
-      padding: 0.625rem 0.75rem;
-      border: 1px solid var(--border-color);
-      border-radius: var(--border-radius);
-      font-size: 0.875rem;
-      font-family: inherit;
-      transition: var(--transition);
-      background: var(--bg-primary);
-      color: var(--text-primary);
-    }
-
-    .form-group input:focus {
-      outline: none;
-      border-color: var(--primary-color);
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-    }
-
     .btn-full {
       width: 100%;
       padding: 0.75rem;
       font-size: 0.9375rem;
-    }
-
-    .error-banner {
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      color: #b91c1c;
-      border-radius: var(--border-radius);
-      padding: 0.75rem 1rem;
-      font-size: 0.875rem;
-      margin-bottom: 1rem;
-    }
-
-    .signup-prompt {
-      text-align: center;
-      margin-top: 1.25rem;
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-    }
-
-    .signup-prompt a {
-      color: var(--primary-color);
-      text-decoration: none;
-      font-weight: 500;
-    }
-
-    .signup-prompt a:hover {
-      text-decoration: underline;
     }
 
     /* Role selector */
@@ -125,21 +68,6 @@
       line-height: 1.3;
     }
 
-    .divider {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      margin: 1rem 0;
-      color: var(--text-secondary);
-      font-size: 0.8125rem;
-    }
-
-    .divider::before,
-    .divider::after {
-      content: '';
-      flex: 1;
-      border-top: 1px solid var(--border-color);
-    }
   </style>
 </head>
 <body>
@@ -179,43 +107,7 @@
           Sign in with Google
         </button>
 
-        <div class="divider">or sign in with email</div>
-
-        <div id="error-banner" class="error-banner hidden"></div>
-
-        <form id="login-form">
-          <div class="form-group">
-            <label for="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              placeholder="you@example.com"
-              required
-              autocomplete="email"
-            >
-          </div>
-          <div class="form-group">
-            <label for="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              placeholder="••••••••"
-              required
-              autocomplete="current-password"
-            >
-          </div>
-          <button type="submit" id="submit-btn" class="btn btn-primary btn-full">
-            Sign In
-          </button>
-        </form>
-
-        <div class="signup-prompt">
-          No account yet? <a href="subscribe.html">Subscribe to get started</a>
-        </div>
-
-        <p class="privacy-link" style="text-align:center;">
+        <p class="privacy-link" style="text-align:center; margin-top: 1.25rem;">
           <a href="privacy.html" target="_blank">Privacy Policy</a>
         </p>
       </div>
@@ -223,7 +115,7 @@
   </div>
 
   <script type="module">
-    import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './js/config.js';
+    import { supabase } from './js/config.js';
 
     // If already signed in, skip to the app
     (async () => {
@@ -257,83 +149,6 @@
       });
     });
 
-    // Email / password form (existing teacher sign-in)
-    const form = document.getElementById('login-form');
-    const submitBtn = document.getElementById('submit-btn');
-    const errorBanner = document.getElementById('error-banner');
-
-    function showError(msg) {
-      errorBanner.textContent = msg;
-      errorBanner.classList.remove('hidden');
-    }
-
-    function clearError() {
-      errorBanner.classList.add('hidden');
-      errorBanner.textContent = '';
-    }
-
-    function setLoading(loading) {
-      submitBtn.disabled = loading;
-      submitBtn.textContent = loading ? 'Signing in\u2026' : 'Sign In';
-    }
-
-    async function getSubscription(accessToken) {
-      try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_my_subscription`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${accessToken}`
-          },
-          body: JSON.stringify({})
-        });
-        if (!res.ok) return null;
-        const text = await res.text();
-        return text ? JSON.parse(text) : null;
-      } catch {
-        return null;
-      }
-    }
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      clearError();
-      setLoading(true);
-
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-      if (error) {
-        setLoading(false);
-        const msg = error.message || '';
-        if (/invalid login credentials|invalid.*credentials|wrong.*password/i.test(msg)) {
-          showError('Incorrect email or password. Please try again.');
-        } else if (/email not confirmed/i.test(msg)) {
-          showError('Please confirm your email address before signing in.');
-        } else {
-          showError(msg || 'Sign in failed. Please try again.');
-        }
-        return;
-      }
-
-      const accessToken = data.session?.access_token;
-      const subscription = accessToken ? await getSubscription(accessToken) : null;
-      const status = subscription?.status;
-
-      if (status === 'active' || status === 'trialing') {
-        window.location.href = 'index.html';
-      } else if (status === 'expired' || status === 'cancelled') {
-        // Has a subscription but it lapsed — show the renewal banner
-        window.location.href = 'subscribe.html?expired=1';
-      } else {
-        // No subscription record at all — send to subscribe page without the
-        // misleading "your subscription has expired" banner
-        window.location.href = 'subscribe.html';
-      }
-    });
   </script>
 </body>
 </html>
