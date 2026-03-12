@@ -149,6 +149,11 @@
       </div>
     </header>
 
+    <!-- Plan limits banner (teachers only, hidden until subscription loads) -->
+    <div id="plan-limits-banner" class="plan-limits-banner hidden">
+      <span class="plan-banner-text"></span>
+    </div>
+
     <!-- Main Content -->
     <main class="app-main">
       <!-- Instrument Selection (shown first time) -->
@@ -493,6 +498,8 @@
 
           <!-- Teachers tab -->
           <div id="school-teachers-tab" class="school-tab-pane active">
+            <!-- Invite section (school plan only, populated by JS) -->
+            <div id="school-invite-section" class="hidden" style="margin-bottom: 1.5rem;"></div>
             <div id="school-teachers-list" class="school-teachers-grid">
               <!-- Populated by JS -->
             </div>
@@ -976,6 +983,10 @@
           Add student email addresses below. When students sign up or log in with these emails,
           they will be automatically enrolled in this class.
         </p>
+
+        <!-- Plan limit notice (shown for Individual plan) -->
+        <div id="bulk-add-plan-notice" class="hidden" style="margin-bottom: 1rem;"></div>
+
         <div class="form-group">
           <label for="bulk-emails">Student Email Addresses</label>
           <textarea id="bulk-emails" rows="8" placeholder="Enter email addresses, one per line or separated by commas:&#10;&#10;student1@school.edu&#10;student2@school.edu&#10;student3@school.edu" style="width: 100%; font-family: inherit; resize: vertical;"></textarea>

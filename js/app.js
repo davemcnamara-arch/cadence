@@ -36,6 +36,9 @@ class CadenceApp {
     this.schoolDashboardData = null;
     this.schoolStudents = null;
 
+    // Subscription / plan info (teachers only)
+    this.subscription = null;
+
     // Trending songs cache
     this._trendingSongs = null;
     this._trendingSongsCacheKey = undefined; // undefined = never loaded
@@ -695,6 +698,82 @@ class CadenceApp {
     // Initialize school context first so loadClasses can filter by the default school
     await this.initHeaderSchoolContext();
     await this.loadClasses();
+    // Load subscription (non-blocking — banner renders when ready)
+    this.loadSubscription();
+  }
+
+  // ============================================
+  // SUBSCRIPTION / PLAN MANAGEMENT
+  // ============================================
+
+  async loadSubscription() {
+    try {
+      const result = await this.callRpcDirect('get_subscription_with_count', {});
+      this.subscription = result.data || null;
+    } catch (e) {
+      console.warn('Could not load subscription info:', e.message);
+      this.subscription = null;
+    }
+    this.renderPlanBanner();
+    this.applyPlanRestrictions();
+  }
+
+  // Total active students across all loaded classes (client-side sum)
+  getTotalStudentCount() {
+    if (!this.classes || !this.classes.length) return 0;
+    return this.classes.reduce((sum, cls) => sum + (cls.student_count || 0), 0);
+  }
+
+  isIndividualPlan() {
+    return this.subscription?.plan_type === 'individual';
+  }
+
+  isSchoolPlan() {
+    return this.subscription?.plan_type === 'school';
+  }
+
+  hasReachedStudentLimit() {
+    if (!this.isIndividualPlan()) return false;
+    const count = this.subscription?.student_count ?? this.getTotalStudentCount();
+    return count >= 15;
+  }
+
+  renderPlanBanner() {
+    const banner = document.getElementById('plan-limits-banner');
+    if (!banner) return;
+
+    if (!this.subscription) {
+      banner.classList.add('hidden');
+      return;
+    }
+
+    const { plan_type, student_count, student_limit, teacher_limit } = this.subscription;
+
+    let text = '';
+    if (plan_type === 'individual') {
+      const used = student_count ?? this.getTotalStudentCount();
+      text = `Individual plan · 1 teacher · ${used} / 15 students`;
+    } else if (plan_type === 'school') {
+      text = 'School plan · unlimited teachers and students';
+    } else {
+      banner.classList.add('hidden');
+      return;
+    }
+
+    banner.querySelector('.plan-banner-text').textContent = text;
+    banner.classList.remove('hidden');
+  }
+
+  // Hide/show UI elements that are unavailable on certain plans
+  applyPlanRestrictions() {
+    const schoolNavTab = document.querySelector('.nav-tab[data-view="school"]');
+    if (!schoolNavTab) return;
+
+    if (this.isIndividualPlan()) {
+      // Individual plan: 1 teacher only — no school/multi-teacher area
+      schoolNavTab.classList.add('hidden');
+    }
+    // School plan: tab is already visible (added when teacher role is detected)
   }
 
   async initHeaderSchoolContext() {
@@ -5081,6 +5160,23 @@ class CadenceApp {
     // Clear previous input
     document.getElementById('bulk-emails').value = '';
 
+    // Render plan-limit notice inside the modal
+    const noticeEl = document.getElementById('bulk-add-plan-notice');
+    if (noticeEl) {
+      if (this.isIndividualPlan()) {
+        const used = this.subscription?.student_count ?? this.getTotalStudentCount();
+        const remaining = Math.max(0, 15 - used);
+        if (remaining === 0) {
+          noticeEl.innerHTML = `<div class="plan-limit-warning">You've reached the 15-student limit for an Individual subscription. Upgrade to a School subscription for unlimited students.</div>`;
+        } else {
+          noticeEl.innerHTML = `<div class="plan-limit-info">Individual plan: <strong>${used} / 15</strong> students used (${remaining} remaining).</div>`;
+        }
+        noticeEl.classList.remove('hidden');
+      } else {
+        noticeEl.classList.add('hidden');
+      }
+    }
+
     // Load existing pending enrollments
     this.loadPendingEnrollments();
 
@@ -5158,6 +5254,27 @@ class CadenceApp {
       return;
     }
 
+    // Enforce student limit for Individual plan
+    if (this.isIndividualPlan()) {
+      const used = this.subscription?.student_count ?? this.getTotalStudentCount();
+      if (used >= 15) {
+        this.showToast(
+          "You've reached the 15-student limit for an Individual subscription. " +
+          'Upgrade to a School subscription for unlimited students.',
+          'error'
+        );
+        return;
+      }
+      if (used + emails.length > 15) {
+        this.showToast(
+          `Adding ${emails.length} students would exceed your 15-student limit ` +
+          `(${used} used). Remove some emails or upgrade to a School subscription.`,
+          'error'
+        );
+        return;
+      }
+    }
+
     try {
       // Use direct RPC call to bypass stale Supabase client connections
       const { data } = await this.callRpcDirect('add_pending_enrollments', {
@@ -5177,6 +5294,9 @@ class CadenceApp {
 
         // Reload classes to update pending count in class cards
         await this.loadClasses();
+
+        // Refresh subscription count so the plan banner stays accurate
+        this.loadSubscription();
 
         // Show success message
         this.showToast(data.message, 'success');
@@ -10154,6 +10274,38 @@ class CadenceApp {
     this.renderSchoolStats(data.stats);
     this.renderSchoolInstruments(data.stats?.instrument_counts);
     this.renderSchoolTeachers(data.teachers || []);
+    this.renderSchoolInviteSection();
+  }
+
+  // Render the "Invite a Teacher" section in the school view (school plan only)
+  renderSchoolInviteSection() {
+    const container = document.getElementById('school-invite-section');
+    if (!container || !this.currentSchool) return;
+
+    const joinCode = this.currentSchool.join_code;
+    container.innerHTML = `
+      <div class="school-invite-panel">
+        <h3 class="school-section-title">Invite Teachers</h3>
+        <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:0.75rem;">
+          Share the school join code with other teachers. When they open the
+          <strong>School</strong> area and enter this code they will be added to
+          your school automatically.
+        </p>
+        <div class="school-join-code-row">
+          <span class="class-code-display">${this.escapeHtml(joinCode)}</span>
+          <button class="btn btn-secondary btn-sm" onclick="app.copySchoolJoinCode('${this.escapeHtml(joinCode)}')">Copy Code</button>
+        </div>
+      </div>
+    `;
+    container.classList.remove('hidden');
+  }
+
+  copySchoolJoinCode(code) {
+    navigator.clipboard.writeText(code).then(() => {
+      this.showToast('School join code copied to clipboard!', 'success');
+    }).catch(() => {
+      this.showToast(`School join code: ${code}`, 'info');
+    });
   }
 
   renderSchoolStats(stats, prefix = 'school') {
