@@ -180,6 +180,13 @@
       });
     });
 
+    // Skip role selection for returning users (e.g. from subscribe.html "Already subscribed?" link)
+    if (new URLSearchParams(window.location.search).get('returning') === '1') {
+      document.getElementById('signin-context').innerHTML = 'Welcome back &mdash; sign in to continue.';
+      document.getElementById('step-role').classList.add('hidden');
+      document.getElementById('step-oauth').classList.remove('hidden');
+    }
+
     // Step 1 → Step 2
     document.getElementById('continue-btn').addEventListener('click', () => {
       const label = selectedRole === 'teacher' ? 'Signing in as a <strong>teacher</strong>' : 'Signing in as a <strong>student</strong>';
