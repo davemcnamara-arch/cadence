@@ -204,6 +204,46 @@
     .footer-links a:hover {
       text-decoration: underline;
     }
+
+    .student-path {
+      text-align: center;
+      margin-top: 1rem;
+    }
+
+    .student-path a {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.9);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .student-path a:hover {
+      color: white;
+      text-decoration: underline;
+    }
+
+    .footer-contact {
+      margin-top: 0.625rem;
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.65);
+    }
+
+    .footer-contact a {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .footer-contact a:hover {
+      color: white;
+      text-decoration: underline;
+    }
+
+    #subscribe-btn:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -255,22 +295,70 @@
         </div>
       </div>
 
+      <!-- PATH C: Students don't need a paid account -->
+      <div class="student-path">
+        <a href="index.html">🎓 I'm a student — join a class</a>
+      </div>
+
       <div class="footer-links">
         <a href="privacy.html" target="_blank">Privacy Policy</a>
+        <div class="footer-contact">Something wrong? Email <a href="mailto:cadencemusicapp@gmail.com">cadencemusicapp@gmail.com</a></div>
       </div>
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    import { supabase } from './js/config.js';
+
     // Show expired banner if redirected from login with lapsed subscription
     const params = new URLSearchParams(window.location.search);
     if (params.get('expired') === '1') {
       document.getElementById('expired-banner').classList.remove('hidden');
     }
 
-    // Placeholder: wire up subscribe button when payment flow is ready (Phase 4)
-    document.getElementById('subscribe-btn').addEventListener('click', () => {
-      alert('Subscription checkout coming soon. Please contact us to get set up.');
+    // Track which plan is selected
+    let selectedPlan = 'individual';
+
+    const planCards = document.querySelectorAll('.plan-card');
+    planCards.forEach(card => {
+      card.addEventListener('click', () => {
+        planCards.forEach(c => c.classList.remove('featured'));
+        card.classList.add('featured');
+        // Determine plan from the price text
+        const priceText = card.querySelector('.plan-price').textContent;
+        selectedPlan = priceText.includes('199') ? 'school' : 'individual';
+      });
+    });
+
+    document.getElementById('subscribe-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('subscribe-btn');
+      btn.disabled = true;
+      btn.textContent = 'Redirecting to checkout…';
+
+      try {
+        // Include supabase_uid if the user is already signed in
+        const { data: { session } } = await supabase.auth.getSession();
+        const supabase_uid = session?.user?.id || null;
+
+        const res = await fetch('/api/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan: selectedPlan, supabase_uid }),
+        });
+
+        if (!res.ok) {
+          const { error } = await res.json();
+          throw new Error(error || 'Server error');
+        }
+
+        const { url } = await res.json();
+        window.location.href = url;
+      } catch (err) {
+        console.error(err);
+        alert('Could not start checkout. Please try again or email cadencemusicapp@gmail.com.');
+        btn.disabled = false;
+        btn.textContent = 'Subscribe Now';
+      }
     });
   </script>
 </body>
