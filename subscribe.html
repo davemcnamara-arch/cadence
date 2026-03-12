@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subscribe - Cadence</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .subscribe-screen {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 2rem 1rem;
+    }
+
+    .subscribe-container {
+      width: 100%;
+      max-width: 560px;
+    }
+
+    .logo {
+      text-align: center;
+      color: white;
+      margin-bottom: 1.5rem;
+    }
+
+    .logo h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .tagline {
+      font-size: 1.05rem;
+      opacity: 0.9;
+    }
+
+    /* Expired / lapsed subscription banner */
+    .expired-banner {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #92400e;
+      border-radius: var(--border-radius);
+      padding: 0.875rem 1rem;
+      font-size: 0.9rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .expired-banner-icon {
+      font-size: 1.1rem;
+      flex-shrink: 0;
+      margin-top: 0.05rem;
+    }
+
+    .subscribe-card {
+      background: var(--bg-primary);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow-lg);
+      padding: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .subscribe-card h2 {
+      font-size: 1.375rem;
+      margin-bottom: 0.375rem;
+      color: var(--text-primary);
+    }
+
+    .subscribe-card > p {
+      color: var(--text-secondary);
+      margin-bottom: 1.5rem;
+      font-size: 0.9375rem;
+    }
+
+    .plan-options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .plan-card {
+      border: 2px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: 1.25rem;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .plan-card:hover {
+      border-color: var(--primary-color);
+      background: #f5f3ff;
+    }
+
+    .plan-card.featured {
+      border-color: var(--primary-color);
+      background: #f5f3ff;
+    }
+
+    .plan-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.25rem;
+    }
+
+    .plan-name {
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--text-primary);
+    }
+
+    .plan-badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: var(--primary-color);
+      color: white;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .plan-price {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary-color);
+      margin-bottom: 0.25rem;
+    }
+
+    .plan-price span {
+      font-size: 0.875rem;
+      font-weight: 400;
+      color: var(--text-secondary);
+    }
+
+    .plan-description {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .btn-full {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 0.9375rem;
+      justify-content: center;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 1.25rem 0;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-color);
+    }
+
+    .already-subscribed {
+      text-align: center;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .already-subscribed a {
+      color: var(--primary-color);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .already-subscribed a:hover {
+      text-decoration: underline;
+    }
+
+    .footer-links {
+      text-align: center;
+      margin-top: 1.25rem;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.75);
+    }
+
+    .footer-links a {
+      color: rgba(255, 255, 255, 0.85);
+      text-decoration: none;
+    }
+
+    .footer-links a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="subscribe-screen">
+    <div class="subscribe-container">
+      <div class="logo">
+        <h1>🎵 Cadence</h1>
+        <p class="tagline">Track Your Musical Journey</p>
+      </div>
+
+      <!-- Shown when redirected from login with a lapsed/cancelled subscription -->
+      <div id="expired-banner" class="expired-banner hidden">
+        <span class="expired-banner-icon">⚠️</span>
+        <span>Your subscription has expired &mdash; renew below to continue.</span>
+      </div>
+
+      <div class="subscribe-card">
+        <h2>Get Started with Cadence</h2>
+        <p>Choose a plan to track student progress, manage classes, and more.</p>
+
+        <div class="plan-options">
+          <div class="plan-card featured">
+            <div class="plan-card-header">
+              <span class="plan-name">Individual Teacher</span>
+              <span class="plan-badge">Popular</span>
+            </div>
+            <div class="plan-price">$9 <span>/ month</span></div>
+            <div class="plan-description">One teacher, unlimited students and classes.</div>
+          </div>
+
+          <div class="plan-card">
+            <div class="plan-card-header">
+              <span class="plan-name">School License</span>
+            </div>
+            <div class="plan-price">$49 <span>/ month</span></div>
+            <div class="plan-description">All teachers at your school, centrally managed.</div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-full" id="subscribe-btn">
+          Subscribe Now
+        </button>
+
+        <div class="divider">or</div>
+
+        <div class="already-subscribed">
+          Already a teacher or subscriber?
+          <a href="login.html">Sign in to your account</a>
+        </div>
+      </div>
+
+      <div class="footer-links">
+        <a href="privacy.html" target="_blank">Privacy Policy</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Show expired banner if redirected from login with lapsed subscription
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('expired') === '1') {
+      document.getElementById('expired-banner').classList.remove('hidden');
+    }
+
+    // Placeholder: wire up subscribe button when payment flow is ready (Phase 4)
+    document.getElementById('subscribe-btn').addEventListener('click', () => {
+      alert('Subscription checkout coming soon. Please contact us to get set up.');
+    });
+  </script>
+</body>
+</html>
