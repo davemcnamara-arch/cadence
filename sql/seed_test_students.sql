@@ -14,13 +14,18 @@
 
 DO $$
 DECLARE
-  v_class_id  UUID    := 'YOUR_CLASS_ID_HERE';   -- ← replace this
-  v_count     INT     := 14;                      -- students to add
+  v_class_id_text TEXT := 'YOUR_CLASS_ID_HERE';   -- ← replace this with your class UUID
+  v_count     INT  := 14;                          -- students to add
+  v_class_id  UUID;
   v_user_id   UUID;
   v_email     TEXT;
   v_name      TEXT;
   i           INT;
 BEGIN
+  IF v_class_id_text = 'YOUR_CLASS_ID_HERE' THEN
+    RAISE EXCEPTION 'Replace YOUR_CLASS_ID_HERE with your actual class UUID. Run: SELECT id, name FROM classes WHERE archived = false;';
+  END IF;
+  v_class_id := v_class_id_text::UUID;
   FOR i IN 1 .. v_count LOOP
     v_user_id := gen_random_uuid();
     v_email   := format('test.student%s+cadence@example.com', i);
