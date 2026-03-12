@@ -4209,3 +4209,63 @@ body {
   font-size: 0.875rem;
   color: var(--text-secondary);
 }
+
+/* =====================================================
+ * Plan Limits Banner
+ * ===================================================== */
+
+.plan-limits-banner {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.4rem 1.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.plan-limits-banner::before {
+  content: '📋';
+  font-size: 0.9rem;
+}
+
+/* =====================================================
+ * Bulk-add modal: plan limit notices
+ * ===================================================== */
+
+.plan-limit-warning {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  border-radius: var(--border-radius);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+}
+
+.plan-limit-info {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  border-radius: var(--border-radius);
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+}
+
+/* =====================================================
+ * School Invite Panel
+ * ===================================================== */
+
+.school-invite-panel {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1rem 1.25rem;
+}
+
+.school-join-code-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
