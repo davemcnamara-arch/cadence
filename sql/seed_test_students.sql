@@ -31,31 +31,31 @@ BEGIN
     v_email   := format('test.student%s+cadence@example.com', i);
     v_name    := format('Test Student %s', i);
 
-    -- 1. Create the auth identity (service_role only)
-    INSERT INTO auth.users (
-      id,
-      email,
-      encrypted_password,
-      email_confirmed_at,
-      created_at,
-      updated_at,
-      aud,
-      role
-    )
-    VALUES (
-      v_user_id,
-      v_email,
-      -- bcrypt hash of 'TestPassword1!' — never used for real login
-      crypt('TestPassword1!', gen_salt('bf')),
-      NOW(),
-      NOW(),
-      NOW(),
-      'authenticated',
-      'authenticated'
-    )
-    ON CONFLICT (email) DO NOTHING;
+    -- 1. Create the auth identity (service_role only), skip if email already exists
+    IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = v_email) THEN
+      INSERT INTO auth.users (
+        id,
+        email,
+        encrypted_password,
+        email_confirmed_at,
+        created_at,
+        updated_at,
+        aud,
+        role
+      )
+      VALUES (
+        v_user_id,
+        v_email,
+        crypt('TestPassword1!', gen_salt('bf')),
+        NOW(),
+        NOW(),
+        NOW(),
+        'authenticated',
+        'authenticated'
+      );
+    END IF;
 
-    -- Retrieve the id in case the row already existed
+    -- Retrieve the id (use existing row if it was already there)
     SELECT id INTO v_user_id
     FROM auth.users
     WHERE email = v_email;
