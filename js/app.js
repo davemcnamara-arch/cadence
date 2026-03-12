@@ -595,6 +595,18 @@ class CadenceApp {
     this.initializing = true;
 
     try {
+    // Handle signup role from login.html role selector (post-OAuth redirect)
+    const signupRole = localStorage.getItem('cadence_signup_role');
+    localStorage.removeItem('cadence_signup_role');
+    if (signupRole === 'teacher' && user.role === 'teacher') {
+      const { data: sub } = await auth.rpcDirect('get_my_subscription', {});
+      const status = sub?.status;
+      if (status !== 'active' && status !== 'trialing') {
+        window.location.href = 'subscribe.html';
+        return;
+      }
+    }
+
     // Load user data
     await this.loadInstruments();
     await this.loadStudentProgress();

@@ -72,6 +72,74 @@
     .signup-prompt a:hover {
       text-decoration: underline;
     }
+
+    /* Role selector */
+    .role-selector {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .role-card {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem 0.75rem;
+      border: 2px solid var(--border-color);
+      border-radius: var(--border-radius);
+      background: var(--bg-primary);
+      cursor: pointer;
+      transition: var(--transition);
+      font-family: inherit;
+      text-align: center;
+    }
+
+    .role-card:hover {
+      border-color: var(--primary-color);
+      background: rgba(99, 102, 241, 0.04);
+    }
+
+    .role-card.selected {
+      border-color: var(--primary-color);
+      background: rgba(99, 102, 241, 0.08);
+    }
+
+    .role-card .role-icon {
+      font-size: 1.75rem;
+      line-height: 1;
+    }
+
+    .role-card strong {
+      display: block;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .role-card span {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      line-height: 1.3;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 1rem 0;
+      color: var(--text-secondary);
+      font-size: 0.8125rem;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      border-top: 1px solid var(--border-color);
+    }
   </style>
 </head>
 <body>
@@ -82,8 +150,36 @@
         <p class="tagline">Track Your Musical Journey</p>
       </div>
       <div class="login-card">
-        <h2>Teacher Sign In</h2>
-        <p>Sign in to your teacher or subscriber account</p>
+        <h2>Welcome</h2>
+        <p>How will you be using Cadence?</p>
+
+        <!-- Role selector -->
+        <div class="role-selector" id="role-selector">
+          <button class="role-card selected" data-role="student" id="role-student">
+            <div class="role-icon">🎓</div>
+            <strong>I'm a student</strong>
+            <span>Learn and track your musical progress</span>
+          </button>
+          <button class="role-card" data-role="teacher" id="role-teacher">
+            <div class="role-icon">👨‍🏫</div>
+            <strong>I'm a teacher</strong>
+            <span>Create classes and guide students</span>
+          </button>
+        </div>
+
+        <!-- Google OAuth button -->
+        <button id="google-oauth-btn" class="btn btn-primary btn-google btn-full">
+          <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            <path fill="none" d="M0 0h48v48H0z"/>
+          </svg>
+          Sign in with Google
+        </button>
+
+        <div class="divider">or sign in with email</div>
 
         <div id="error-banner" class="error-banner hidden"></div>
 
@@ -129,6 +225,39 @@
   <script type="module">
     import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './js/config.js';
 
+    // If already signed in, skip to the app
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        window.location.href = 'index.html';
+      }
+    })();
+
+    // Role selection state (default: student)
+    let selectedRole = 'student';
+
+    const roleCards = document.querySelectorAll('.role-card');
+    roleCards.forEach(card => {
+      card.addEventListener('click', () => {
+        roleCards.forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedRole = card.dataset.role;
+      });
+    });
+
+    // Google OAuth: store role then initiate OAuth flow
+    document.getElementById('google-oauth-btn').addEventListener('click', async () => {
+      localStorage.setItem('cadence_signup_role', selectedRole);
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+          queryParams: { prompt: 'select_account' }
+        }
+      });
+    });
+
+    // Email / password form (existing teacher sign-in)
     const form = document.getElementById('login-form');
     const submitBtn = document.getElementById('submit-btn');
     const errorBanner = document.getElementById('error-banner');
