@@ -82,43 +82,48 @@ END $$;
 -- ============================================================
 -- SECTION B — Verify the pending row survived login
 -- Run this AFTER the student has signed in.
+-- Replace both placeholders, then run the query.
+-- Expected: pending_in_table = 1, enrolled_in_class = 0
 -- ============================================================
-DO $$
-DECLARE
-  v_class_id      UUID := 'YOUR_CLASS_ID_HERE';
-  v_student_email TEXT := 'STUDENT_EMAIL_HERE';
-  v_pending_count INT;
-  v_member_count  INT;
-BEGIN
-  -- 1. Row should still be in pending_enrollments
-  SELECT COUNT(*)
-  INTO   v_pending_count
-  FROM   pending_enrollments
-  WHERE  class_id = v_class_id
-    AND  LOWER(email) = LOWER(v_student_email);
+SELECT
+  (SELECT COUNT(*) FROM pending_enrollments
+   WHERE class_id   = 'YOUR_CLASS_ID_HERE'
+     AND LOWER(email) = LOWER('STUDENT_EMAIL_HERE')
+  )                                                    AS pending_in_table,
 
-  -- 2. Student should NOT have been enrolled in class_members
-  SELECT COUNT(*)
-  INTO   v_member_count
-  FROM   class_members cm
-  JOIN   auth.users    u  ON u.id = cm.user_id
-  WHERE  cm.class_id  = v_class_id
-    AND  LOWER(u.email) = LOWER(v_student_email);
+  (SELECT COUNT(*) FROM class_members cm
+   JOIN auth.users u ON u.id = cm.user_id
+   WHERE cm.class_id    = 'YOUR_CLASS_ID_HERE'
+     AND LOWER(u.email) = LOWER('STUDENT_EMAIL_HERE')
+  )                                                    AS enrolled_in_class,
 
-  IF v_pending_count = 1 AND v_member_count = 0 THEN
-    RAISE NOTICE 'PASS — pending row is still present and student is NOT enrolled. '
-                 'Bug 3 fix is working correctly.';
-  ELSIF v_pending_count = 0 AND v_member_count = 0 THEN
-    RAISE NOTICE 'FAIL — pending row was deleted but student is NOT enrolled. '
-                 'The row was discarded without enrolling the student — Bug 3 is NOT fixed.';
-  ELSIF v_member_count > 0 THEN
-    RAISE NOTICE 'FAIL — student WAS enrolled despite the class being at 15 students. '
-                 'The tier limit is not being enforced during pending enrollment processing.';
-  ELSE
-    RAISE NOTICE 'UNEXPECTED STATE — pending_count=%, member_count=%',
-                 v_pending_count, v_member_count;
-  END IF;
-END $$;
+  CASE
+    WHEN (SELECT COUNT(*) FROM pending_enrollments
+          WHERE class_id = 'YOUR_CLASS_ID_HERE'
+            AND LOWER(email) = LOWER('STUDENT_EMAIL_HERE')) = 1
+     AND (SELECT COUNT(*) FROM class_members cm
+          JOIN auth.users u ON u.id = cm.user_id
+          WHERE cm.class_id = 'YOUR_CLASS_ID_HERE'
+            AND LOWER(u.email) = LOWER('STUDENT_EMAIL_HERE')) = 0
+    THEN 'PASS — row retained, student not enrolled (Bug 3 fixed)'
+
+    WHEN (SELECT COUNT(*) FROM pending_enrollments
+          WHERE class_id = 'YOUR_CLASS_ID_HERE'
+            AND LOWER(email) = LOWER('STUDENT_EMAIL_HERE')) = 0
+     AND (SELECT COUNT(*) FROM class_members cm
+          JOIN auth.users u ON u.id = cm.user_id
+          WHERE cm.class_id = 'YOUR_CLASS_ID_HERE'
+            AND LOWER(u.email) = LOWER('STUDENT_EMAIL_HERE')) = 0
+    THEN 'FAIL — row was discarded without enrolling (Bug 3 not fixed)'
+
+    WHEN (SELECT COUNT(*) FROM class_members cm
+          JOIN auth.users u ON u.id = cm.user_id
+          WHERE cm.class_id = 'YOUR_CLASS_ID_HERE'
+            AND LOWER(u.email) = LOWER('STUDENT_EMAIL_HERE')) > 0
+    THEN 'FAIL — student was enrolled despite 15-student cap'
+
+    ELSE 'UNEXPECTED STATE'
+  END                                                  AS result;
 
 
 -- ============================================================
