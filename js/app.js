@@ -780,11 +780,19 @@ class CadenceApp {
   // Hide/show UI elements that are unavailable on certain plans
   applyPlanRestrictions() {
     const schoolNavTab = document.querySelector('.nav-tab[data-view="school"]');
-    if (!schoolNavTab) return;
 
     if (this.isIndividualPlan()) {
       // Individual plan: 1 teacher only — no school/multi-teacher area
-      schoolNavTab.classList.add('hidden');
+      if (schoolNavTab) schoolNavTab.classList.add('hidden');
+
+      // Hide the school name from the header — individual teachers have no school
+      const headerSchoolContext = document.getElementById('header-school-context');
+      if (headerSchoolContext) headerSchoolContext.classList.add('hidden');
+      this.currentSchool = null;
+
+      // Hide "Show all school classes" checkbox
+      const allSchoolLabel = document.getElementById('show-all-school-classes-label');
+      if (allSchoolLabel) allSchoolLabel.style.display = 'none';
     }
     // School plan: tab is already visible (added when teacher role is detected)
   }
