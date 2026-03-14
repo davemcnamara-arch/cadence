@@ -3157,6 +3157,17 @@ body {
     grid-template-columns: 1fr;
   }
 
+  .student-song-header {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .student-song-header-right {
+    flex-shrink: 1;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
   .form-actions {
     flex-direction: column;
   }
@@ -3555,7 +3566,6 @@ body {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  flex-wrap: wrap;
 }
 
 .student-song-header-right {
