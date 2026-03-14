@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subscribed! - Cadence</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .success-screen {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    .success-card {
+      background: var(--bg-primary);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow-lg);
+      padding: 2.5rem 2rem;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .success-icon {
+      font-size: 3.5rem;
+      margin-bottom: 1rem;
+      animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    }
+
+    @keyframes pop {
+      from { transform: scale(0.5); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    .success-card h1 {
+      font-size: 1.625rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .success-card p {
+      color: var(--text-secondary);
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      margin-bottom: 0;
+    }
+
+    .redirect-notice {
+      margin-top: 1.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+    }
+
+    .progress-bar-wrap {
+      height: 4px;
+      background: var(--border-color);
+      border-radius: 999px;
+      margin-top: 0.75rem;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: var(--primary-color);
+      border-radius: 999px;
+      width: 0%;
+      animation: fill 3s linear forwards;
+    }
+
+    @keyframes fill {
+      from { width: 0%; }
+      to   { width: 100%; }
+    }
+
+    .btn-go-now {
+      margin-top: 1.25rem;
+      display: inline-block;
+      padding: 0.625rem 1.5rem;
+      background: var(--primary-color);
+      color: white;
+      border-radius: var(--border-radius);
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-decoration: none;
+      transition: var(--transition);
+    }
+
+    .btn-go-now:hover {
+      background: var(--primary-hover);
+    }
+  </style>
+</head>
+<body>
+  <div class="success-screen">
+    <div class="success-card">
+      <div class="success-icon">🎉</div>
+      <h1>You're all set!</h1>
+      <p>Your subscription is active. Sign in with Google to start tracking student progress in Cadence.</p>
+
+      <div class="redirect-notice">
+        Taking you to the app in 3 seconds&hellip;
+        <div class="progress-bar-wrap">
+          <div class="progress-bar"></div>
+        </div>
+      </div>
+
+      <a href="index.html" class="btn-go-now">Go now</a>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/config.js';
+
+    // If the user is already signed in, the app will handle subscription state;
+    // just redirect after the progress bar finishes.
+    setTimeout(() => {
+      window.location.href = 'index.html';
+    }, 3000);
+  </script>
+</body>
+</html>
