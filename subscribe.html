@@ -254,19 +254,19 @@
         <p>Choose a plan to track student progress, manage classes, and more.</p>
 
         <div class="plan-options">
-          <div class="plan-card">
+          <div class="plan-card" data-plan="individual">
             <div class="plan-card-header">
               <span class="plan-name">Individual Teacher</span>
             </div>
-            <div class="plan-price">$49 <span>/ year</span></div>
+            <div class="plan-price">A$49 <span>/ year</span></div>
             <div class="plan-description">One teacher, up to 15 students.</div>
           </div>
 
-          <div class="plan-card">
+          <div class="plan-card" data-plan="school">
             <div class="plan-card-header">
               <span class="plan-name">School License</span>
             </div>
-            <div class="plan-price">$199 <span>/ year</span></div>
+            <div class="plan-price">A$199 <span>/ year</span></div>
             <div class="plan-description">Unlimited teachers and unlimited students, centrally managed for your whole school.</div>
           </div>
         </div>
@@ -312,8 +312,7 @@
     function selectCard(card) {
       planCards.forEach(c => c.classList.remove('selected'));
       card.classList.add('selected');
-      const priceText = card.querySelector('.plan-price').textContent;
-      selectedPlan = priceText.includes('199') ? 'school' : 'individual';
+      selectedPlan = card.dataset.plan;
     }
 
     planCards.forEach(card => {

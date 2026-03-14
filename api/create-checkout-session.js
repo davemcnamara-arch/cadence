@@ -2,11 +2,11 @@ import Stripe from 'stripe';
 
 const PRICES = {
   individual: {
-    unit_amount: 4900,   // $49.00
+    unit_amount: 4900,   // A$49.00
     nickname: 'Individual Teacher – Annual',
   },
   school: {
-    unit_amount: 19900,  // $199.00
+    unit_amount: 19900,  // A$199.00
     nickname: 'School License – Annual',
   },
 };
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     line_items: [
       {
         price_data: {
-          currency: 'usd',
+          currency: 'aud',
           recurring: { interval: 'year' },
           product_data: { name: PRICES[plan].nickname },
           unit_amount: PRICES[plan].unit_amount,
