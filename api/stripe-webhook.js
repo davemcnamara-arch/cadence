@@ -85,13 +85,13 @@ export default async function handler(req, res) {
       const { data: existingSchool } = await supabase
         .from('schools')
         .select('id')
-        .eq('owner_id', supabase_uid)
+        .eq('created_by', supabase_uid)
         .maybeSingle();
 
       if (!existingSchool) {
         const { error: schoolError } = await supabase
           .from('schools')
-          .insert({ owner_id: supabase_uid, name: 'My School' });
+          .insert({ created_by: supabase_uid, name: 'My School' });
 
         if (schoolError) {
           console.error('School creation error:', schoolError);
