@@ -3555,6 +3555,7 @@ body {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .student-song-header-right {
@@ -3562,6 +3563,7 @@ body {
   align-items: center;
   gap: 0.75rem;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .song-resource-link {
@@ -4089,6 +4091,14 @@ body {
 
 .school-student-row:nth-child(even) {
   background: var(--bg-secondary);
+}
+
+.school-student-row--clickable {
+  cursor: pointer;
+}
+
+.school-student-row--clickable:hover {
+  background: #eef2ff;
 }
 
 .school-student-name {

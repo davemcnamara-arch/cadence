@@ -10494,7 +10494,7 @@ class CadenceApp {
         : '';
 
       return `
-        <div class="school-student-row">
+        <div class="school-student-row school-student-row--clickable" onclick="app.viewStudentDetail('${student.user_id}', '${student.name}')">
           <div class="school-student-name">${student.name}</div>
           <div class="school-student-class" title="Teacher: ${student.teacher_name}">${student.class_name || '—'}</div>
           <div class="school-student-instruments">${instruments || '<span style="color:var(--text-secondary)">—</span>'}</div>
@@ -10503,7 +10503,7 @@ class CadenceApp {
             <span>·</span>
             <span title="Mastered">${student.songs_mastered} mastered</span>
           </div>
-          ${removeBtn}
+          ${removeBtn ? `<div onclick="event.stopPropagation()">${removeBtn}</div>` : ''}
         </div>
       `;
     }).join('');
