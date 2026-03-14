@@ -600,11 +600,26 @@ class CadenceApp {
 
     // Gate all teacher logins: no active subscription → subscribe page
     if (user.role === 'teacher') {
-      const { data: sub } = await auth.rpcDirect('get_my_subscription', {});
-      const status = sub?.status;
+      const freshSubscription = new URLSearchParams(window.location.search).get('subscribed') === '1';
+      let status;
+      // After a successful checkout Stripe's webhook may take a moment to process;
+      // retry a few times before giving up so we don't bounce the user back to /subscribe.
+      const maxAttempts = freshSubscription ? 6 : 1;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
+        const { data: sub } = await auth.rpcDirect('get_my_subscription', {});
+        status = sub?.status;
+        if (status === 'active' || status === 'trialing') break;
+      }
       if (status !== 'active' && status !== 'trialing') {
         window.location.href = 'subscribe.html';
         return;
+      }
+      // Remove the subscribed flag from the URL without reloading
+      if (freshSubscription) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('subscribed');
+        history.replaceState(null, '', url.toString());
       }
     }
 
