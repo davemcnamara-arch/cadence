@@ -611,10 +611,10 @@ class CadenceApp {
     localStorage.removeItem('cadence_signup_role');
 
     // Gate all teacher logins: no active subscription → subscribe page
+    const freshSubscription = new URLSearchParams(window.location.search).get('subscribed') === '1';
+    let freshPlanType;
     if (user.role === 'teacher') {
-      const freshSubscription = new URLSearchParams(window.location.search).get('subscribed') === '1';
       let status;
-      let freshPlanType;
       // After a successful checkout Stripe's webhook may take a moment to process;
       // retry a few times before giving up so we don't bounce the user back to /subscribe.
       const maxAttempts = freshSubscription ? 6 : 1;
