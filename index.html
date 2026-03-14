@@ -1540,6 +1540,43 @@
     </div>
   </div>
 
+  <!-- Modal: School Onboarding (shown after new school plan subscription) -->
+  <div id="school-onboarding-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-body" style="text-align: center; padding: 2rem 1.5rem;">
+        <!-- Step 1: Name input -->
+        <div id="school-onboarding-setup">
+          <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🏫</div>
+          <h2 style="margin-bottom: 0.5rem;">Name your school</h2>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
+            Give your school a name so teachers can identify it when they join.
+          </p>
+          <div class="form-group" style="text-align: left;">
+            <label for="school-onboarding-name">School Name</label>
+            <input type="text" id="school-onboarding-name" placeholder="e.g., Westside Music Academy" maxlength="100">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1.25rem;">
+            <button type="button" id="school-onboarding-save-btn" class="btn btn-primary">Save &amp; Continue</button>
+            <button type="button" id="school-onboarding-skip-btn" class="btn btn-ghost" style="font-size: 0.85rem;">Skip for now</button>
+          </div>
+        </div>
+        <!-- Step 2: Success + join code -->
+        <div id="school-onboarding-success" class="hidden">
+          <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">✅</div>
+          <h2 style="margin-bottom: 0.5rem;">School created!</h2>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+            Share this join code with other teachers to invite them to your school:
+          </p>
+          <div class="school-join-code-row" style="justify-content: center; margin-bottom: 1.5rem;">
+            <span class="class-code-display" id="school-onboarding-join-code"></span>
+            <button class="btn btn-secondary btn-sm" id="school-onboarding-copy-btn">Copy</button>
+          </div>
+          <button type="button" id="school-onboarding-done-btn" class="btn btn-primary" style="width: 100%;">Go to app</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notifications -->
   <div id="toast-container" class="toast-container"></div>
 
