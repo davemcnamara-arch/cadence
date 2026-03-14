@@ -4,10 +4,12 @@ const PRICES = {
   individual: {
     unit_amount: 4900,   // A$49.00
     nickname: 'Individual Teacher – Annual',
+    description: 'A$49 billed annually – one teacher, up to 15 students',
   },
   school: {
     unit_amount: 19900,  // A$199.00
     nickname: 'School License – Annual',
+    description: 'A$199 billed annually – unlimited teachers and students',
   },
 };
 
@@ -34,12 +36,15 @@ export default async function handler(req, res) {
         price_data: {
           currency: 'aud',
           recurring: { interval: 'year' },
-          product_data: { name: PRICES[plan].nickname },
+          product_data: { name: PRICES[plan].nickname, description: PRICES[plan].description },
           unit_amount: PRICES[plan].unit_amount,
         },
         quantity: 1,
       },
     ],
+    custom_text: {
+      submit: { message: 'You will be charged the full annual amount today.' },
+    },
     metadata: {
       plan_type: plan,
       supabase_uid: supabase_uid || '',
