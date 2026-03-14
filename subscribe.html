@@ -102,6 +102,11 @@
       background: #f5f3ff;
     }
 
+    .plan-card.selected {
+      border-color: var(--primary-color);
+      background: #f5f3ff;
+    }
+
     .plan-card-header {
       display: flex;
       align-items: center;
@@ -303,15 +308,20 @@
     let selectedPlan = 'individual';
 
     const planCards = document.querySelectorAll('.plan-card');
+
+    function selectCard(card) {
+      planCards.forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      const priceText = card.querySelector('.plan-price').textContent;
+      selectedPlan = priceText.includes('199') ? 'school' : 'individual';
+    }
+
     planCards.forEach(card => {
-      card.addEventListener('click', () => {
-        planCards.forEach(c => c.classList.remove('featured'));
-        card.classList.add('featured');
-        // Determine plan from the price text
-        const priceText = card.querySelector('.plan-price').textContent;
-        selectedPlan = priceText.includes('199') ? 'school' : 'individual';
-      });
+      card.addEventListener('click', () => selectCard(card));
     });
+
+    // Pre-select the first card
+    selectCard(planCards[0]);
 
     document.getElementById('subscribe-btn').addEventListener('click', async () => {
       const btn = document.getElementById('subscribe-btn');
