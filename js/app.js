@@ -8161,7 +8161,7 @@ class CadenceApp {
     }
   }
 
-  async exportClassData() {
+  exportClassData() {
     if (!this.currentClass) return;
 
     // Gather all class data
@@ -8177,24 +8177,14 @@ class CadenceApp {
         for (const p of progress) {
           const inst = this.instruments.find(i => i.id === p.instrument_id);
 
-          // Count songs
-          const { data: songs } = await supabase
-            .from('student_songs')
-            .select('status')
-            .eq('user_id', student.id)
-            .eq('instrument_id', p.instrument_id);
-
-          const learning = songs?.filter(s => s.status === 'learning').length || 0;
-          const mastered = songs?.filter(s => s.status === 'mastered').length || 0;
-
           rows.push([
             student.name,
             student.email,
             inst?.name || '-',
             p.current_level,
             p.current_branch || '-',
-            learning,
-            mastered
+            p.songs_learning || 0,
+            p.songs_mastered || 0
           ]);
         }
       }
@@ -11064,9 +11054,20 @@ class CadenceApp {
     this.showSchoolSetup();
   }
 
-  exportSchoolData() {
+  async exportSchoolData() {
     if (!this.schoolStudents?.length) {
-      this.showToast('Load the Students tab first', 'error');
+      const { data, error } = await supabase.rpc('get_school_students', {
+        p_school_id: this.currentSchool.id
+      });
+      if (error || !data?.success) {
+        this.showToast('Failed to load student data', 'error');
+        return;
+      }
+      this.schoolStudents = data.students || [];
+    }
+
+    if (!this.schoolStudents.length) {
+      this.showToast('No students found', 'info');
       return;
     }
 
