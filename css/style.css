@@ -4289,3 +4289,75 @@ body {
   gap: 0.75rem;
   flex-wrap: wrap;
 }
+
+/* =====================================================
+ * Subscription Expired Overlay
+ * Shown when a teacher's subscription has lapsed.
+ * Students are never shown this overlay.
+ * ===================================================== */
+
+.subscription-expired-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.subscription-expired-overlay.hidden {
+  display: none;
+}
+
+.subscription-expired-card {
+  background: var(--surface);
+  border-radius: 1rem;
+  padding: 2.5rem 2rem;
+  max-width: 28rem;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.sub-expired-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.subscription-expired-card h2 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: var(--text-primary, #1e293b);
+}
+
+.subscription-expired-card p {
+  color: var(--text-secondary, #64748b);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  margin-bottom: 0.75rem;
+}
+
+.sub-expired-note {
+  font-size: 0.8125rem !important;
+  color: var(--text-tertiary, #94a3b8) !important;
+}
+
+.sub-expired-cta {
+  display: inline-block;
+  margin-top: 1rem;
+  margin-bottom: 0.75rem;
+  text-decoration: none;
+  padding: 0.75rem 2rem;
+  border-radius: var(--border-radius, 0.5rem);
+  font-weight: 600;
+}
+
+.sub-expired-logout {
+  display: block;
+  margin: 0 auto;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #64748b);
+}
