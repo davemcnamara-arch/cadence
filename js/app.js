@@ -8394,6 +8394,8 @@ class CadenceApp {
         this.loadPendingTeacherAccounts();
       } else if (sectionName === 'school') {
         this.loadAdminSchoolSection();
+      } else if (sectionName === 'unassigned') {
+        this.loadUnassignedStudents();
       }
     }
   }
@@ -10202,7 +10204,7 @@ class CadenceApp {
   // ============================================
 
   async loadAdminSchoolSection() {
-    const { data, error } = await supabase.rpc('get_all_schools');
+    const { data, error } = await this.callRpcDirect('get_all_schools', {});
     if (error) {
       console.error('Error loading schools:', error);
     }
@@ -10226,22 +10228,52 @@ class CadenceApp {
       return;
     }
 
-    container.innerHTML = schools.map(s => `
-      <div class="admin-school-card" onclick="app.openAdminSchool(${JSON.stringify(s).replace(/"/g, '&quot;')})">
-        <div class="admin-school-card-info">
-          <div class="admin-school-card-name">${s.name}</div>
-          <div class="admin-school-card-meta">Join code: <strong>${s.join_code}</strong></div>
-        </div>
-        <div class="admin-school-card-stats">
-          <span>${s.teacher_count} teacher${s.teacher_count !== 1 ? 's' : ''}</span>
-          <span>·</span>
-          <span>${s.class_count} class${s.class_count !== 1 ? 'es' : ''}</span>
-          <span>·</span>
-          <span>${s.student_count} student${s.student_count !== 1 ? 's' : ''}</span>
-        </div>
-        <div class="admin-school-card-arrow">›</div>
-      </div>
-    `).join('');
+    const formatDate = (iso) => {
+      if (!iso) return '—';
+      return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    };
+
+    const subBadge = (status) => {
+      if (!status) return '<span class="sub-status-badge none">None</span>';
+      const cls = status.toLowerCase();
+      return `<span class="sub-status-badge ${cls}">${status}</span>`;
+    };
+
+    const rows = schools.map(s => {
+      const isLapsed = s.subscription_status === 'lapsed' || s.subscription_status === 'expired';
+      const rowClass = isLapsed ? `school-row-${s.subscription_status}` : '';
+      const schoolJson = JSON.stringify(s).replace(/"/g, '&quot;');
+      return `
+        <tr class="${rowClass}">
+          <td><span class="school-name-cell" onclick="app.openAdminSchool(${schoolJson})">${this.escapeHtml(s.name)}</span></td>
+          <td style="color:var(--text-secondary);font-size:0.82rem;">${this.escapeHtml(s.owner_email || '—')}</td>
+          <td>${subBadge(s.subscription_status)}</td>
+          <td style="color:var(--text-secondary);">${s.plan_type || '—'}</td>
+          <td style="color:var(--text-secondary);font-size:0.82rem;white-space:nowrap;">${formatDate(s.current_period_end)}</td>
+          <td style="color:var(--text-secondary);font-size:0.82rem;">${s.teacher_count}T · ${s.class_count}C · ${s.student_count}S</td>
+          <td>
+            <button class="btn btn-secondary btn-sm" onclick='app.adminOverrideSubscription(${schoolJson})'>Override Sub</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    container.innerHTML = `
+      <table class="admin-schools-table">
+        <thead>
+          <tr>
+            <th>School</th>
+            <th>Owner</th>
+            <th>Status</th>
+            <th>Plan</th>
+            <th>Expiry</th>
+            <th>Members</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
   }
 
   async openAdminSchool(school) {
@@ -10315,6 +10347,197 @@ class CadenceApp {
     this.showToast('School created!', 'success');
     this.hideAdminCreateSchoolForm();
     await this.loadAdminSchoolSection();
+  }
+
+  // ============================================
+  // ADMIN: Manual Onboarding (school + teacher + subscription)
+  // ============================================
+
+  showAdminManualOnboardingForm() {
+    document.getElementById('admin-manual-onboarding-form')?.classList.remove('hidden');
+    // Set default expiry to 1 year from today
+    const expiry = document.getElementById('manual-onboard-expiry');
+    if (expiry && !expiry.value) {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() + 1);
+      expiry.value = d.toISOString().split('T')[0];
+    }
+    document.getElementById('manual-onboard-school-name')?.focus();
+  }
+
+  hideAdminManualOnboardingForm() {
+    const form = document.getElementById('admin-manual-onboarding-form');
+    if (!form) return;
+    form.classList.add('hidden');
+    document.getElementById('manual-onboard-school-name').value = '';
+    document.getElementById('manual-onboard-teacher-email').value = '';
+    document.getElementById('manual-onboard-teacher-name').value = '';
+    document.getElementById('manual-onboard-expiry').value = '';
+    document.getElementById('manual-onboard-status').value = 'active';
+    document.getElementById('manual-onboard-plan-type').value = 'school';
+  }
+
+  async adminManualOnboard() {
+    const schoolName   = document.getElementById('manual-onboard-school-name')?.value?.trim();
+    const teacherEmail = document.getElementById('manual-onboard-teacher-email')?.value?.trim();
+    const teacherName  = document.getElementById('manual-onboard-teacher-name')?.value?.trim() || null;
+    const planType     = document.getElementById('manual-onboard-plan-type')?.value;
+    const status       = document.getElementById('manual-onboard-status')?.value;
+    const expiryVal    = document.getElementById('manual-onboard-expiry')?.value;
+
+    if (!schoolName) {
+      this.showToast('Please enter a school name', 'error');
+      return;
+    }
+    if (!teacherEmail) {
+      this.showToast('Please enter a teacher email', 'error');
+      return;
+    }
+
+    const periodEnd = expiryVal ? new Date(expiryVal).toISOString() : null;
+
+    const { data, error } = await this.callRpcDirect('admin_create_school_for_teacher', {
+      p_school_name:   schoolName,
+      p_teacher_email: teacherEmail.toLowerCase(),
+      p_teacher_name:  teacherName,
+      p_plan_type:     planType,
+      p_status:        status,
+      p_period_end:    periodEnd
+    });
+
+    if (error || !data?.success) {
+      this.showToast(data?.message || error?.message || 'Failed to create school', 'error');
+      return;
+    }
+
+    const msg = data.teacher_existed
+      ? `School created! Teacher already exists and has been added. Join code: ${data.join_code}`
+      : `School created! Teacher pre-registered. Share join code: ${data.join_code}`;
+    this.showToast(msg, 'success');
+    this.hideAdminManualOnboardingForm();
+    await this.loadAdminSchoolSection();
+  }
+
+  // ============================================
+  // ADMIN: Subscription Override
+  // ============================================
+
+  adminOverrideSubscription(school) {
+    const modal = document.getElementById('subscription-override-modal');
+    if (!modal) return;
+
+    document.getElementById('sub-override-school-name').textContent = school.name;
+    document.getElementById('sub-override-school-id').value  = school.id;
+    document.getElementById('sub-override-sub-id').value     = school.subscription_id || '';
+    document.getElementById('sub-override-status').value     = school.subscription_status || 'active';
+    document.getElementById('sub-override-plan-type').value  = school.plan_type || 'school';
+
+    const expiryInput = document.getElementById('sub-override-expiry');
+    if (school.current_period_end) {
+      expiryInput.value = school.current_period_end.split('T')[0];
+    } else {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() + 1);
+      expiryInput.value = d.toISOString().split('T')[0];
+    }
+
+    modal.classList.remove('hidden');
+  }
+
+  async adminSaveSubscriptionOverride() {
+    const schoolId  = document.getElementById('sub-override-school-id')?.value;
+    const subId     = document.getElementById('sub-override-sub-id')?.value || null;
+    const status    = document.getElementById('sub-override-status')?.value;
+    const planType  = document.getElementById('sub-override-plan-type')?.value;
+    const expiryVal = document.getElementById('sub-override-expiry')?.value;
+
+    if (!schoolId) {
+      this.showToast('No school selected', 'error');
+      return;
+    }
+    if (!expiryVal) {
+      this.showToast('Please set an expiry date', 'error');
+      return;
+    }
+
+    const periodEnd   = new Date(expiryVal).toISOString();
+    const periodStart = new Date().toISOString();
+
+    const { data, error } = await this.callRpcDirect('admin_upsert_subscription', {
+      p_id:                     subId || null,
+      p_school_id:              schoolId,
+      p_teacher_id:             null,
+      p_plan_type:              planType,
+      p_status:                 status,
+      p_stripe_subscription_id: null,
+      p_stripe_customer_id:     null,
+      p_current_period_start:   periodStart,
+      p_current_period_end:     periodEnd
+    });
+
+    if (error || !data?.success) {
+      this.showToast(data?.message || error?.message || 'Failed to update subscription', 'error');
+      return;
+    }
+
+    document.getElementById('subscription-override-modal')?.classList.add('hidden');
+    this.showToast('Subscription updated', 'success');
+    await this.loadAdminSchoolSection();
+  }
+
+  // ============================================
+  // ADMIN: Unassigned Students
+  // ============================================
+
+  async loadUnassignedStudents() {
+    const container = document.getElementById('unassigned-students-list');
+    if (!container) return;
+
+    container.innerHTML = '<p style="color:var(--text-secondary);padding:1rem 0;">Loading…</p>';
+
+    const { data, error } = await this.callRpcDirect('admin_get_unassigned_students', {});
+
+    if (error) {
+      console.error('Error loading unassigned students:', error);
+      container.innerHTML = '<p style="color:var(--error-color);">Failed to load unassigned students.</p>';
+      return;
+    }
+
+    const students = Array.isArray(data) ? data : [];
+
+    if (!students.length) {
+      container.innerHTML = '<p style="color:var(--text-secondary);padding:1rem 0;">No unassigned students found.</p>';
+      return;
+    }
+
+    const formatDate = (iso) => {
+      if (!iso) return '—';
+      return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    };
+
+    const rows = students.map(s => `
+      <tr>
+        <td>${this.escapeHtml(s.name || '—')}</td>
+        <td style="color:var(--text-secondary);">${this.escapeHtml(s.email)}</td>
+        <td style="color:var(--text-secondary);font-size:0.82rem;">${formatDate(s.created_at)}</td>
+        <td style="color:var(--text-secondary);font-size:0.82rem;">${formatDate(s.last_sign_in)}</td>
+      </tr>
+    `).join('');
+
+    container.innerHTML = `
+      <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:0.75rem;">${students.length} student${students.length !== 1 ? 's' : ''} not enrolled in any class</p>
+      <table class="unassigned-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Joined</th>
+            <th>Last Sign-in</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
   }
 
   // ============================================
