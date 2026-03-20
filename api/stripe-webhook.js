@@ -32,6 +32,41 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: `Webhook error: ${err.message}` });
   }
 
+  // Use the Supabase service-role client to bypass RLS for all handlers below
+  const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+
+  // ---------------------------------------------------------------
+  // Helper: restore a teacher's school (clear archived_at).
+  // Called on any event that makes a subscription active again.
+  // All school data is preserved during archive; this simply
+  // un-hides it.
+  // ---------------------------------------------------------------
+  async function restoreSchoolAccess(teacherId, schoolId) {
+    if (teacherId) {
+      await supabase.rpc('restore_school_for_teacher', { p_teacher_id: teacherId });
+    }
+    if (schoolId) {
+      await supabase.rpc('restore_school_by_id', { p_school_id: schoolId });
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Helper: archive a teacher's school (set archived_at = NOW()).
+  // Students retain full read/write access regardless of archived_at.
+  // ---------------------------------------------------------------
+  async function archiveSchoolAccess(teacherId) {
+    if (teacherId) {
+      await supabase.rpc('archive_school_for_teacher', { p_teacher_id: teacherId });
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // EVENT: checkout.session.completed
+  // New purchase or renewal via Stripe Checkout.
+  // ---------------------------------------------------------------
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
 
@@ -52,12 +87,6 @@ export default async function handler(req, res) {
     } catch (err) {
       console.error('Could not retrieve subscription details:', err.message);
     }
-
-    // Use the Supabase service-role client to bypass RLS
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
 
     // Upsert the subscription row keyed on stripe_subscription_id
     const { error: upsertError } = await supabase
@@ -80,6 +109,9 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Database error' });
     }
 
+    // Restore school access in case the teacher is resubscribing after a lapse
+    await restoreSchoolAccess(supabase_uid, null);
+
     // If school plan, create a school record linked to this subscription
     if (plan_type === 'school' && supabase_uid) {
       const { data: existingSchool } = await supabase
@@ -98,6 +130,106 @@ export default async function handler(req, res) {
           // Non-fatal: subscription row already written
         }
       }
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // EVENT: customer.subscription.updated
+  // Stripe fires this when renewal succeeds, plan changes, or the
+  // subscription is cancelled/expired.
+  // ---------------------------------------------------------------
+  if (event.type === 'customer.subscription.updated') {
+    const stripeSub = event.data.object;
+    const stripe_subscription_id = stripeSub.id;
+    const newStatus = stripeSub.status; // e.g. 'active', 'canceled', 'past_due'
+
+    // Map Stripe status → our internal status values
+    const internalStatus = (() => {
+      if (newStatus === 'active' || newStatus === 'trialing') return newStatus;
+      if (newStatus === 'canceled' || newStatus === 'incomplete_expired') return 'cancelled';
+      return 'expired'; // past_due, unpaid, incomplete, paused
+    })();
+
+    const periodStart = new Date(stripeSub.current_period_start * 1000);
+    const periodEnd   = new Date(stripeSub.current_period_end   * 1000);
+
+    // Update the subscription row
+    const { data: updatedRows, error: updateError } = await supabase
+      .from('subscriptions')
+      .update({
+        status: internalStatus,
+        current_period_start: periodStart.toISOString(),
+        current_period_end:   periodEnd.toISOString(),
+      })
+      .eq('stripe_subscription_id', stripe_subscription_id)
+      .select('teacher_id, school_id');
+
+    if (updateError) {
+      console.error('Supabase update error (subscription.updated):', updateError);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    const row = updatedRows?.[0];
+    if (row) {
+      if (internalStatus === 'active' || internalStatus === 'trialing') {
+        // Subscription renewed or reactivated — restore school access
+        await restoreSchoolAccess(row.teacher_id, row.school_id);
+      } else {
+        // Subscription lapsed — archive the teacher's school.
+        // All school data (classes, assignments, etc.) is preserved in the DB.
+        // Students retain full read/write access regardless of archived_at.
+        await archiveSchoolAccess(row.teacher_id);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // EVENT: invoice.payment_succeeded
+  // Fired when a renewal payment clears.  Ensures the subscription
+  // is marked active and school access is restored even if a prior
+  // lapse had archived it.
+  // ---------------------------------------------------------------
+  if (event.type === 'invoice.payment_succeeded') {
+    const invoice = event.data.object;
+    const stripe_subscription_id = invoice.subscription;
+    if (!stripe_subscription_id) {
+      return res.status(200).json({ received: true });
+    }
+
+    // Retrieve fresh subscription details from Stripe
+    let stripeSub;
+    try {
+      stripeSub = await stripe.subscriptions.retrieve(stripe_subscription_id);
+    } catch (err) {
+      console.error('Could not retrieve subscription on invoice.payment_succeeded:', err.message);
+      return res.status(200).json({ received: true });
+    }
+
+    if (stripeSub.status !== 'active' && stripeSub.status !== 'trialing') {
+      return res.status(200).json({ received: true });
+    }
+
+    const periodStart = new Date(stripeSub.current_period_start * 1000);
+    const periodEnd   = new Date(stripeSub.current_period_end   * 1000);
+
+    const { data: updatedRows, error: updateError } = await supabase
+      .from('subscriptions')
+      .update({
+        status: stripeSub.status,
+        current_period_start: periodStart.toISOString(),
+        current_period_end:   periodEnd.toISOString(),
+      })
+      .eq('stripe_subscription_id', stripe_subscription_id)
+      .select('teacher_id, school_id');
+
+    if (updateError) {
+      console.error('Supabase update error (invoice.payment_succeeded):', updateError);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    const row = updatedRows?.[0];
+    if (row) {
+      await restoreSchoolAccess(row.teacher_id, row.school_id);
     }
   }
 

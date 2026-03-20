@@ -1,6 +1,7 @@
 // Main Application Module
 import { supabase } from './config.js';
 import { auth } from './auth.js';
+import { checkSubscriptionStatus } from './subscription.js';
 
 // Expose for debugging
 window.supabase = supabase;
@@ -610,25 +611,46 @@ class CadenceApp {
     // Clean up signup role key (used only during new-user creation in auth.js)
     localStorage.removeItem('cadence_signup_role');
 
-    // Gate all teacher logins: no active subscription → subscribe page
+    // Gate all teacher logins on subscription status.
+    // Uses checkSubscriptionStatus() so the same logic is reusable across
+    // the app without duplicating the RPC call or date-comparison logic.
+    //
+    // Three outcomes:
+    //   1. No subscription at all → redirect to subscribe.html (never purchased)
+    //   2. Subscription exists but lapsed → show locked-dashboard overlay
+    //   3. Active subscription → proceed normally
+    //
+    // NOTE: Students bypass this block entirely — student access is intentionally
+    // ungated from subscription status (see task spec §3: Student passthrough).
     const freshSubscription = new URLSearchParams(window.location.search).get('subscribed') === '1';
     let freshPlanType;
     if (user.role === 'teacher') {
-      let status;
+      let subResult;
       // After a successful checkout Stripe's webhook may take a moment to process;
       // retry a few times before giving up so we don't bounce the user back to /subscribe.
       const maxAttempts = freshSubscription ? 6 : 1;
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
-        const { data: sub } = await auth.rpcDirect('get_my_subscription', {});
-        status = sub?.status;
-        if (freshSubscription) freshPlanType = sub?.plan_type;
-        if (status === 'active' || status === 'trialing') break;
+        subResult = await checkSubscriptionStatus(auth);
+        if (freshSubscription) freshPlanType = subResult.sub?.plan_type;
+        if (subResult.isActive) break;
       }
-      if (status !== 'active' && status !== 'trialing') {
+
+      if (!subResult.hasSubscription) {
+        // Teacher has never subscribed — send them to the pricing page.
         window.location.href = 'subscribe.html';
         return;
       }
+
+      if (!subResult.isActive) {
+        // Subscription exists but has lapsed (expired, cancelled, or past period end).
+        // Show the locked-dashboard overlay instead of redirecting, so the teacher
+        // can see the UI and understand what they're renewing.
+        // Their role is NOT changed in the DB; this is a pure UI gate.
+        this.showSubscriptionExpiredOverlay();
+        // Fall through so the app shell (header, etc.) still renders correctly.
+      }
+
       // Remove the subscribed flag from the URL without reloading
       if (freshSubscription) {
         const url = new URL(window.location.href);
@@ -670,7 +692,10 @@ class CadenceApp {
 
     // Show/hide tabs and features based on role
     if (user.role === 'student') {
-      // Show student tabs and features
+      // STUDENT PASSTHROUGH: Student access is intentionally ungated from subscription
+      // status.  Students whose school has an archived (lapsed) subscription retain
+      // full read/write access to their pathway, song library, and progress tracking.
+      // Do NOT add subscription checks here.  See task spec §3: Student passthrough.
       document.querySelectorAll('.student-tab').forEach(tab => tab.classList.remove('hidden'));
       // Student tabs will be active by default
       await this.loadStudentClassesHeader();
@@ -763,6 +788,56 @@ class CadenceApp {
     }
     this.renderPlanBanner();
     this.applyPlanRestrictions();
+
+    // Re-check subscription lapse on every teacher data load (e.g. tab switches).
+    // If the subscription has since expired (e.g. session was open across the
+    // renewal deadline), show the overlay without a page reload.
+    //
+    // NOTE: Students never reach this code path — student access is intentionally
+    // ungated from subscription status.
+    const user = auth.getCurrentUser();
+    if (user?.role === 'teacher' && this.subscription) {
+      const periodEnd = this.subscription.current_period_end
+        ? new Date(this.subscription.current_period_end)
+        : null;
+      const statusActive =
+        this.subscription.status === 'active' || this.subscription.status === 'trialing';
+      const periodValid = periodEnd ? periodEnd > new Date() : true;
+      if (!statusActive || !periodValid) {
+        this.showSubscriptionExpiredOverlay();
+      }
+    }
+  }
+
+  // ============================================
+  // SUBSCRIPTION EXPIRED OVERLAY
+  // ============================================
+
+  /**
+   * Show the "subscription expired" locked-dashboard overlay.
+   * Called when a teacher's subscription exists but is no longer active.
+   * The teacher's DB role is NOT modified — this is a pure UI gate.
+   *
+   * NOTE: This method is only ever called for teachers.  Students are
+   * intentionally not gated by subscription status.
+   */
+  showSubscriptionExpiredOverlay() {
+    const overlay = document.getElementById('subscription-expired-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('hidden');
+
+    // Wire up the sign-out button inside the overlay (if not already wired)
+    const logoutBtn = document.getElementById('sub-expired-logout-btn');
+    if (logoutBtn && !logoutBtn._subExpiredBound) {
+      logoutBtn._subExpiredBound = true;
+      logoutBtn.addEventListener('click', () => auth.signOut());
+    }
+  }
+
+  /** Hide the overlay (called when subscription is restored client-side). */
+  hideSubscriptionExpiredOverlay() {
+    const overlay = document.getElementById('subscription-expired-overlay');
+    if (overlay) overlay.classList.add('hidden');
   }
 
   // Total active students across all loaded classes (client-side sum)
@@ -909,6 +984,10 @@ class CadenceApp {
   }
 
   async loadStudentProgress() {
+    // STUDENT PASSTHROUGH: This method is called for all roles (students, teachers
+    // in preview mode, and admins previewing students).  It does NOT check
+    // subscription status.  Students retain full read/write access to their progress
+    // regardless of whether their school's subscription has lapsed.
     const user = auth.getCurrentUser();
     // Use student ID if in preview mode, otherwise use current user
     const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
