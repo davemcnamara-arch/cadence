@@ -4361,3 +4361,123 @@ body {
   font-size: 0.875rem;
   color: var(--text-secondary, #64748b);
 }
+
+/* ============================================================
+   Admin: Schools table with subscription info
+   ============================================================ */
+.admin-schools-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.admin-schools-table th {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.admin-schools-table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.admin-schools-table tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-schools-table tr:hover td {
+  background: var(--bg-hover);
+}
+
+.admin-schools-table tr.school-row-lapsed td,
+.admin-schools-table tr.school-row-expired td {
+  background: color-mix(in srgb, var(--error-color) 6%, transparent);
+}
+
+.admin-schools-table tr.school-row-lapsed:hover td,
+.admin-schools-table tr.school-row-expired:hover td {
+  background: color-mix(in srgb, var(--error-color) 10%, transparent);
+}
+
+.admin-schools-table .school-name-cell {
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.admin-schools-table .school-name-cell:hover {
+  text-decoration: underline;
+}
+
+/* Subscription status badge */
+.sub-status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.sub-status-badge.active,
+.sub-status-badge.trialing {
+  background: color-mix(in srgb, var(--success-color, #22c55e) 15%, transparent);
+  color: var(--success-color, #16a34a);
+}
+
+.sub-status-badge.lapsed,
+.sub-status-badge.expired {
+  background: color-mix(in srgb, var(--error-color, #ef4444) 15%, transparent);
+  color: var(--error-color, #dc2626);
+}
+
+.sub-status-badge.cancelled {
+  background: color-mix(in srgb, var(--text-secondary) 15%, transparent);
+  color: var(--text-secondary);
+}
+
+.sub-status-badge.none {
+  background: color-mix(in srgb, var(--warning-color, #f59e0b) 15%, transparent);
+  color: var(--warning-color, #d97706);
+}
+
+/* Unassigned students table */
+.unassigned-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.unassigned-table th {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.unassigned-table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.unassigned-table tr:last-child td {
+  border-bottom: none;
+}
+
+.unassigned-table tr:hover td {
+  background: var(--bg-hover);
+}

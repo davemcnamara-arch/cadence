@@ -549,6 +549,7 @@
           <button class="admin-section-tab" data-section="content">Content Moderation</button>
           <button class="admin-section-tab" data-section="users">User Management</button>
           <button class="admin-section-tab" data-section="school">School</button>
+          <button class="admin-section-tab" data-section="unassigned">Unassigned Students</button>
         </div>
 
         <!-- Levels & Checklists Section -->
@@ -635,10 +636,13 @@
           <div id="admin-school-list-panel">
             <div class="admin-section-header">
               <h3>School Management</h3>
-              <button class="btn btn-primary" onclick="app.showAdminCreateSchoolForm()">+ Add School</button>
+              <div style="display:flex;gap:0.5rem;">
+                <button class="btn btn-secondary" onclick="app.showAdminManualOnboardingForm()">+ Manual Onboarding</button>
+                <button class="btn btn-primary" onclick="app.showAdminCreateSchoolForm()">+ Add School</button>
+              </div>
             </div>
 
-            <!-- Inline create form (hidden until button clicked) -->
+            <!-- Quick create form (for admin creating their own school) -->
             <div id="admin-school-create-form" class="school-setup-card hidden" style="margin-bottom:1.5rem;">
               <h4 style="margin:0 0 0.75rem;">New School</h4>
               <div class="school-form-group">
@@ -650,7 +654,51 @@
               </div>
             </div>
 
-            <!-- School cards populated by JS -->
+            <!-- Manual onboarding form (school + teacher + subscription without Stripe) -->
+            <div id="admin-manual-onboarding-form" class="school-setup-card hidden" style="margin-bottom:1.5rem;">
+              <h4 style="margin:0 0 0.75rem;">Manual Onboarding</h4>
+              <p style="font-size:0.85rem;color:var(--text-secondary);margin:0 0 1rem;">Create a school and pre-register a teacher without going through Stripe.</p>
+              <div class="school-form-group">
+                <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.25rem;">School Name *</label>
+                <input type="text" id="manual-onboard-school-name" class="school-input" placeholder="e.g. Springfield High School" maxlength="100">
+              </div>
+              <div class="school-form-group">
+                <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.25rem;">Teacher Email *</label>
+                <input type="email" id="manual-onboard-teacher-email" class="school-input" placeholder="teacher@example.com">
+              </div>
+              <div class="school-form-group">
+                <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.25rem;">Teacher Name (optional)</label>
+                <input type="text" id="manual-onboard-teacher-name" class="school-input" placeholder="e.g. Jane Smith">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
+                <div>
+                  <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.25rem;">Plan Type</label>
+                  <select id="manual-onboard-plan-type" class="filter-select" style="width:100%;">
+                    <option value="school">School</option>
+                    <option value="individual">Individual</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.25rem;">Subscription Status</label>
+                  <select id="manual-onboard-status" class="filter-select" style="width:100%;">
+                    <option value="active">Active</option>
+                    <option value="trialing">Trialing</option>
+                    <option value="lapsed">Lapsed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+              <div class="school-form-group">
+                <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.25rem;">Subscription Expiry Date</label>
+                <input type="date" id="manual-onboard-expiry" class="school-input">
+              </div>
+              <div style="display:flex;gap:0.5rem;">
+                <button class="btn btn-primary" onclick="app.adminManualOnboard()">Create School &amp; Register Teacher</button>
+                <button class="btn btn-secondary" onclick="app.hideAdminManualOnboardingForm()">Cancel</button>
+              </div>
+            </div>
+
+            <!-- School table populated by JS -->
             <div id="admin-school-cards">
               <!-- Populated by JS -->
             </div>
@@ -733,8 +781,61 @@
           </div>
 
         </div>
+
+        <!-- Unassigned Students Section -->
+        <div id="unassigned-section" class="admin-section">
+          <div class="admin-section-header">
+            <h3>Unassigned Students</h3>
+            <button class="btn btn-secondary" onclick="app.loadUnassignedStudents()">Refresh</button>
+          </div>
+          <p style="font-size:0.875rem;color:var(--text-secondary);margin:0 0 1rem;">Students with no class enrolment.</p>
+          <div id="unassigned-students-list">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
       </div>
     </main>
+  </div>
+
+  <!-- Modal: Subscription Override -->
+  <div id="subscription-override-modal" class="modal hidden">
+    <div class="modal-content" style="max-width:480px;">
+      <div class="modal-header">
+        <h2>Override Subscription</h2>
+        <button class="modal-close" onclick="document.getElementById('subscription-override-modal').classList.add('hidden')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="sub-override-school-name" style="font-weight:600;margin-bottom:1rem;"></p>
+        <input type="hidden" id="sub-override-school-id">
+        <input type="hidden" id="sub-override-sub-id">
+        <div class="form-group">
+          <label>Subscription Status</label>
+          <select id="sub-override-status" class="filter-select" style="width:100%;">
+            <option value="active">Active</option>
+            <option value="trialing">Trialing</option>
+            <option value="lapsed">Lapsed</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="expired">Expired</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Plan Type</label>
+          <select id="sub-override-plan-type" class="filter-select" style="width:100%;">
+            <option value="school">School</option>
+            <option value="individual">Individual</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Expiry Date (current_period_end)</label>
+          <input type="date" id="sub-override-expiry" style="width:100%;padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-primary);color:var(--text-primary);">
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;gap:0.5rem;justify-content:flex-end;padding:1rem 1.5rem;">
+        <button class="btn btn-secondary" onclick="document.getElementById('subscription-override-modal').classList.add('hidden')">Cancel</button>
+        <button class="btn btn-primary" onclick="app.adminSaveSubscriptionOverride()">Save Override</button>
+      </div>
+    </div>
   </div>
 
   <!-- Modal for Song Grading -->
