@@ -4397,12 +4397,14 @@ body {
 }
 
 .admin-schools-table tr.school-row-lapsed td,
-.admin-schools-table tr.school-row-expired td {
+.admin-schools-table tr.school-row-expired td,
+.admin-schools-table tr.school-row-none td {
   background: color-mix(in srgb, var(--error-color) 6%, transparent);
 }
 
 .admin-schools-table tr.school-row-lapsed:hover td,
-.admin-schools-table tr.school-row-expired:hover td {
+.admin-schools-table tr.school-row-expired:hover td,
+.admin-schools-table tr.school-row-none:hover td {
   background: color-mix(in srgb, var(--error-color) 10%, transparent);
 }
 

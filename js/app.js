@@ -10240,8 +10240,8 @@ class CadenceApp {
     };
 
     const rows = schools.map(s => {
-      const isLapsed = s.subscription_status === 'lapsed' || s.subscription_status === 'expired';
-      const rowClass = isLapsed ? `school-row-${s.subscription_status}` : '';
+      const isProblematic = !s.subscription_status || s.subscription_status === 'lapsed' || s.subscription_status === 'expired';
+      const rowClass = isProblematic ? `school-row-${s.subscription_status || 'none'}` : '';
       const schoolJson = JSON.stringify(s).replace(/"/g, '&quot;');
       return `
         <tr class="${rowClass}">
