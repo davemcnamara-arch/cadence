@@ -5787,6 +5787,11 @@ class CadenceApp {
     if (rosterContainer) rosterContainer.innerHTML = '';
     const progressContainer = document.getElementById('progress-heatmap');
     if (progressContainer) progressContainer.innerHTML = '';
+    const songsContainer = document.getElementById('class-songs-list');
+    if (songsContainer) songsContainer.innerHTML = '';
+
+    // Always reset to Roster tab when opening a class
+    this.switchClassTab('roster');
 
     // Close any open modals
     const modal = document.getElementById('student-detail-modal');
