@@ -5891,6 +5891,10 @@ class CadenceApp {
       document.getElementById('timeline-tab').classList.remove('hidden');
       document.getElementById('timeline-tab').classList.add('active');
       this.renderClassTimeline();
+    } else if (tabName === 'songs') {
+      document.getElementById('songs-tab').classList.remove('hidden');
+      document.getElementById('songs-tab').classList.add('active');
+      this.renderClassSongs();
     }
   }
 
@@ -6906,6 +6910,124 @@ class CadenceApp {
         }
       }, 50);
     }
+  }
+
+  // ============================================
+  // CLASS DETAIL: Songs Tab
+  // ============================================
+
+  async renderClassSongs() {
+    const container = document.getElementById('class-songs-list');
+    if (!container) return;
+
+    if (!this.currentClass) {
+      container.innerHTML = '<p style="color: var(--text-secondary);">No class selected.</p>';
+      return;
+    }
+
+    container.innerHTML = '<div class="loading-state">Loading songs...</div>';
+
+    // Fetch student songs data if not already loaded
+    if (!this.teacherStudentSongs) {
+      try {
+        const result = await this.callRpcDirect('get_teacher_student_songs', {});
+        this.teacherStudentSongs = result.data || [];
+      } catch (err) {
+        console.error('Error loading student songs for class:', err);
+        container.innerHTML = '<div class="empty-state">Failed to load songs. Please try again.</div>';
+        return;
+      }
+    }
+
+    const classId = this.currentClass.id;
+    const songs = (this.teacherStudentSongs || []).filter(s => s.class_id === classId);
+
+    if (songs.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <p>No songs being learnt in this class yet.</p>
+          <p style="color: var(--text-secondary); font-size: 0.875rem;">Students can add songs from the Song Library.</p>
+        </div>`;
+      return;
+    }
+
+    // Group by song → instrument → students (same pattern as renderStudentSongs)
+    const grouped = new Map();
+    songs.forEach(row => {
+      if (!grouped.has(row.song_id)) {
+        grouped.set(row.song_id, {
+          song_id: row.song_id,
+          title: row.title,
+          artist: row.artist,
+          youtube_url: row.youtube_url,
+          chords_url: row.chords_url,
+          bass_tab_url: row.bass_tab_url,
+          drum_notation_url: row.drum_notation_url,
+          instruments: new Map()
+        });
+      }
+      const entry = grouped.get(row.song_id);
+      if (!entry.instruments.has(row.instrument_id)) {
+        entry.instruments.set(row.instrument_id, {
+          id: row.instrument_id,
+          name: row.instrument_name,
+          icon: row.instrument_icon,
+          students: []
+        });
+      }
+      entry.instruments.get(row.instrument_id).students.push({
+        id: row.student_id,
+        name: row.student_name
+      });
+    });
+
+    const items = [...grouped.values()].sort((a, b) => a.title.localeCompare(b.title));
+
+    container.innerHTML = items.map(item => {
+      const totalStudents = new Set(
+        [...item.instruments.values()].flatMap(i => i.students.map(s => s.id))
+      ).size;
+
+      const sortedInstrs = [...item.instruments.values()]
+        .sort((a, b) => a.name.localeCompare(b.name));
+      const firstInstrumentId = sortedInstrs[0]?.id || '';
+      const escapedTitle = (item.title || '').replace(/'/g, "\\'");
+      const escapedArtist = (item.artist || '').replace(/'/g, "\\'");
+      const escapedFirstInstrName = (sortedInstrs[0]?.name || '').replace(/'/g, "\\'");
+
+      const instrumentRows = sortedInstrs.map(instr => {
+        const tags = instr.students
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map(s => `<span class="student-tag">${this.escapeHtml(s.name)}</span>`)
+          .join('');
+        return `
+          <div class="student-song-instrument-row">
+            <span class="instrument-badge">${instr.icon} ${this.escapeHtml(instr.name)}</span>
+            <div class="student-song-students">${tags}</div>
+          </div>`;
+      }).join('');
+
+      return `
+        <div class="student-song-item" data-song-id="${item.song_id}">
+          <div class="student-song-header">
+            <div class="student-song-info">
+              <div class="student-song-title">${this.escapeHtml(item.title)}</div>
+              <div class="student-song-artist">${this.escapeHtml(item.artist)}</div>
+            </div>
+            <div class="student-song-header-right">
+              ${item.youtube_url
+                ? `<a href="${this.escapeHtml(item.youtube_url)}" target="_blank" class="song-resource-link song-resource-link--youtube">▶ YouTube</a>`
+                : ''}
+              ${item.chords_url ? `<a href="${this.escapeHtml(item.chords_url)}" target="_blank" class="btn btn-secondary" style="font-size:0.75rem;">Chords</a>` : ''}
+              ${item.bass_tab_url ? `<a href="${this.escapeHtml(item.bass_tab_url)}" target="_blank" class="btn btn-secondary" style="font-size:0.75rem;">Bass Tab</a>` : ''}
+              ${item.drum_notation_url ? `<a href="${this.escapeHtml(item.drum_notation_url)}" target="_blank" class="btn btn-secondary" style="font-size:0.75rem;">Drum Notation</a>` : ''}
+              <button class="btn btn-secondary btn-resources" onclick="app.openSongFromStudentDetail('${item.song_id}', '${firstInstrumentId}')">Learning Resources</button>
+              <div class="student-song-count">${totalStudents} student${totalStudents !== 1 ? 's' : ''}</div>
+            </div>
+          </div>
+          <div class="student-song-instruments">${instrumentRows}</div>
+        </div>`;
+    }).join('');
   }
 
   // ============================================
