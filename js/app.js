@@ -1130,6 +1130,19 @@ class CadenceApp {
   }
 
   setupSongUpdatesSubscription() {
+    // If a healthy subscription already exists, don't re-subscribe.
+    // This can happen when Supabase fires a SIGNED_IN event on tab re-focus
+    // (due to refreshSession), which triggers onUserSignedIn again.
+    if (this.songUpdatesSubscription) {
+      const state = this.songUpdatesSubscription.state;
+      if (state === 'joined' || state === 'joining') {
+        return;
+      }
+      // Otherwise remove the stale channel so Supabase doesn't reuse it.
+      supabase.removeChannel(this.songUpdatesSubscription);
+      this.songUpdatesSubscription = null;
+    }
+
     // Subscribe to all changes in the songs table (INSERT, UPDATE, DELETE)
     const subscription = supabase
       .channel('song-updates')
