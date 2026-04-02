@@ -754,6 +754,7 @@ class CadenceApp {
         this.updatePathwayInstrument();
         this.renderPathway();
         this.updateInstrumentDropdown();
+        this.initBgColorSelector();
 
         // Restore saved view if different from default pathway
         if (restoredView && restoredView !== 'pathway') {
@@ -1274,6 +1275,7 @@ class CadenceApp {
       this.updatePathwayInstrument();
       this.renderPathway();
       this.updateInstrumentDropdown();
+      this.initBgColorSelector();
     } else {
       this.updateInstrumentDropdown();
       this.renderInstrumentTabs();
@@ -1465,6 +1467,44 @@ class CadenceApp {
         gradingDropdown.value = this.currentInstrument;
       }
     }
+  }
+
+  // ============================================
+  // STUDENT: Background Colour Customisation
+  // ============================================
+
+  initBgColorSelector() {
+    const user = auth.getCurrentUser();
+    if (!user) return;
+
+    const savedColor = localStorage.getItem(`cadence_bg_color_${user.id}`) || 'default';
+    this.applyBgColor(savedColor);
+
+    document.querySelectorAll('.bg-swatch').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const colorKey = btn.dataset.color;
+        this.applyBgColor(colorKey);
+        const currentUser = auth.getCurrentUser();
+        if (currentUser) {
+          localStorage.setItem(`cadence_bg_color_${currentUser.id}`, colorKey);
+        }
+      });
+    });
+  }
+
+  applyBgColor(colorKey) {
+    const colors = {
+      default:  '#f9fafb',
+      lavender: '#f5f3ff',
+      sage:     '#f0fdf4',
+      sky:      '#f0f9ff',
+      rose:     '#fff1f2',
+      amber:    '#fffbeb',
+    };
+    document.body.style.backgroundColor = colors[colorKey] || colors.default;
+    document.querySelectorAll('.bg-swatch').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.color === colorKey);
+    });
   }
 
   // ============================================
