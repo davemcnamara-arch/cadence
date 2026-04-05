@@ -10233,21 +10233,33 @@ class CadenceApp {
       return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
     };
 
-    const subBadge = (status) => {
-      if (!status) return '<span class="sub-status-badge none">None</span>';
-      const cls = status.toLowerCase();
-      return `<span class="sub-status-badge ${cls}">${status}</span>`;
+    const subBadge = (effectiveStatus, storedStatus) => {
+      if (!effectiveStatus) return '<span class="sub-status-badge none">None</span>';
+      const cls = effectiveStatus.toLowerCase();
+      const label = effectiveStatus !== storedStatus
+        ? `${effectiveStatus} <span style="opacity:0.7;font-weight:400;">(stored: ${storedStatus})</span>`
+        : effectiveStatus;
+      return `<span class="sub-status-badge ${cls}">${label}</span>`;
     };
 
+    const now = new Date();
+
     const rows = schools.map(s => {
-      const isProblematic = !s.subscription_status || s.subscription_status === 'lapsed' || s.subscription_status === 'expired';
-      const rowClass = isProblematic ? `school-row-${s.subscription_status || 'none'}` : '';
+      // Mirror subscription.js logic: period end in the past overrides stored status
+      const periodExpired = s.current_period_end && new Date(s.current_period_end) < now;
+      const storedStatus = s.subscription_status;
+      const effectiveStatus = (periodExpired && (storedStatus === 'active' || storedStatus === 'trialing'))
+        ? 'expired'
+        : storedStatus;
+
+      const isProblematic = !effectiveStatus || effectiveStatus === 'lapsed' || effectiveStatus === 'expired';
+      const rowClass = isProblematic ? `school-row-${effectiveStatus || 'none'}` : '';
       const schoolJson = JSON.stringify(s).replace(/"/g, '&quot;');
       return `
         <tr class="${rowClass}">
           <td><span class="school-name-cell" onclick="app.openAdminSchool(${schoolJson})">${this.escapeHtml(s.name)}</span></td>
           <td style="color:var(--text-secondary);font-size:0.82rem;">${this.escapeHtml(s.owner_email || '—')}</td>
-          <td>${subBadge(s.subscription_status)}</td>
+          <td>${subBadge(effectiveStatus, storedStatus)}</td>
           <td style="color:var(--text-secondary);">${s.plan_type || '—'}</td>
           <td style="color:var(--text-secondary);font-size:0.82rem;white-space:nowrap;">${formatDate(s.current_period_end)}</td>
           <td style="color:var(--text-secondary);font-size:0.82rem;">${s.teacher_count}T · ${s.class_count}C · ${s.student_count}S</td>
