@@ -636,24 +636,7 @@
           <div id="admin-school-list-panel">
             <div class="admin-section-header">
               <h3>School Management</h3>
-              <div style="display:flex;gap:0.5rem;">
-                <button class="btn btn-secondary" onclick="app.showAdminManualOnboardingForm()">+ Manual Onboarding</button>
-                <button class="btn btn-primary" onclick="app.showAdminCreateSchoolForm()">+ Add School</button>
-              </div>
-            </div>
-
-            <!-- Quick create form (for admin creating their own school) -->
-            <div id="admin-school-create-form" class="school-setup-card hidden" style="margin-bottom:1.5rem;">
-              <h4 style="margin:0 0 0.75rem;">New School</h4>
-              <div class="school-form-group">
-                <input type="text" id="admin-create-school-name" class="school-input" placeholder="School name" maxlength="100">
-              </div>
-              <div style="display:flex;gap:0.5rem;">
-                <button class="btn btn-primary" onclick="app.adminCreateSchool()">Create</button>
-                <button class="btn btn-secondary" onclick="app.hideAdminCreateSchoolForm()">Cancel</button>
-              </div>
-            </div>
-
+              <button class="btn btn-primary" onclick="app.showAdminManualOnboardingForm()">+ Manual Onboarding</button>
             <!-- Manual onboarding form (school + teacher + subscription without Stripe) -->
             <div id="admin-manual-onboarding-form" class="school-setup-card hidden" style="margin-bottom:1.5rem;">
               <h4 style="margin:0 0 0.75rem;">Manual Onboarding</h4>
