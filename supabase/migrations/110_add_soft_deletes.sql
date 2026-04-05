@@ -149,6 +149,7 @@ END;
 $$;
 
 -- Update find_similar_songs to exclude soft-deleted songs
+DROP FUNCTION IF EXISTS find_similar_songs(TEXT, TEXT, FLOAT, INTEGER);
 CREATE OR REPLACE FUNCTION find_similar_songs(
   p_title      TEXT,
   p_artist     TEXT,
