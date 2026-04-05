@@ -5913,7 +5913,7 @@ class CadenceApp {
       const classBadges = student.classes.map(c =>
         `<span class="class-code-badge" style="font-size: 0.75rem; cursor: pointer;" onclick="event.stopPropagation(); app.viewClass('${c.id}')">${this.escapeHtml(c.name)}</span>`
       ).join(' ');
-      const canDelete = currentUserRole === 'teacher' || currentUserRole === 'admin';
+      const canDelete = currentUserRole === 'admin';
       return `
         <div class="account-card" onclick="app.viewStudentFromSearch('${student.user_id}', '${firstClassId}')" style="cursor: pointer;">
           <div class="account-info">
@@ -9297,8 +9297,7 @@ class CadenceApp {
 
     const html = users.map(user => {
       // Determine if current user can delete this account
-      const canDelete = (user.role === 'student' && (currentUserRole === 'teacher' || currentUserRole === 'admin'))
-        || (user.role === 'teacher' && currentUserRole === 'admin');
+      const canDelete = currentUserRole === 'admin' && user.role !== 'admin';
 
       // Admins can promote students to teachers
       const canPromote = currentUserRole === 'admin' && user.role === 'student';
