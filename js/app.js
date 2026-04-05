@@ -10236,10 +10236,7 @@ class CadenceApp {
     const subBadge = (effectiveStatus, storedStatus) => {
       if (!effectiveStatus) return '<span class="sub-status-badge none">None</span>';
       const cls = effectiveStatus.toLowerCase();
-      const label = effectiveStatus !== storedStatus
-        ? `${effectiveStatus} <span style="opacity:0.7;font-weight:400;">(stored: ${storedStatus})</span>`
-        : effectiveStatus;
-      return `<span class="sub-status-badge ${cls}">${label}</span>`;
+      return `<span class="sub-status-badge ${cls}">${effectiveStatus}</span>`;
     };
 
     const now = new Date();
