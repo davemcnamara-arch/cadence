@@ -1,0 +1,29 @@
+name: Supabase Daily Backup
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2am UTC
+  workflow_dispatch:       # Allow manual trigger from GitHub Actions UI
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install PostgreSQL client
+        run: sudo apt-get install -y postgresql-client
+
+      - name: Dump database
+        env:
+          DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          pg_dump "postgresql://postgres:$DB_PASSWORD@db.dgwtihpiqgkhokkkxuzo.supabase.co:5432/postgres" \
+            | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz
+          echo "Backup created: $(ls -lh *.sql.gz)"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_number }}-${{ github.run_attempt }}
+          path: '*.sql.gz'
+          retention-days: 30
