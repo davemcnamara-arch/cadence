@@ -10472,17 +10472,24 @@ class CadenceApp {
     const periodEnd   = new Date(expiryVal).toISOString();
     const periodStart = new Date().toISOString();
 
-    const { data, error } = await this.callRpcDirect('admin_upsert_subscription', {
-      p_id:                     subId || null,
-      p_school_id:              schoolId,
-      p_teacher_id:             null,
-      p_plan_type:              planType,
-      p_status:                 status,
-      p_stripe_subscription_id: null,
-      p_stripe_customer_id:     null,
-      p_current_period_start:   periodStart,
-      p_current_period_end:     periodEnd
-    });
+    let data, error;
+    try {
+      ({ data, error } = await this.callRpcDirect('admin_upsert_subscription', {
+        p_id:                     subId,
+        p_school_id:              schoolId,
+        p_teacher_id:             null,
+        p_plan_type:              planType,
+        p_status:                 status,
+        p_stripe_subscription_id: null,
+        p_stripe_customer_id:     null,
+        p_current_period_start:   periodStart,
+        p_current_period_end:     periodEnd
+      }));
+    } catch (err) {
+      console.error('adminSaveSubscriptionOverride error:', err);
+      this.showToast(err?.message || 'Failed to update subscription', 'error');
+      return;
+    }
 
     if (error || !data?.success) {
       this.showToast(data?.message || error?.message || 'Failed to update subscription', 'error');
