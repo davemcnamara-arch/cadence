@@ -968,7 +968,7 @@ class CadenceApp {
       const { data, error } = await this.callSelectDirect(
         'songs',
         '*,instruments(id,name,icon),song_ratings(assessed_level,instrument_id,user_id)',
-        { eq: { approved: true } },
+        { eq: { approved: true }, is: { deleted_at: 'null' } },
         { order: 'title.asc' }
       );
 
@@ -2612,11 +2612,14 @@ class CadenceApp {
 
   async deleteSongFromLibrary(songId, title, artist) {
     // Confirm deletion with song details
-    if (!confirm(`Are you sure you want to delete "${title}" by ${artist} from the library?\n\nThis will permanently remove the song and all associated ratings and student progress. This action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to delete "${title}" by ${artist} from the library?\n\nThe song will be hidden from all students and teachers. An admin can recover it if needed.`)) {
       return;
     }
 
-    const { error } = await this.callDeleteDirect('songs', { eq: { id: songId } });
+    const { error } = await supabase
+      .from('songs')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', songId);
 
     if (error) {
       console.error('Error deleting song:', error);
@@ -8491,6 +8494,7 @@ class CadenceApp {
     let query = supabase
       .from('songs')
       .select('*, users(name), song_ratings(instruments(icon, name))')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (statusFilter === 'approved') {
@@ -8796,8 +8800,8 @@ class CadenceApp {
     const [ratingsA, ratingsB, studentsA, studentsB] = await Promise.all([
       supabase.from('song_ratings').select('id', { count: 'exact', head: true }).eq('song_id', songIdA),
       supabase.from('song_ratings').select('id', { count: 'exact', head: true }).eq('song_id', songIdB),
-      supabase.from('student_songs').select('id', { count: 'exact', head: true }).eq('song_id', songIdA),
-      supabase.from('student_songs').select('id', { count: 'exact', head: true }).eq('song_id', songIdB)
+      supabase.from('student_songs').select('id', { count: 'exact', head: true }).eq('song_id', songIdA).is('deleted_at', null),
+      supabase.from('student_songs').select('id', { count: 'exact', head: true }).eq('song_id', songIdB).is('deleted_at', null)
     ]);
 
     this.mergeCandidate = { songA, songB };
@@ -9490,13 +9494,13 @@ class CadenceApp {
   }
 
   async deleteSong() {
-    if (!confirm('Are you sure you want to delete this song? This action cannot be undone.')) {
+    if (!confirm('Are you sure you want to delete this song? It will be hidden from all users but can be recovered via the database if needed.')) {
       return;
     }
 
     const { error } = await supabase
       .from('songs')
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq('id', this.currentModeratingSongId);
 
     if (error) {
