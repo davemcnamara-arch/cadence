@@ -1,5 +1,5 @@
 // Main Application Module
-import { supabase } from './config.js';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 import { auth } from './auth.js';
 import { checkSubscriptionStatus } from './subscription.js';
 
@@ -116,11 +116,11 @@ class CadenceApp {
 
       try {
         const response = await fetch(
-          'https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/instruments?select=id&limit=1',
+          `${SUPABASE_URL}/rest/v1/instruments?select=id&limit=1`,
           {
             method: 'GET',
             headers: {
-              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo'
+              'apikey': SUPABASE_ANON_KEY
             },
             signal: controller.signal
           }
@@ -3101,11 +3101,11 @@ class CadenceApp {
       if (isStudent) {
         // Students submit links for teacher approval
 
-        const response = await fetch('https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/pending_links', {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/pending_links`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+            'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${accessToken}`,
             'Prefer': 'return=minimal'
           },
@@ -3147,11 +3147,11 @@ class CadenceApp {
         }
       } else {
         // Teachers can update links directly
-        const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/songs?id=eq.${songId}`, {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/songs?id=eq.${songId}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+            'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${accessToken}`,
             'Prefer': 'return=minimal'
           },
@@ -3912,12 +3912,12 @@ class CadenceApp {
 
     try {
       const response = await fetch(
-        `https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/rpc/${functionName}`,
+        `${SUPABASE_URL}/rest/v1/rpc/${functionName}`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+            'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${accessToken}`
           },
           body: JSON.stringify(params),
@@ -4015,14 +4015,14 @@ class CadenceApp {
     try {
       const headers = {
         'Content-Type': 'application/json',
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo'
+        'apikey': SUPABASE_ANON_KEY
       };
       if (accessToken) {
         headers['Authorization'] = `Bearer ${accessToken}`;
       }
 
       const response = await fetch(
-        `https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}?${params.toString()}`,
+        `${SUPABASE_URL}/rest/v1/${table}?${params.toString()}`,
         {
           method: 'GET',
           headers,
@@ -4082,14 +4082,14 @@ class CadenceApp {
     try {
       const headers = {
         'Content-Type': 'application/json',
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo'
+        'apikey': SUPABASE_ANON_KEY
       };
       if (accessToken) {
         headers['Authorization'] = `Bearer ${accessToken}`;
       }
 
       const response = await fetch(
-        `https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}?${params.toString()}`,
+        `${SUPABASE_URL}/rest/v1/${table}?${params.toString()}`,
         {
           method: 'DELETE',
           headers,
@@ -10153,10 +10153,10 @@ class CadenceApp {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
 
-    const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}`, {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
       method: 'POST',
       headers: {
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+        'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal'
@@ -10185,10 +10185,10 @@ class CadenceApp {
     const session = await this.getSessionWithTimeout();
     const token = session?.access_token;
 
-    const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}?id=eq.${id}`, {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
       method: 'PATCH',
       headers: {
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+        'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal'
@@ -10217,10 +10217,10 @@ class CadenceApp {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
 
-    const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}?id=eq.${id}`, {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
       method: 'DELETE',
       headers: {
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+        'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${token}`,
         'Prefer': 'return=minimal'
       }
@@ -10248,10 +10248,10 @@ class CadenceApp {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
 
-    const response = await fetch(`https://dgwtihpiqgkhokkkxuzo.supabase.co/rest/v1/${table}?${query}`, {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
       method: 'GET',
       headers: {
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnd3RpaHBpcWdraG9ra2t4dXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTQzNjcsImV4cCI6MjA4MzA3MDM2N30.xnD7lrvmBlvW-9XzL0VTabAq6wtwsepxb90Assu8bNo',
+        'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/json'
       }
