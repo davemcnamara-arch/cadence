@@ -162,6 +162,7 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     const isReturning = urlParams.get('returning') === '1';
+    const presetRole = urlParams.get('role'); // e.g. ?role=student skips role selection
 
     // If already signed in, skip to the app — unless coming from "already a subscriber"
     // in which case sign them out first so they can choose a different Google account
@@ -179,6 +180,15 @@
       // Skip role selection for returning users (e.g. from subscribe.html "Already a subscriber?" link)
       if (isReturning) {
         document.getElementById('signin-context').innerHTML = 'Choose the Google account linked to your subscription.';
+        document.getElementById('step-role').classList.add('hidden');
+        document.getElementById('step-oauth').classList.remove('hidden');
+      }
+
+      // Skip role selection if role is preset via URL param (e.g. ?role=student)
+      if (presetRole) {
+        selectedRole = presetRole;
+        const label = presetRole === 'teacher' ? 'Signing in as a <strong>teacher</strong>' : 'Signing in as a <strong>student</strong>';
+        document.getElementById('signin-context').innerHTML = label;
         document.getElementById('step-role').classList.add('hidden');
         document.getElementById('step-oauth').classList.remove('hidden');
       }
