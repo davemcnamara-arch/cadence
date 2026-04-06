@@ -171,7 +171,7 @@
         if (isReturning) {
           await supabase.auth.signOut();
         } else {
-          window.location.href = 'index.html';
+          window.location.href = 'app.html';
           return;
         }
       }
@@ -216,7 +216,7 @@
       await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: window.location.origin + '/app.html',
           queryParams: { prompt: 'select_account' }
         }
       });
