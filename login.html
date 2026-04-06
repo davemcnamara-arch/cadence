@@ -160,28 +160,14 @@
   <script type="module">
     import { supabase } from './js/config.js';
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const isReturning = urlParams.get('returning') === '1';
-    const presetRole = urlParams.get('role'); // e.g. ?role=student skips role selection
+    const presetRole = new URLSearchParams(window.location.search).get('role');
 
-    // If already signed in, skip to the app — unless coming from "already a subscriber"
-    // in which case sign them out first so they can choose a different Google account
     (async () => {
+      // If already signed in, skip to the app
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        if (isReturning) {
-          await supabase.auth.signOut();
-        } else {
-          window.location.href = 'app.html';
-          return;
-        }
-      }
-
-      // Skip role selection for returning users (e.g. from subscribe.html "Already a subscriber?" link)
-      if (isReturning) {
-        document.getElementById('signin-context').innerHTML = 'Choose the Google account linked to your subscription.';
-        document.getElementById('step-role').classList.add('hidden');
-        document.getElementById('step-oauth').classList.remove('hidden');
+        window.location.href = 'app.html';
+        return;
       }
 
       // Skip role selection if role is preset via URL param (e.g. ?role=student)
