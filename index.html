@@ -24,7 +24,8 @@
         if (screen && !screen.classList.contains('hidden')) {
           var msg = document.getElementById('loading-message');
           if (msg) {
-            msg.innerHTML = 'Taking longer than expected&hellip;<br><br><a href="javascript:location.reload()" style="color:#6366f1;text-decoration:underline;">Tap here to retry</a>';
+            msg.innerHTML = 'Taking longer than expected&hellip;<br><br><button id="retry-btn" style="color:#6366f1;text-decoration:underline;cursor:pointer;background:none;border:none;padding:0;font:inherit;">Tap here to retry</button>';
+            document.getElementById('retry-btn').addEventListener('click', function() { location.reload(); });
           }
         }
       }, 15000);
