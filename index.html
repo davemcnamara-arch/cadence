@@ -6,6 +6,21 @@
   <title>Cadence — Instrumental Music Progress Tracker</title>
   <meta name="description" content="A student-driven song library and progress tracker for instrumental music programs. Students suggest songs, teachers moderate. Free for students.">
   <link rel="icon" href="/images/favicon.ico">
+  <script>
+    (function () {
+      try {
+        var key = Object.keys(localStorage).find(function (k) {
+          return k.startsWith('sb-') && k.endsWith('-auth-token');
+        });
+        if (key) {
+          var s = JSON.parse(localStorage.getItem(key));
+          if (s && s.access_token && s.expires_at > Date.now() / 1000) {
+            window.location.replace('app.html');
+          }
+        }
+      } catch (e) {}
+    })();
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -610,10 +625,5 @@
 </footer>
 
 
-<script type="module">
-  import { supabase } from './js/config.js';
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) window.location.replace('app.html');
-</script>
 </body>
 </html>
