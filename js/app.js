@@ -3070,6 +3070,13 @@ class CadenceApp {
       }
     }
 
+    // Clear any previous URL error
+    const urlError = document.getElementById('resource-url-error');
+    if (urlError) {
+      urlError.style.display = 'none';
+      urlError.textContent = '';
+    }
+
     // Show modal
     document.getElementById('edit-resource-modal').classList.remove('hidden');
     document.getElementById('resource-url').focus();
@@ -3077,8 +3084,30 @@ class CadenceApp {
 
   async saveResourceUrl() {
     try {
-      const url = document.getElementById('resource-url').value.trim();
+      const urlInput = document.getElementById('resource-url');
+      const urlError = document.getElementById('resource-url-error');
+      const url = urlInput.value.trim();
       const { songId, fieldName } = this.editingResource;
+
+      // Validate URL scheme (allow empty to clear a link)
+      if (url) {
+        let parsedUrl;
+        try {
+          parsedUrl = new URL(url);
+        } catch {
+          parsedUrl = null;
+        }
+        if (!parsedUrl || (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:')) {
+          urlError.textContent = 'URL must start with http:// or https://';
+          urlError.style.display = 'block';
+          urlInput.focus();
+          return;
+        }
+      }
+      if (urlError) {
+        urlError.style.display = 'none';
+        urlError.textContent = '';
+      }
 
       // Get the current session token from localStorage (Supabase stores it there)
       const sessionKey = `sb-dgwtihpiqgkhokkkxuzo-auth-token`;
