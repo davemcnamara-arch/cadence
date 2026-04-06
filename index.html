@@ -20,7 +20,9 @@
         });
         if (key) {
           var s = JSON.parse(localStorage.getItem(key));
-          if (s && s.access_token && s.expires_at > Date.now() / 1000) {
+          // Redirect if a refresh token exists — the access token may be expired
+          // but app.html's Supabase SDK will refresh it automatically
+          if (s && s.refresh_token) {
             window.location.replace('app.html');
           }
         }
