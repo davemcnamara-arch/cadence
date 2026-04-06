@@ -412,20 +412,26 @@ export class AuthManager {
       return;
     }
 
-    // Existing user — check if they selected a teacher role on the login page
-    // (i.e. an existing student clicking "I'm a teacher" to upgrade their account).
-    // Update the DB role now so the teacher subscription gate in app.js fires.
+    // Existing user — check if they selected a different role on the login page.
+    // Handles two cases:
+    //   student → teacher: existing student clicking "I'm a teacher" to upgrade;
+    //                      the teacher subscription gate in app.js will then fire.
+    //   teacher → student: teacher accidentally clicked "I'm a student"; clicking
+    //                      "I'm a teacher" next time will upgrade them back.
     const selectedRole = localStorage.getItem('cadence_signup_role');
-    if (selectedRole === 'teacher' && existingUser.role === 'student') {
+    const roleSwitch =
+      (selectedRole === 'teacher' && existingUser.role === 'student') ||
+      (selectedRole === 'student' && existingUser.role === 'teacher');
+    if (roleSwitch) {
       const { error: patchError } = await this.patchDirect(
         'users',
-        { role: 'teacher' },
+        { role: selectedRole },
         { eq: { id: existingUser.id } }
       );
       if (!patchError) {
-        existingUser.role = 'teacher';
+        existingUser.role = selectedRole;
       } else {
-        console.error('Error upgrading user role to teacher:', patchError);
+        console.error('Error updating user role:', patchError);
       }
     }
 
