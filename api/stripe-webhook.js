@@ -68,6 +68,18 @@ export default async function handler(req, res) {
   // New purchase or renewal via Stripe Checkout.
   // ---------------------------------------------------------------
   if (event.type === 'checkout.session.completed') {
+    // Idempotency check: skip if this event has already been processed
+    const { data: existingEvent } = await supabase
+      .from('processed_webhook_events')
+      .select('event_id')
+      .eq('event_id', event.id)
+      .maybeSingle();
+
+    if (existingEvent) {
+      console.log(`Duplicate webhook event ${event.id} — skipping`);
+      return res.status(200).json({ received: true });
+    }
+
     const session = event.data.object;
 
     const supabase_uid = session.metadata?.supabase_uid || null;
@@ -107,6 +119,16 @@ export default async function handler(req, res) {
     if (upsertError) {
       console.error('Supabase upsert error:', upsertError);
       return res.status(500).json({ error: 'Database error' });
+    }
+
+    // Record the event as processed so replays are no-ops
+    const { error: idempotencyError } = await supabase
+      .from('processed_webhook_events')
+      .insert({ event_id: event.id });
+
+    if (idempotencyError) {
+      console.error('Failed to record processed webhook event:', idempotencyError);
+      // Non-fatal: subscription already written; log and continue
     }
 
     // Restore school access in case the teacher is resubscribing after a lapse
