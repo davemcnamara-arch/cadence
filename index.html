@@ -609,5 +609,11 @@
   <p>© 2026 Cadence · <a href="/privacy.html">Privacy policy</a> · <a href="/login.html">Log in</a></p>
 </footer>
 
+
+<script type="module">
+  import { supabase } from './js/config.js';
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) window.location.replace('app.html');
+</script>
 </body>
 </html>
