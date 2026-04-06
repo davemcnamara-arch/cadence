@@ -172,6 +172,59 @@ export class AuthManager {
     }
   }
 
+  // Direct fetch wrapper for Supabase PATCH (bypasses stale client)
+  async patchDirect(table, updates, filters = {}) {
+    const params = new URLSearchParams();
+    for (const [op, conditions] of Object.entries(filters)) {
+      for (const [column, value] of Object.entries(conditions)) {
+        params.append(column, `${op}.${value}`);
+      }
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
+
+    try {
+      const storageKey = Object.keys(localStorage).find(key =>
+        key.startsWith('sb-') && key.endsWith('-auth-token')
+      );
+      const tokenData = storageKey ? JSON.parse(localStorage.getItem(storageKey)) : null;
+      const headers = {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Prefer': 'return=representation'
+      };
+      if (tokenData?.access_token) {
+        headers['Authorization'] = `Bearer ${tokenData.access_token}`;
+      }
+
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/${table}?${params.toString()}`,
+        {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify(updates),
+          signal: controller.signal
+        }
+      );
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return { data: null, error: { message: errorData.message || `HTTP ${response.status}` } };
+      }
+
+      const data = await response.json();
+      return { data: Array.isArray(data) ? data[0] : data, error: null };
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        return { data: null, error: { message: 'Connection timeout' } };
+      }
+      return { data: null, error: { message: err.message } };
+    }
+  }
+
   // Initialize auth and check session
   async init() {
     const { data: { session } } = await this.withTimeout(
@@ -359,7 +412,29 @@ export class AuthManager {
       return;
     }
 
-    // Existing user - proceed normally
+    // Existing user — check if they selected a different role on the login page.
+    // Handles two cases:
+    //   student → teacher: existing student clicking "I'm a teacher" to upgrade;
+    //                      the teacher subscription gate in app.js will then fire.
+    //   teacher → student: teacher accidentally clicked "I'm a student"; clicking
+    //                      "I'm a teacher" next time will upgrade them back.
+    const selectedRole = localStorage.getItem('cadence_signup_role');
+    const roleSwitch =
+      (selectedRole === 'teacher' && existingUser.role === 'student') ||
+      (selectedRole === 'student' && existingUser.role === 'teacher');
+    if (roleSwitch) {
+      const { error: patchError } = await this.patchDirect(
+        'users',
+        { role: selectedRole },
+        { eq: { id: existingUser.id } }
+      );
+      if (!patchError) {
+        existingUser.role = selectedRole;
+      } else {
+        console.error('Error updating user role:', patchError);
+      }
+    }
+
     this.currentUser = existingUser;
 
     // Process any pending enrollments for this user
