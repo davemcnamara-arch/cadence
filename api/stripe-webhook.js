@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     const signature = req.headers['stripe-signature'];
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
+    console.error('Webhook signature verification failed');
     return res.status(400).json({ error: `Webhook error: ${err.message}` });
   }
 
@@ -97,7 +97,7 @@ export default async function handler(req, res) {
       periodStart = new Date(subscription.current_period_start * 1000);
       periodEnd = new Date(subscription.current_period_end * 1000);
     } catch (err) {
-      console.error('Could not retrieve subscription details:', err.message);
+      console.error('Could not retrieve subscription details');
     }
 
     // Upsert the subscription row keyed on stripe_subscription_id
@@ -117,7 +117,7 @@ export default async function handler(req, res) {
       );
 
     if (upsertError) {
-      console.error('Supabase upsert error:', upsertError);
+      console.error('Supabase upsert error', upsertError?.code ?? 'unknown');
       return res.status(500).json({ error: 'Database error' });
     }
 
@@ -127,7 +127,7 @@ export default async function handler(req, res) {
       .insert({ event_id: event.id });
 
     if (idempotencyError) {
-      console.error('Failed to record processed webhook event:', idempotencyError);
+      console.error('Failed to record processed webhook event', idempotencyError?.code ?? 'unknown');
       // Non-fatal: subscription already written; log and continue
     }
 
@@ -148,7 +148,7 @@ export default async function handler(req, res) {
           .insert({ created_by: supabase_uid, name: 'My School' });
 
         if (schoolError) {
-          console.error('School creation error:', schoolError);
+          console.error('School creation error', schoolError?.code ?? 'unknown');
           // Non-fatal: subscription row already written
         }
       }
@@ -187,7 +187,7 @@ export default async function handler(req, res) {
       .select('teacher_id, school_id');
 
     if (updateError) {
-      console.error('Supabase update error (subscription.updated):', updateError);
+      console.error('Supabase update error (subscription.updated)', updateError?.code ?? 'unknown');
       return res.status(500).json({ error: 'Database error' });
     }
 
@@ -223,7 +223,7 @@ export default async function handler(req, res) {
     try {
       stripeSub = await stripe.subscriptions.retrieve(stripe_subscription_id);
     } catch (err) {
-      console.error('Could not retrieve subscription on invoice.payment_succeeded:', err.message);
+      console.error('Could not retrieve subscription on invoice.payment_succeeded');
       return res.status(200).json({ received: true });
     }
 
@@ -245,7 +245,7 @@ export default async function handler(req, res) {
       .select('teacher_id, school_id');
 
     if (updateError) {
-      console.error('Supabase update error (invoice.payment_succeeded):', updateError);
+      console.error('Supabase update error (invoice.payment_succeeded)', updateError?.code ?? 'unknown');
       return res.status(500).json({ error: 'Database error' });
     }
 
