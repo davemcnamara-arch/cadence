@@ -661,27 +661,27 @@
               <h4 style="margin:0 0 0.75rem;">Manual Onboarding</h4>
               <p style="font-size:0.85rem;color:var(--text-secondary);margin:0 0 1rem;">Create a school and pre-register a teacher without going through Stripe.</p>
               <div class="school-form-group">
-                <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.25rem;">School Name *</label>
+                <label for="manual-onboard-school-name" style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.25rem;">School Name *</label>
                 <input type="text" id="manual-onboard-school-name" class="school-input" placeholder="e.g. Springfield High School" maxlength="100">
               </div>
               <div class="school-form-group">
-                <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.25rem;">Teacher Email *</label>
+                <label for="manual-onboard-teacher-email" style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.25rem;">Teacher Email *</label>
                 <input type="email" id="manual-onboard-teacher-email" class="school-input" placeholder="teacher@example.com">
               </div>
               <div class="school-form-group">
-                <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.25rem;">Teacher Name (optional)</label>
+                <label for="manual-onboard-teacher-name" style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.25rem;">Teacher Name (optional)</label>
                 <input type="text" id="manual-onboard-teacher-name" class="school-input" placeholder="e.g. Jane Smith">
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
                 <div>
-                  <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.25rem;">Plan Type</label>
+                  <label for="manual-onboard-plan-type" style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.25rem;">Plan Type</label>
                   <select id="manual-onboard-plan-type" class="filter-select" style="width:100%;">
                     <option value="school">School</option>
                     <option value="individual">Individual</option>
                   </select>
                 </div>
                 <div>
-                  <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.25rem;">Subscription Status</label>
+                  <label for="manual-onboard-status" style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.25rem;">Subscription Status</label>
                   <select id="manual-onboard-status" class="filter-select" style="width:100%;">
                     <option value="active">Active</option>
                     <option value="trialing">Trialing</option>
@@ -691,7 +691,7 @@
                 </div>
               </div>
               <div class="school-form-group">
-                <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.25rem;">Subscription Expiry Date</label>
+                <label for="manual-onboard-expiry" style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.25rem;">Subscription Expiry Date</label>
                 <input type="date" id="manual-onboard-expiry" class="school-input">
               </div>
               <div style="display:flex;gap:0.5rem;">
@@ -812,7 +812,7 @@
         <input type="hidden" id="sub-override-school-id">
         <input type="hidden" id="sub-override-sub-id">
         <div class="form-group">
-          <label>Subscription Status</label>
+          <label for="sub-override-status">Subscription Status</label>
           <select id="sub-override-status" class="filter-select" style="width:100%;">
             <option value="active">Active</option>
             <option value="trialing">Trialing</option>
@@ -822,14 +822,14 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Plan Type</label>
+          <label for="sub-override-plan-type">Plan Type</label>
           <select id="sub-override-plan-type" class="filter-select" style="width:100%;">
             <option value="school">School</option>
             <option value="individual">Individual</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Expiry Date (current_period_end)</label>
+          <label for="sub-override-expiry">Expiry Date (current_period_end)</label>
           <input type="date" id="sub-override-expiry" style="width:100%;padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-primary);color:var(--text-primary);">
         </div>
       </div>
@@ -992,7 +992,7 @@
         <p id="rate-resources-song-info" style="margin-bottom: 24px; color: var(--text-secondary);"></p>
         <form id="rate-resources-form">
           <div id="chords-rating-group" class="form-group rating-group hidden">
-            <label>Chords Helpfulness</label>
+            <label for="chords-rating">Chords Helpfulness</label>
             <div class="rating-stars" data-field="chords">
               <span class="star" data-value="1">★</span>
               <span class="star" data-value="2">★</span>
@@ -1003,7 +1003,7 @@
             <input type="hidden" id="chords-rating" name="chords_rating">
           </div>
           <div id="tutorial-rating-group" class="form-group rating-group hidden">
-            <label>Tutorial Helpfulness</label>
+            <label for="tutorial-rating">Tutorial Helpfulness</label>
             <div class="rating-stars" data-field="tutorial">
               <span class="star" data-value="1">★</span>
               <span class="star" data-value="2">★</span>
