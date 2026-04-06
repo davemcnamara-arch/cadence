@@ -935,7 +935,7 @@ class CadenceApp {
       ).join('');
       container.innerHTML = `
         <span class="school-label">School:</span>
-        <select class="header-school-select" onchange="app.switchHeaderSchool(this.value)">${options}</select>
+        <select name="header-school" class="header-school-select" onchange="app.switchHeaderSchool(this.value)">${options}</select>
       `;
     }
 
@@ -2356,7 +2356,7 @@ class CadenceApp {
       const ratingsData = JSON.stringify(song.song_ratings || []).replace(/"/g, '&quot;');
 
       instrumentDisplay = `
-        <select class="song-instrument-select"
+        <select name="song-instrument" class="song-instrument-select"
                 onchange="event.stopPropagation(); app.onSongCardInstrumentChange('${song.id}', this.value, this)"
                 onclick="event.stopPropagation()"
                 data-ratings="${ratingsData}">
