@@ -9518,9 +9518,19 @@ class CadenceApp {
   }
 
   renderPendingAccounts() {
-    const isEmpty = !this.pendingTeacherAccounts || this.pendingTeacherAccounts.length === 0;
+    const container = document.getElementById('pending-accounts-list');
+    if (!container) return;
 
-    const html = isEmpty ? '' : this.pendingTeacherAccounts.map(account => `
+    const section = document.getElementById('pending-accounts-section');
+
+    if (!this.pendingTeacherAccounts || this.pendingTeacherAccounts.length === 0) {
+      if (section) section.classList.add('hidden');
+      return;
+    }
+
+    if (section) section.classList.remove('hidden');
+
+    const html = this.pendingTeacherAccounts.map(account => `
       <div class="account-card">
         <div class="account-info">
           <div class="account-name">${account.name || 'Not specified'}</div>
@@ -9533,21 +9543,7 @@ class CadenceApp {
       </div>
     `).join('');
 
-    // Populate admin panel section (if present)
-    const adminContainer = document.getElementById('pending-accounts-list');
-    const adminSection = document.getElementById('pending-accounts-section');
-    if (adminContainer) {
-      adminSection?.classList.toggle('hidden', isEmpty);
-      adminContainer.innerHTML = html;
-    }
-
-    // Populate accounts-view section (teachers and admins)
-    const viewContainer = document.getElementById('accounts-view-pending-list');
-    const viewSection = document.getElementById('accounts-view-pending-section');
-    if (viewContainer) {
-      viewSection?.classList.toggle('hidden', isEmpty);
-      viewContainer.innerHTML = html;
-    }
+    container.innerHTML = html;
   }
 
   renderAccountsList() {
@@ -9621,9 +9617,9 @@ class CadenceApp {
   }
 
   async createTeacherAccount() {
-    const userRole = auth.getCurrentUser()?.role;
-    if (userRole !== 'admin' && userRole !== 'teacher') {
-      this.showToast('Only teachers and admins can create teacher accounts', 'error');
+    // Only admins can create teacher accounts via the admin panel
+    if (auth.getCurrentUser()?.role !== 'admin') {
+      this.showToast('Only admins can create teacher accounts', 'error');
       return;
     }
 
@@ -9674,9 +9670,9 @@ class CadenceApp {
   }
 
   async removePendingTeacherAccount(accountId) {
-    const userRole = auth.getCurrentUser()?.role;
-    if (userRole !== 'admin' && userRole !== 'teacher') {
-      this.showToast('Only teachers and admins can manage pending teacher accounts', 'error');
+    // Only admins can manage pending teacher accounts in the admin panel
+    if (auth.getCurrentUser()?.role !== 'admin') {
+      this.showToast('Only admins can manage pending teacher accounts', 'error');
       return;
     }
 
@@ -10978,11 +10974,26 @@ class CadenceApp {
     const joinCode = this.currentSchool.join_code;
     container.innerHTML = `
       <div class="school-invite-panel">
-        <h3 class="school-section-title">Invite Teachers</h3>
+        <h3 class="school-section-title">Invite a Colleague</h3>
         <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:0.75rem;">
-          Share the school join code with other teachers. When they open the
-          <strong>School</strong> area and enter this code they will be added to
-          your school automatically.
+          Enter their email and they'll get teacher access automatically when they sign in — no join code needed.
+        </p>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.75rem;">
+          <input type="email" id="school-invite-email" placeholder="colleague@school.com"
+            class="text-input" style="flex:2;min-width:180px;"
+            onkeydown="if(event.key==='Enter')app.submitSchoolTeacherInvite()">
+          <input type="text" id="school-invite-name" placeholder="Name (optional)"
+            class="text-input" style="flex:1;min-width:140px;"
+            onkeydown="if(event.key==='Enter')app.submitSchoolTeacherInvite()">
+          <button class="btn btn-primary" onclick="app.submitSchoolTeacherInvite()">Invite</button>
+        </div>
+        <div id="school-pending-invites" class="hidden">
+          <p style="font-size:0.8125rem;font-weight:500;color:var(--text-secondary);margin-bottom:0.5rem;">Pending invites</p>
+          <div id="school-pending-invites-list"></div>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--border-color);margin:1rem 0 0.75rem;">
+        <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:0.5rem;">
+          Already have a Cadence account? Share this school code instead:
         </p>
         <div class="school-join-code-row">
           <span class="class-code-display">${this.escapeHtml(joinCode)}</span>
@@ -10991,6 +11002,102 @@ class CadenceApp {
       </div>
     `;
     container.classList.remove('hidden');
+    this.loadSchoolPendingInvites();
+  }
+
+  async loadSchoolPendingInvites() {
+    if (!this.currentSchool) return;
+
+    const { data, error } = await this.callSelectDirect(
+      'pre_registered_accounts',
+      '*',
+      { eq: { school_id: this.currentSchool.id } },
+      { order: 'created_at.desc' }
+    );
+
+    if (error) {
+      console.error('Error loading school pending invites:', error);
+      return;
+    }
+
+    const invites = data || [];
+    const section = document.getElementById('school-pending-invites');
+    const list = document.getElementById('school-pending-invites-list');
+    if (!section || !list) return;
+
+    if (invites.length === 0) {
+      section.classList.add('hidden');
+      return;
+    }
+
+    section.classList.remove('hidden');
+    list.innerHTML = invites.map(invite => `
+      <div class="account-card">
+        <div class="account-info">
+          <div class="account-name">${this.escapeHtml(invite.name || 'No name specified')}</div>
+          <div class="account-email">${this.escapeHtml(invite.email)}</div>
+        </div>
+        <div class="account-meta">
+          <span class="user-role-badge teacher">Pending</span>
+          <button class="btn btn-text btn-sm" style="color:var(--error-color);"
+            onclick="app.removeSchoolTeacherInvite('${invite.id}')">Remove</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async submitSchoolTeacherInvite() {
+    if (!this.currentSchool) return;
+
+    const emailEl = document.getElementById('school-invite-email');
+    const nameEl = document.getElementById('school-invite-name');
+    const email = emailEl?.value.trim().toLowerCase();
+    const name = nameEl?.value.trim();
+
+    if (!email) {
+      this.showToast('Please enter an email address', 'error');
+      emailEl?.focus();
+      return;
+    }
+
+    const { error } = await supabase
+      .from('pre_registered_accounts')
+      .insert([{
+        email,
+        role: 'teacher',
+        name: name || null,
+        created_by: auth.getCurrentUser().id,
+        school_id: this.currentSchool.id
+      }]);
+
+    if (error) {
+      if (error.code === '23505') {
+        this.showToast('This email already has a pending invite', 'error');
+      } else {
+        this.showToast('Failed to send invite', 'error');
+      }
+      return;
+    }
+
+    if (emailEl) emailEl.value = '';
+    if (nameEl) nameEl.value = '';
+    this.showToast("Invite sent! They'll get teacher access when they sign in.", 'success');
+    await this.loadSchoolPendingInvites();
+  }
+
+  async removeSchoolTeacherInvite(inviteId) {
+    const { error } = await supabase
+      .from('pre_registered_accounts')
+      .delete()
+      .eq('id', inviteId);
+
+    if (error) {
+      this.showToast('Failed to remove invite', 'error');
+      return;
+    }
+
+    this.showToast('Invite removed', 'success');
+    await this.loadSchoolPendingInvites();
   }
 
   copySchoolJoinCode(code) {
