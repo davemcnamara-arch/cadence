@@ -3110,7 +3110,7 @@ class CadenceApp {
       }
 
       // Get the current session token from localStorage (Supabase stores it there)
-      const sessionKey = `sb-dgwtihpiqgkhokkkxuzo-auth-token`;
+      const sessionKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`;
       const sessionData = localStorage.getItem(sessionKey);
 
       if (!sessionData) {

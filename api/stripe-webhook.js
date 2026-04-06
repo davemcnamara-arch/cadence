@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch (err) {
     console.error('Webhook signature verification failed');
-    return res.status(400).json({ error: `Webhook error: ${err.message}` });
+    return res.status(400).json({ error: 'Webhook signature invalid' });
   }
 
   // Use the Supabase service-role client to bypass RLS for all handlers below
