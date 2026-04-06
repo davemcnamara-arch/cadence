@@ -428,11 +428,14 @@ export class AuthManager {
         { role: selectedRole },
         { eq: { id: existingUser.id } }
       );
-      if (!patchError) {
-        existingUser.role = selectedRole;
-      } else {
+      if (patchError) {
         console.error('Error updating user role:', patchError);
       }
+      // Always apply the selected role in memory, even if the DB patch failed
+      // (e.g. blocked by RLS). This ensures the subscription gate in app.js
+      // fires for a student who selects "teacher" — they'll be redirected to
+      // subscribe rather than silently admitted as a student.
+      existingUser.role = selectedRole;
     }
 
     this.currentUser = existingUser;
