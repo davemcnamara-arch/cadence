@@ -8,13 +8,19 @@
     "build": "echo 'No build step required for vanilla JS'",
     "deploy": "vercel --prod"
   },
-  "keywords": ["music", "education", "skill-tracking", "progression"],
+  "keywords": [
+    "music",
+    "education",
+    "skill-tracking",
+    "progression"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
     "live-server": "^1.2.2"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.56.0",
     "@supabase/supabase-js": "^2.39.0",
     "stripe": "^14.21.0"
   }
