@@ -9518,19 +9518,9 @@ class CadenceApp {
   }
 
   renderPendingAccounts() {
-    const container = document.getElementById('pending-accounts-list');
-    if (!container) return;
+    const isEmpty = !this.pendingTeacherAccounts || this.pendingTeacherAccounts.length === 0;
 
-    const section = document.getElementById('pending-accounts-section');
-
-    if (!this.pendingTeacherAccounts || this.pendingTeacherAccounts.length === 0) {
-      if (section) section.classList.add('hidden');
-      return;
-    }
-
-    if (section) section.classList.remove('hidden');
-
-    const html = this.pendingTeacherAccounts.map(account => `
+    const html = isEmpty ? '' : this.pendingTeacherAccounts.map(account => `
       <div class="account-card">
         <div class="account-info">
           <div class="account-name">${account.name || 'Not specified'}</div>
@@ -9543,7 +9533,21 @@ class CadenceApp {
       </div>
     `).join('');
 
-    container.innerHTML = html;
+    // Populate admin panel section (if present)
+    const adminContainer = document.getElementById('pending-accounts-list');
+    const adminSection = document.getElementById('pending-accounts-section');
+    if (adminContainer) {
+      adminSection?.classList.toggle('hidden', isEmpty);
+      adminContainer.innerHTML = html;
+    }
+
+    // Populate accounts-view section (teachers and admins)
+    const viewContainer = document.getElementById('accounts-view-pending-list');
+    const viewSection = document.getElementById('accounts-view-pending-section');
+    if (viewContainer) {
+      viewSection?.classList.toggle('hidden', isEmpty);
+      viewContainer.innerHTML = html;
+    }
   }
 
   renderAccountsList() {
@@ -9617,9 +9621,9 @@ class CadenceApp {
   }
 
   async createTeacherAccount() {
-    // Only admins can create teacher accounts
-    if (auth.getCurrentUser()?.role !== 'admin') {
-      this.showToast('Only admins can create teacher accounts', 'error');
+    const userRole = auth.getCurrentUser()?.role;
+    if (userRole !== 'admin' && userRole !== 'teacher') {
+      this.showToast('Only teachers and admins can create teacher accounts', 'error');
       return;
     }
 
@@ -9670,9 +9674,9 @@ class CadenceApp {
   }
 
   async removePendingTeacherAccount(accountId) {
-    // Only admins can manage pending teacher accounts
-    if (auth.getCurrentUser()?.role !== 'admin') {
-      this.showToast('Only admins can manage pending teacher accounts', 'error');
+    const userRole = auth.getCurrentUser()?.role;
+    if (userRole !== 'admin' && userRole !== 'teacher') {
+      this.showToast('Only teachers and admins can manage pending teacher accounts', 'error');
       return;
     }
 

@@ -127,6 +127,8 @@
           <button class="nav-tab teacher-tab admin-tab hidden" data-view="flagged">Review <span id="flagged-count-badge" class="tab-notification-badge hidden"></span></button>
           <!-- School: direct nav tab for teachers -->
           <button class="nav-tab teacher-tab hidden" data-view="school">School</button>
+          <!-- Accounts tab: teachers and admins -->
+          <button class="nav-tab teacher-tab admin-tab hidden" data-view="accounts">Accounts</button>
           <!-- Management dropdown: admin only -->
           <div class="nav-dropdown-group admin-tab hidden">
             <button class="nav-tab nav-dropdown-trigger">Management <span class="dropdown-arrow">▾</span></button>
@@ -467,6 +469,16 @@
       <div id="accounts-view" class="view hidden">
         <div class="view-header">
           <h2>Account Management</h2>
+          <button id="create-teacher-btn" class="btn btn-primary teacher-tab admin-tab hidden">+ Invite Teacher</button>
+        </div>
+
+        <!-- Pre-registered accounts (pending sign-in) -->
+        <div id="accounts-view-pending-section" class="accounts-section hidden">
+          <h3>Pending Teacher Accounts</h3>
+          <p class="section-description">These accounts have been created but the user hasn't signed in yet.</p>
+          <div id="accounts-view-pending-list" class="accounts-list">
+            <!-- Populated by JS -->
+          </div>
         </div>
 
         <!-- Existing user accounts -->
