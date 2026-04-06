@@ -391,7 +391,13 @@ export class AuthManager {
             authUser,
             preReg.name || authUser.user_metadata?.full_name || authUser.email.split('@')[0]
           );
-          if (result.success) return;
+          if (result.success) {
+            // If invited via the School tab, auto-join that school (no join code needed)
+            if (preReg.school_id) {
+              await this.rpcDirect('auto_join_school_by_id', { p_school_id: preReg.school_id });
+            }
+            return;
+          }
           // If auto-creation failed, fall through to manual role selection
         }
       } catch (preRegCheckError) {
