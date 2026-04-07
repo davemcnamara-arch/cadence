@@ -1,4 +1,4 @@
-# Cadence - Music Skill Progression Tracker
+# Cadence - Music learning platform: student choice, teacher insight.
 
 A comprehensive web application for music students to track their skill progression across guitar, bass, piano, drums, and vocals.
 
