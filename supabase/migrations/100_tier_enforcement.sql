@@ -1,7 +1,7 @@
 -- ============================================================
 -- MIGRATION 100: Tier enforcement for student/teacher limits
 --
--- Individual plan: 1 teacher, up to 15 students total
+-- Individual plan: 1 teacher, up to 25 students total (raised from 15 in migration 117)
 -- School plan: unlimited teachers and students
 --
 -- New functions:

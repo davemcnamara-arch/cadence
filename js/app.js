@@ -858,7 +858,7 @@ class CadenceApp {
   hasReachedStudentLimit() {
     if (!this.isIndividualPlan()) return false;
     const count = this.subscription?.student_count ?? this.getTotalStudentCount();
-    return count >= 15;
+    return count >= 25;
   }
 
   renderPlanBanner() {
@@ -875,7 +875,7 @@ class CadenceApp {
     let text = '';
     if (plan_type === 'individual') {
       const used = student_count ?? this.getTotalStudentCount();
-      text = `Individual plan · 1 teacher · ${used} / 15 students`;
+      text = `Individual plan · 1 teacher · ${used} / 25 students`;
     } else if (plan_type === 'school') {
       text = 'School plan · unlimited teachers and students';
     } else {
@@ -5400,11 +5400,11 @@ class CadenceApp {
     if (noticeEl) {
       if (this.isIndividualPlan()) {
         const used = this.subscription?.student_count ?? this.getTotalStudentCount();
-        const remaining = Math.max(0, 15 - used);
+        const remaining = Math.max(0, 25 - used);
         if (remaining === 0) {
-          noticeEl.innerHTML = `<div class="plan-limit-warning">You've reached the 15-student limit for an Individual subscription. Upgrade to a School subscription for unlimited students.</div>`;
+          noticeEl.innerHTML = `<div class="plan-limit-warning">You've reached the 25-student limit for an Individual subscription. Upgrade to a School subscription for unlimited students.</div>`;
         } else {
-          noticeEl.innerHTML = `<div class="plan-limit-info">Individual plan: <strong>${used} / 15</strong> students used (${remaining} remaining).</div>`;
+          noticeEl.innerHTML = `<div class="plan-limit-info">Individual plan: <strong>${used} / 25</strong> students used (${remaining} remaining).</div>`;
         }
         noticeEl.classList.remove('hidden');
       } else {
@@ -5492,17 +5492,17 @@ class CadenceApp {
     // Enforce student limit for Individual plan
     if (this.isIndividualPlan()) {
       const used = this.subscription?.student_count ?? this.getTotalStudentCount();
-      if (used >= 15) {
+      if (used >= 25) {
         this.showToast(
-          "You've reached the 15-student limit for an Individual subscription. " +
+          "You've reached the 25-student limit for an Individual subscription. " +
           'Upgrade to a School subscription for unlimited students.',
           'error'
         );
         return;
       }
-      if (used + emails.length > 15) {
+      if (used + emails.length > 25) {
         this.showToast(
-          `Adding ${emails.length} students would exceed your 15-student limit ` +
+          `Adding ${emails.length} students would exceed your 25-student limit ` +
           `(${used} used). Remove some emails or upgrade to a School subscription.`,
           'error'
         );
