@@ -133,9 +133,9 @@ Available under the **School** tab:
 - School-wide statistics, instrument distribution, export options
 
 ### Subscriptions
-- **Individual plan**: 1 teacher, up to 15 students (A$49/year)
+- **Individual plan**: 1 teacher, up to 25 students (A$49/year)
 - **School plan**: unlimited teachers and students (A$199/year)
-- A plan limits banner shows how many students have been used (e.g. "3/15 students")
+- A plan limits banner shows how many students have been used (e.g. "3/25 students")
 - If the subscription expires, a full-screen overlay appears — click **"Renew Subscription"** to restore access (data is preserved)
 
 ### School Onboarding

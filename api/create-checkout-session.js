@@ -4,7 +4,7 @@ const PRICES = {
   individual: {
     unit_amount: 4900,   // A$49.00
     nickname: 'Individual Teacher – Annual',
-    description: 'A$49 billed annually – one teacher, up to 15 students',
+    description: 'A$49 billed annually – one teacher, up to 25 students',
   },
   school: {
     unit_amount: 19900,  // A$199.00
