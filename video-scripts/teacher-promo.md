@@ -19,7 +19,7 @@
 
 ## [WHAT IS CADENCE?]
 
-**[SCREEN: Cadence logo animates in — 'Track Your Musical Journey']**
+**[SCREEN: Cadence logo animates in — 'Music learning platform: student choice, teacher insight.']**
 
 > "Cadence is a music learning platform: student choice, teacher insight. built for classrooms. It lets students log and self-assess their learning across five instruments — Guitar, Bass, Piano, Drums, and Vocals — while giving you the oversight you need to guide every student individually."
 
@@ -107,7 +107,7 @@
 
 ## [OUTRO / CALL TO ACTION]
 
-**[SCREEN: Cadence logo, tagline: 'Track Your Musical Journey']**
+**[SCREEN: Cadence logo, tagline: 'Music learning platform: student choice, teacher insight.']**
 
 > "Cadence. Clear progress. Better conversations. More time for music."
 
