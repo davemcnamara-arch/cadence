@@ -1,6 +1,6 @@
 # Cadence Setup Guide
 
-This guide will walk you through setting up the Cadence music skill progression tracker from scratch.
+This guide will walk you through setting up the Cadence music learning platform: student choice, teacher insight. from scratch.
 
 ## Prerequisites
 

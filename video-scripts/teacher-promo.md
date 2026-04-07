@@ -21,7 +21,7 @@
 
 **[SCREEN: Cadence logo animates in — 'Track Your Musical Journey']**
 
-> "Cadence is a music skill progression tracker built for classrooms. It lets students log and self-assess their learning across five instruments — Guitar, Bass, Piano, Drums, and Vocals — while giving you the oversight you need to guide every student individually."
+> "Cadence is a music learning platform: student choice, teacher insight. built for classrooms. It lets students log and self-assess their learning across five instruments — Guitar, Bass, Piano, Drums, and Vocals — while giving you the oversight you need to guide every student individually."
 
 ---
 
