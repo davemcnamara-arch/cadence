@@ -385,17 +385,17 @@ export class AuthManager {
         });
 
         if (!preRegError && preReg && preReg.found) {
-          // Auto-create account with pre-registered role
+          // Auto-create account with pre-registered role.
+          // Pass school_id so the join happens before onAuthStateChange fires —
+          // otherwise the subscription check in onUserSignedIn() runs before the
+          // teacher is in school_members and incorrectly redirects to subscribe.html.
           const result = await this.completeSignupWithRole(
             preReg.role,
             authUser,
-            preReg.name || authUser.user_metadata?.full_name || authUser.email.split('@')[0]
+            preReg.name || authUser.user_metadata?.full_name || authUser.email.split('@')[0],
+            preReg.school_id || null
           );
           if (result.success) {
-            // If invited via the School tab, auto-join that school (no join code needed)
-            if (preReg.school_id) {
-              await this.rpcDirect('auto_join_school_by_id', { p_school_id: preReg.school_id });
-            }
             return;
           }
           // If auto-creation failed, fall through to manual role selection
@@ -456,8 +456,11 @@ export class AuthManager {
   }
 
   // Complete signup with selected role
-  // authUserOverride and nameOverride are used by pre-registration flow
-  async completeSignupWithRole(role, authUserOverride, nameOverride) {
+  // authUserOverride and nameOverride are used by pre-registration flow.
+  // schoolId, if provided, causes the user to be joined to that school before
+  // listeners are notified — ensuring the school subscription is visible to
+  // onUserSignedIn() when it runs its subscription check.
+  async completeSignupWithRole(role, authUserOverride, nameOverride, schoolId = null) {
     const authUser = authUserOverride || this.pendingAuthUser;
     if (!authUser) {
       console.error('No pending auth user');
@@ -488,6 +491,13 @@ export class AuthManager {
       // For teachers/admins, transfer any classes that were pre-assigned to them
       if (role === 'teacher' || role === 'admin') {
         await this.transferPendingClasses(newUser.email);
+      }
+
+      // If this signup was via a school invite, join the school now — before
+      // notifying listeners — so that the subscription check in onUserSignedIn()
+      // can find the school-level subscription via school_members.
+      if (schoolId) {
+        await this.rpcDirect('auto_join_school_by_id', { p_school_id: schoolId });
       }
 
       // Notify listeners
