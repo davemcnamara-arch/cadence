@@ -3850,6 +3850,20 @@ class CadenceApp {
       document.getElementById('song-grading-modal').classList.add('hidden');
       this.showToast('Song graded successfully!', 'success');
 
+      // Auto-switch pathway to the graded instrument if it differs from the current one (students only)
+      const gradedInstrumentId = this.gradingData.instrument;
+      const shouldAutoSwitch = (!auth.hasRole('teacher') && !auth.hasRole('admin')) || this.previewMode.active;
+      if (shouldAutoSwitch && gradedInstrumentId && gradedInstrumentId !== this.currentInstrument) {
+        const hasProgress = this.studentProgress.some(p => p.instrument_id === gradedInstrumentId);
+        if (hasProgress) {
+          const switchedInst = this.instruments.find(i => i.id === gradedInstrumentId);
+          await this.selectInstrument(gradedInstrumentId);
+          if (switchedInst) {
+            this.showToast(`Switched to ${switchedInst.name} pathway`, 'info');
+          }
+        }
+      }
+
       // Refresh data and re-render current view in a separate try/catch
       // so a stale-connection refresh failure doesn't mask the successful grading
       try {
