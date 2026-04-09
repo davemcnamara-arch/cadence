@@ -2316,9 +2316,10 @@ class CadenceApp {
     const user = auth.getCurrentUser();
     const isStudent = user.role === 'student' || this.previewMode.active;
 
-    // Check if student is already tracking this song
+    // Check if student is already tracking this song for the displayed instrument
+    const cardInstrumentId = instrument?.id || this.currentInstrument;
     const studentSong = this.studentSongs.find(ss =>
-      ss.song_id === song.id && ss.instrument_id === this.currentInstrument
+      ss.song_id === song.id && ss.instrument_id === cardInstrumentId
     );
 
     let actionButton = '';
@@ -2330,7 +2331,7 @@ class CadenceApp {
           actionButton = `<button class="btn btn-secondary" disabled style="opacity: 0.6; cursor: not-allowed;">Already Learning</button>`;
         }
       } else {
-        actionButton = `<button class="btn btn-primary" onclick="event.stopPropagation(); app.addSongToLearning('${song.id}')">Start Learning</button>`;
+        actionButton = `<button class="btn btn-primary" onclick="event.stopPropagation(); app.addSongToLearning('${song.id}', '${cardInstrumentId}')">Start Learning</button>`;
       }
     } else {
       // Teachers/admins get delete and edit buttons
@@ -2503,6 +2504,25 @@ class CadenceApp {
       const resourcesBtn = card.querySelector('.btn-resources');
       if (resourcesBtn) {
         resourcesBtn.setAttribute('onclick', `event.stopPropagation(); app.showSongResourcesModal('${song.id}', '${instrumentId}')`);
+      }
+
+      // Update the Start Learning / tracking status button for the newly selected instrument
+      if (isStudentView) {
+        const songHeader = card.querySelector('.song-header');
+        const existingActionBtn = songHeader?.querySelector(':scope > .btn');
+        if (existingActionBtn) {
+          const studentSong = this.studentSongs.find(ss =>
+            ss.song_id === songId && ss.instrument_id === instrumentId
+          );
+          let newBtnHtml;
+          if (studentSong) {
+            const label = studentSong.status === 'mastered' ? 'Already Mastered' : 'Already Learning';
+            newBtnHtml = `<button class="btn btn-secondary" disabled style="opacity: 0.6; cursor: not-allowed;">${label}</button>`;
+          } else {
+            newBtnHtml = `<button class="btn btn-primary" onclick="event.stopPropagation(); app.addSongToLearning('${songId}', '${instrumentId}')">Start Learning</button>`;
+          }
+          existingActionBtn.outerHTML = newBtnHtml;
+        }
       }
     }
   }
@@ -2691,15 +2711,41 @@ class CadenceApp {
     }
   }
 
-  async addSongToLearning(songId) {
+  async addSongToLearning(songId, instrumentId) {
     const user = auth.getCurrentUser();
     // Use student ID if in preview mode, otherwise use current user
     const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
-    // Validate that an instrument is selected
-    if (!this.currentInstrument) {
+    // Use the provided instrument, or fall back to the current pathway instrument
+    const targetInstrumentId = instrumentId || this.currentInstrument;
+
+    if (!targetInstrumentId) {
       this.showToast('Please select an instrument first', 'warning');
       return;
+    }
+
+    // If the target instrument isn't in the student's pathways, automatically add it
+    const hasPathway = this.studentProgress.some(p => p.instrument_id === targetInstrumentId);
+    if (!hasPathway) {
+      const { data: pathwayData, error: pathwayError } = await this.callRpcDirect('add_instrument_for_student', {
+        p_student_id: userId,
+        p_instrument_id: targetInstrumentId
+      });
+
+      if (pathwayError) {
+        console.error('Error adding instrument pathway:', pathwayError);
+        this.showToast('Failed to add instrument pathway', 'error');
+        return;
+      }
+
+      this.studentProgress.push(pathwayData);
+      this.updateInstrumentDropdown();
+      this.renderInstrumentTabs();
+    }
+
+    // Auto-switch to the target instrument's pathway if it differs from current
+    if (targetInstrumentId !== this.currentInstrument) {
+      await this.selectInstrument(targetInstrumentId);
     }
 
     // Use direct RPC call to bypass stale Supabase client connections
@@ -2708,7 +2754,7 @@ class CadenceApp {
       const result = await this.callRpcDirect('add_student_song', {
         p_student_id: userId,
         p_song_id: songId,
-        p_instrument_id: this.currentInstrument,
+        p_instrument_id: targetInstrumentId,
         p_status: 'learning'
       });
       data = result.data;
