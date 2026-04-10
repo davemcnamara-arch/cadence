@@ -6858,17 +6858,17 @@ class CadenceApp {
     document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.add('hidden'));
     document.querySelectorAll('.student-tab').forEach(tab => tab.classList.remove('hidden'));
 
-    // Hide only export and join class buttons in preview mode
+    // Hide export and join class buttons in preview mode, but show reflection button
     // Keep instrument and song controls visible so teacher can make changes
     const actionButtons = [
       'export-progress-btn',
-      'join-class-toggle-btn',
-      'generate-reflection-btn'
+      'join-class-toggle-btn'
     ];
     actionButtons.forEach(btnId => {
       const btn = document.getElementById(btnId);
       if (btn) btn.classList.add('hidden');
     });
+    document.getElementById('generate-reflection-btn')?.classList.remove('hidden');
 
     // Clear data before loading so pathway view shows loading state (not stale teacher data)
     this.studentProgress = [];
@@ -7063,7 +7063,7 @@ class CadenceApp {
       });
     }
 
-    // Show action buttons again (only those we hid)
+    // Show action buttons again (only those we hid), hide reflection button again for teacher/admin
     const actionButtons = [
       'export-progress-btn'
     ];
@@ -7071,6 +7071,7 @@ class CadenceApp {
       const btn = document.getElementById(btnId);
       if (btn) btn.classList.remove('hidden');
     });
+    document.getElementById('generate-reflection-btn')?.classList.add('hidden');
 
     // Scroll the roster back to the student that was being previewed
     if (previewedStudentId) {
