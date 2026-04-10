@@ -286,6 +286,12 @@ class CadenceApp {
       exportBtn.addEventListener('click', () => this.showExportModal());
     }
 
+    // Generate Reflection
+    const generateReflectionBtn = document.getElementById('generate-reflection-btn');
+    if (generateReflectionBtn) {
+      generateReflectionBtn.addEventListener('click', () => this.showReflectionModal());
+    }
+
     // Join Class toggle
     const joinClassToggleBtn = document.getElementById('join-class-toggle-btn');
     if (joinClassToggleBtn) {
@@ -704,6 +710,7 @@ class CadenceApp {
       document.querySelectorAll('.student-tab').forEach(tab => tab.classList.add('hidden'));
       document.getElementById('join-class-toggle-btn')?.classList.add('hidden');
       document.getElementById('export-progress-btn')?.classList.add('hidden');
+      document.getElementById('generate-reflection-btn')?.classList.add('hidden');
 
       // Show teacher tabs
       document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.remove('hidden'));
@@ -722,6 +729,7 @@ class CadenceApp {
       document.querySelectorAll('.student-tab').forEach(tab => tab.classList.add('hidden'));
       document.getElementById('join-class-toggle-btn')?.classList.add('hidden');
       document.getElementById('export-progress-btn')?.classList.add('hidden');
+      document.getElementById('generate-reflection-btn')?.classList.add('hidden');
 
       // Show admin tabs (includes Classes tab for managing all teachers' classes)
       document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('hidden'));
@@ -4761,15 +4769,26 @@ class CadenceApp {
     document.getElementById('export-modal').classList.remove('hidden');
 
     const exportCsvBtn = document.getElementById('export-csv-btn');
-    const exportReflectionBtn = document.getElementById('export-reflection-btn');
+    exportCsvBtn.onclick = () => this.exportCSV();
+  }
+
+  showReflectionModal() {
+    const modal = document.getElementById('reflection-modal');
+    modal.classList.remove('hidden');
+
+    const generateBtn = document.getElementById('generate-reflection-btn-modal');
     const copyReflectionBtn = document.getElementById('copy-reflection-btn');
     const reflectionText = document.getElementById('reflection-text');
 
-    exportCsvBtn.onclick = () => this.exportCSV();
-    exportReflectionBtn.onclick = async () => {
+    // Reset state when opening
+    reflectionText.classList.add('hidden');
+    copyReflectionBtn.classList.add('hidden');
+    reflectionText.value = '';
+
+    generateBtn.onclick = async () => {
       try {
-        exportReflectionBtn.disabled = true;
-        exportReflectionBtn.textContent = 'Generating...';
+        generateBtn.disabled = true;
+        generateBtn.textContent = 'Generating...';
 
         const text = await this.generateReflection();
         reflectionText.value = text;
@@ -4781,10 +4800,11 @@ class CadenceApp {
         console.error('Error generating reflection:', error);
         this.showToast('Failed to generate reflection', 'error');
       } finally {
-        exportReflectionBtn.disabled = false;
-        exportReflectionBtn.textContent = 'Generate Reflection';
+        generateBtn.disabled = false;
+        generateBtn.textContent = 'Generate Reflection';
       }
     };
+
     copyReflectionBtn.onclick = () => {
       reflectionText.select();
       document.execCommand('copy');
@@ -6838,7 +6858,7 @@ class CadenceApp {
     document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.add('hidden'));
     document.querySelectorAll('.student-tab').forEach(tab => tab.classList.remove('hidden'));
 
-    // Hide only export and join class buttons in preview mode
+    // Hide export and join class buttons in preview mode, but show reflection button
     // Keep instrument and song controls visible so teacher can make changes
     const actionButtons = [
       'export-progress-btn',
@@ -6848,6 +6868,7 @@ class CadenceApp {
       const btn = document.getElementById(btnId);
       if (btn) btn.classList.add('hidden');
     });
+    document.getElementById('generate-reflection-btn')?.classList.remove('hidden');
 
     // Clear data before loading so pathway view shows loading state (not stale teacher data)
     this.studentProgress = [];
@@ -7042,7 +7063,7 @@ class CadenceApp {
       });
     }
 
-    // Show action buttons again (only those we hid)
+    // Show action buttons again (only those we hid), hide reflection button again for teacher/admin
     const actionButtons = [
       'export-progress-btn'
     ];
@@ -7050,6 +7071,7 @@ class CadenceApp {
       const btn = document.getElementById(btnId);
       if (btn) btn.classList.remove('hidden');
     });
+    document.getElementById('generate-reflection-btn')?.classList.add('hidden');
 
     // Scroll the roster back to the student that was being previewed
     if (previewedStudentId) {
