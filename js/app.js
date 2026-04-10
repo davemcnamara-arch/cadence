@@ -1912,7 +1912,7 @@ class CadenceApp {
       const { data } = await this.callSelectDirect(
         'student_songs',
         '*,songs(*)',
-        { eq: { user_id: user.id, status: 'learning' } },
+        { eq: { user_id: user.id, status: 'learning' }, is: { deleted_at: 'null' } },
         { order: 'date_started.desc' }
       );
       return data || [];
@@ -1990,7 +1990,7 @@ class CadenceApp {
         const { data: studentSongs } = await this.callSelectDirect(
           'student_songs',
           '*',
-          { eq: { user_id: user.id } }
+          { eq: { user_id: user.id }, is: { deleted_at: 'null' } }
         );
         this.studentSongs = studentSongs || [];
 
@@ -4239,7 +4239,7 @@ class CadenceApp {
       const { data: studentSongs } = await this.callSelectDirect(
         'student_songs',
         '*,songs(*)',
-        { eq: { user_id: userId } },
+        { eq: { user_id: userId }, is: { deleted_at: 'null' } },
         { order: 'date_started.desc' }
       );
 
