@@ -4772,44 +4772,38 @@ class CadenceApp {
     exportCsvBtn.onclick = () => this.exportCSV();
   }
 
-  showReflectionModal() {
+  async showReflectionModal() {
     const modal = document.getElementById('reflection-modal');
     modal.classList.remove('hidden');
 
-    const generateBtn = document.getElementById('generate-reflection-btn-modal');
     const copyReflectionBtn = document.getElementById('copy-reflection-btn');
     const reflectionText = document.getElementById('reflection-text');
+    const loadingEl = document.getElementById('reflection-loading');
 
-    // Reset state when opening
+    // Reset state
     reflectionText.classList.add('hidden');
     copyReflectionBtn.classList.add('hidden');
     reflectionText.value = '';
-
-    generateBtn.onclick = async () => {
-      try {
-        generateBtn.disabled = true;
-        generateBtn.textContent = 'Generating...';
-
-        const text = await this.generateReflection();
-        reflectionText.value = text;
-        reflectionText.classList.remove('hidden');
-        copyReflectionBtn.classList.remove('hidden');
-
-        this.showToast('Reflection generated!', 'success');
-      } catch (error) {
-        console.error('Error generating reflection:', error);
-        this.showToast('Failed to generate reflection', 'error');
-      } finally {
-        generateBtn.disabled = false;
-        generateBtn.textContent = 'Generate Reflection';
-      }
-    };
+    loadingEl.classList.remove('hidden');
 
     copyReflectionBtn.onclick = () => {
       reflectionText.select();
       document.execCommand('copy');
       this.showToast('Copied to clipboard!', 'success');
     };
+
+    try {
+      const text = await this.generateReflection();
+      reflectionText.value = text;
+      reflectionText.classList.remove('hidden');
+      copyReflectionBtn.classList.remove('hidden');
+    } catch (error) {
+      console.error('Error generating reflection:', error);
+      this.showToast('Failed to generate reflection', 'error');
+      modal.classList.add('hidden');
+    } finally {
+      loadingEl.classList.add('hidden');
+    }
   }
 
   async exportCSV() {
