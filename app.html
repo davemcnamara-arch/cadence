@@ -273,6 +273,7 @@
         <div class="view-header">
           <h2>My Progress</h2>
           <div style="display: flex; gap: 0.5rem;">
+            <button id="generate-reflection-btn" class="btn btn-primary">Generate Reflection</button>
             <button id="join-class-toggle-btn" class="btn btn-secondary">Join Class</button>
             <button id="export-progress-btn" class="btn btn-secondary">Export Data</button>
           </div>
@@ -930,6 +931,22 @@
     </div>
   </div>
 
+  <!-- Modal for Reflection -->
+  <div id="reflection-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Student Reflection</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>First-person text summary for your LMS</p>
+        <button id="generate-reflection-btn-modal" class="btn btn-primary">Generate Reflection</button>
+        <textarea id="reflection-text" class="reflection-textarea hidden" readonly></textarea>
+        <button id="copy-reflection-btn" class="btn btn-secondary hidden">Copy to Clipboard</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal for Export -->
   <div id="export-modal" class="modal hidden">
     <div class="modal-content">
@@ -943,13 +960,6 @@
             <h3>CSV Data Export</h3>
             <p>Download all your progress data in spreadsheet format</p>
             <button id="export-csv-btn" class="btn btn-primary">Download CSV</button>
-          </div>
-          <div class="export-option">
-            <h3>Student Reflection</h3>
-            <p>First-person text summary for your LMS</p>
-            <button id="export-reflection-btn" class="btn btn-primary">Generate Reflection</button>
-            <textarea id="reflection-text" class="reflection-textarea hidden" readonly></textarea>
-            <button id="copy-reflection-btn" class="btn btn-secondary hidden">Copy to Clipboard</button>
           </div>
         </div>
       </div>
