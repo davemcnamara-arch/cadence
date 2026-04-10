@@ -4870,7 +4870,8 @@ class CadenceApp {
         *,
         songs (*)
       `)
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .is('deleted_at', null);
 
     if (songsError) {
       console.error('Error fetching student songs for reflection:', songsError);
