@@ -6154,16 +6154,15 @@ class CadenceApp {
     }
 
     const activeHtml = activeStudents.map(student => {
-      const firstClassId = student.classes[0]?.id || '';
       const classBadges = student.classes.map(c =>
         `<span class="class-code-badge" style="font-size: 0.75rem; cursor: pointer;" onclick="event.stopPropagation(); app.viewClass('${c.id}')">${this.escapeHtml(c.name)}</span>`
       ).join(' ');
       const canDelete = currentUserRole === 'admin';
+      const escapedName = student.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
       return `
-        <div class="account-card" onclick="app.viewStudentFromSearch('${student.user_id}', '${firstClassId}')" style="cursor: pointer;">
+        <div class="account-card" onclick="app.viewStudentDetail('${student.user_id}', '${escapedName}')" style="cursor: pointer;">
           <div class="account-info">
             <div class="account-name">${this.escapeHtml(student.name)}</div>
-            <div class="account-email">${this.escapeHtml(student.email || '')}</div>
           </div>
           <div class="account-meta" style="gap: 0.5rem; align-items: center;">
             ${classBadges}
