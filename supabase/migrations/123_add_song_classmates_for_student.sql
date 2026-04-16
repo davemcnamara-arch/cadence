@@ -1,6 +1,7 @@
 -- Allow students to see the names of school-mates who are learning/have mastered
--- a given song. "School" means any student in any class taught by the same
--- teacher(s) as the current user's classes.
+-- a given song. "School" is determined via the school_students table, so all
+-- students enrolled at the same school(s) as the current user are included,
+-- regardless of which teacher or class they belong to.
 
 CREATE OR REPLACE FUNCTION get_song_classmates_for_student(
   p_song_id UUID
@@ -22,18 +23,13 @@ BEGIN
     ss.status
   FROM student_songs ss
   INNER JOIN users u ON ss.user_id = u.id
-  -- Find any class the other student is in
-  INNER JOIN class_members their_cm ON their_cm.user_id = ss.user_id
-  INNER JOIN classes their_class ON their_class.id = their_cm.class_id
+  -- The other student must be at the same school as the current user
+  INNER JOIN school_students their_school ON their_school.user_id = ss.user_id
   WHERE ss.song_id = p_song_id
     AND ss.deleted_at IS NULL
     AND ss.user_id != auth.uid()
-    -- Their class must be taught by a teacher who also teaches the current user
-    AND their_class.teacher_id IN (
-      SELECT c.teacher_id
-      FROM class_members cm
-      INNER JOIN classes c ON c.id = cm.class_id
-      WHERE cm.user_id = auth.uid()
+    AND their_school.school_id IN (
+      SELECT school_id FROM school_students WHERE user_id = auth.uid()
     )
   ORDER BY ss.user_id, ss.date_started DESC;
 END;
