@@ -43,7 +43,7 @@ All teacher tabs plus:
 ### Getting Started
 1. Sign in with Google
 2. Choose your role: Student
-3. On **My Pathway**, click **"Choose Your Instrument"** (first time) or **"+ Add Another"** (additional instruments)
+3. On **My Pathway**, click **"Choose Your Instrument"** (first time) or **"+ Add Another Instrument"** (additional instruments)
 4. Your pathway appears — current level is highlighted
 
 ### My Pathway
@@ -168,7 +168,7 @@ Admins can manually set a teacher's subscription status, plan type, and expiry d
 ## Common Questions
 
 Q: Can I track more than one instrument?
-A: Yes — on **My Pathway**, click **"+ Add Another"** to add more instruments. You can track all 5 simultaneously.
+A: Yes — on **My Pathway**, click **"+ Add Another Instrument"** to add more instruments. You can track all 5 simultaneously.
 
 Q: How do I move to the next level?
 A: Your teacher or admin advances your level in the system. The pathway map always shows your current level.
