@@ -248,6 +248,14 @@ class CadenceApp {
       });
     }
 
+    // Close instrument selection
+    const closeInstrumentSelectionBtn = document.getElementById('close-instrument-selection');
+    if (closeInstrumentSelectionBtn) {
+      closeInstrumentSelectionBtn.addEventListener('click', () => {
+        document.getElementById('instrument-selection').classList.add('hidden');
+      });
+    }
+
     // Remove instrument
     const removeInstrumentBtn = document.getElementById('remove-instrument-btn');
     if (removeInstrumentBtn) {
@@ -266,6 +274,12 @@ class CadenceApp {
     const gradeNewSongBtn = document.getElementById('grade-new-song-btn');
     if (gradeNewSongBtn) {
       gradeNewSongBtn.addEventListener('click', () => this.showSongGradingModal());
+    }
+
+    // Grade new song (pathway shortcut)
+    const pathwayGradeNewSongBtn = document.getElementById('pathway-grade-new-song-btn');
+    if (pathwayGradeNewSongBtn) {
+      pathwayGradeNewSongBtn.addEventListener('click', () => this.showSongGradingModal());
     }
 
     // Song grading form

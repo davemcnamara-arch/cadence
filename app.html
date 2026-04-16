@@ -173,7 +173,10 @@
       <!-- Instrument Selection (shown first time) -->
       <div id="instrument-selection" class="instrument-selection hidden">
         <div class="selection-container">
-          <h2>Choose Your Instrument</h2>
+          <div class="selection-header">
+            <h2>Choose Your Instrument</h2>
+            <button id="close-instrument-selection" class="modal-close">&times;</button>
+          </div>
           <p>Select an instrument to begin your musical journey</p>
           <div id="instrument-grid" class="instrument-grid">
             <!-- Populated by JS -->
@@ -192,6 +195,7 @@
             <button id="add-instrument-btn" class="btn-text">+ Add Another</button>
             <button id="remove-instrument-btn" class="btn-text btn-danger">Remove Current</button>
           </div>
+          <button id="pathway-grade-new-song-btn" class="btn btn-grade-song student-tab hidden">+ Add New Song</button>
           <div class="bg-color-selector student-tab hidden" id="bg-color-selector">
             <span class="bg-color-label">Background:</span>
             <div class="bg-color-swatches">
