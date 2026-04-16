@@ -727,6 +727,18 @@ body {
   cursor: pointer;
 }
 
+/* Pathway "go to library" hint link */
+.pathway-library-link {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+.pathway-library-link:hover {
+  color: var(--primary-color);
+  opacity: 1;
+}
+
 /* Background Colour Selector */
 .bg-color-selector {
   display: flex;

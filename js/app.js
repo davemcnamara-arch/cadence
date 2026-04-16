@@ -276,10 +276,10 @@ class CadenceApp {
       gradeNewSongBtn.addEventListener('click', () => this.showSongGradingModal());
     }
 
-    // Grade new song (pathway shortcut)
-    const pathwayGradeNewSongBtn = document.getElementById('pathway-grade-new-song-btn');
-    if (pathwayGradeNewSongBtn) {
-      pathwayGradeNewSongBtn.addEventListener('click', () => this.showSongGradingModal());
+    // Navigate to Song Library from pathway
+    const pathwayGoToLibraryBtn = document.getElementById('pathway-go-to-library-btn');
+    if (pathwayGoToLibraryBtn) {
+      pathwayGoToLibraryBtn.addEventListener('click', () => this.switchView('songs'));
     }
 
     // Song grading form
