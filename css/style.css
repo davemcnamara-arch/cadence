@@ -1591,6 +1591,16 @@ body {
   font-weight: 600;
 }
 
+.song-details-title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.song-details-title-link:hover {
+  text-decoration: underline;
+  color: var(--primary);
+}
+
 .modal-close {
   background: none;
   border: none;
