@@ -195,7 +195,6 @@
             <button id="add-instrument-btn" class="btn-text">+ Add Another Instrument</button>
             <button id="remove-instrument-btn" class="btn-text btn-danger">Remove Current</button>
           </div>
-          <button id="pathway-go-to-library-btn" class="btn-text pathway-library-link student-tab hidden">Browse Song Library to add songs →</button>
           <div class="bg-color-selector student-tab hidden" id="bg-color-selector">
             <span class="bg-color-label">Background:</span>
             <div class="bg-color-swatches">
@@ -210,7 +209,10 @@
         </div>
 
         <div id="learning-strip-container" class="trending-strip-container hidden">
-          <h3 class="trending-strip-title">Currently Learning</h3>
+          <div class="trending-strip-header">
+            <h3 class="trending-strip-title">Currently Learning</h3>
+            <button id="pathway-go-to-library-btn" class="btn-text pathway-library-link student-tab hidden">Browse Song Library to add songs →</button>
+          </div>
           <div id="learning-strip" class="trending-strip">
             <!-- Learning song cards populated by JS -->
           </div>
