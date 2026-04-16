@@ -2601,7 +2601,15 @@ class CadenceApp {
     const instrumentDisplay = song.instruments
       ? ` (${song.instruments.icon} ${song.instruments.name})`
       : (currentInstrument ? ` (${currentInstrument.icon} ${currentInstrument.name})` : '');
-    document.getElementById('song-details-title').textContent = `${song.title} - ${song.artist}${instrumentDisplay}`;
+    const titleEl = document.getElementById('song-details-title');
+    const titleText = `${song.title} - ${song.artist}${instrumentDisplay}`;
+    titleEl.innerHTML = `<a href="#" class="song-details-title-link" data-song-id="${this.escapeHtml(songId)}">${this.escapeHtml(titleText)}</a>`;
+    titleEl.querySelector('.song-details-title-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('song-details-modal').classList.add('hidden');
+      this._highlightSongId = songId;
+      this.switchView('songs');
+    });
 
     // Render content
     const content = document.getElementById('song-details-content');
@@ -2668,6 +2676,10 @@ class CadenceApp {
     } else {
       const avgLevel = (ratings.reduce((sum, r) => sum + r.assessed_level, 0) / ratings.length).toFixed(1);
 
+      // Split ratings into known (own students / self) and anonymous others
+      const knownRatings = ratings.filter(r => r.user_id === user.id || studentMap[r.user_id]);
+      const otherRatingsCount = ratings.length - knownRatings.length;
+
       content.innerHTML = `
         ${studentSectionHTML}
         <div style="margin-bottom: 2rem;">
@@ -2677,26 +2689,16 @@ class CadenceApp {
         <div>
           <h3>All Ratings</h3>
           <div style="display: flex; flex-direction: column; gap: 1rem;">
-            ${ratings.map(rating => {
+            ${knownRatings.map(rating => {
               const timeAgo = this.getTimeAgo(rating.date_graded);
-
-              // Determine user name display
-              let userName;
-              if (rating.user_id === user.id) {
-                userName = 'You';
-              } else if (studentMap[rating.user_id]) {
-                userName = studentMap[rating.user_id]; // Teacher viewing their student
-              } else {
-                userName = 'Student'; // Anonymous for other students
-              }
-
+              const userName = rating.user_id === user.id ? 'You' : studentMap[rating.user_id];
               const instrumentDisplay = rating.instruments ? `${rating.instruments.icon} ${rating.instruments.name}` : 'Unknown Instrument';
 
               return `
                 <div style="border: 1px solid var(--border); border-radius: 8px; padding: 1rem;">
                   <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
                     <div>
-                      <strong>${userName}</strong>
+                      <strong>${this.escapeHtml(userName)}</strong>
                       <div style="color: var(--text-secondary); font-size: 0.875rem;">${instrumentDisplay} • ${timeAgo}</div>
                     </div>
                     <div style="font-weight: 600; color: var(--primary);">Level ${rating.assessed_level}</div>
@@ -2710,6 +2712,11 @@ class CadenceApp {
                 </div>
               `;
             }).join('')}
+            ${otherRatingsCount > 0 ? `
+              <div style="border: 1px solid var(--border); border-radius: 8px; padding: 1rem; color: var(--text-secondary); font-style: italic;">
+                + ${otherRatingsCount} other${otherRatingsCount !== 1 ? 's' : ''} also learning this song
+              </div>
+            ` : ''}
           </div>
         </div>
       `;
