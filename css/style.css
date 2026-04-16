@@ -663,9 +663,15 @@ body {
   width: 100%;
 }
 
+.selection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
 .selection-container h2 {
   font-size: 1.5rem;
-  margin-bottom: 0.5rem;
 }
 
 .selection-container p {
