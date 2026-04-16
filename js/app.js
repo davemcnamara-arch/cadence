@@ -2580,6 +2580,18 @@ class CadenceApp {
       } catch (err) {
         console.warn('Could not load teacher students:', err);
       }
+    } else {
+      // Students can see the names of classmates learning this song
+      try {
+        const classmatesResult = await this.callRpcDirect('get_song_classmates_for_student', { p_song_id: songId });
+        if (classmatesResult.data) {
+          classmatesResult.data.forEach(s => {
+            studentMap[s.user_id] = s.name;
+          });
+        }
+      } catch (err) {
+        console.warn('Could not load classmate names:', err);
+      }
     }
 
     // Fetch all ratings for this song (without user join due to RLS)

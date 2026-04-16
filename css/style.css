@@ -1593,11 +1593,11 @@ body {
 
 .song-details-title-link {
   color: inherit;
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .song-details-title-link:hover {
-  text-decoration: underline;
   color: var(--primary);
 }
 
