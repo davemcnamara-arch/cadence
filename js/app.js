@@ -1400,7 +1400,7 @@ class CadenceApp {
 
     const addRemoveButtons = `
       <div style="margin-left: auto; display: flex; gap: 0.5rem;">
-        <button id="add-instrument-btn" class="btn-text" onclick="app.showInstrumentSelection()">+ Add Another</button>
+        <button id="add-instrument-btn" class="btn-text" onclick="app.showInstrumentSelection()">+ Add Another Instrument</button>
         <button id="remove-instrument-btn" class="btn-text btn-danger" onclick="app.removeCurrentInstrument()">Remove Current</button>
       </div>
     `;
