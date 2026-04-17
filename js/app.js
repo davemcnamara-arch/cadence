@@ -2590,7 +2590,7 @@ class CadenceApp {
           });
         }
       } catch (err) {
-        console.warn('Could not load classmate names:', err);
+        console.error('Could not load classmate names (has migration 123 been applied?):', err);
       }
     }
 
