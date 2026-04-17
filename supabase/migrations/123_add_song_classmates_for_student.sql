@@ -29,7 +29,7 @@ BEGIN
     AND ss.deleted_at IS NULL
     AND ss.user_id != auth.uid()
     AND their_school.school_id IN (
-      SELECT school_id FROM school_students WHERE user_id = auth.uid()
+      SELECT school_id FROM school_students WHERE school_students.user_id = auth.uid()
     )
   ORDER BY ss.user_id, ss.date_started DESC;
 END;
