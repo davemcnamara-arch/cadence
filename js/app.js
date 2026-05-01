@@ -975,6 +975,7 @@ class CadenceApp {
     // Reset cached student lists so next fetch is scoped to the new school
     this.allTeacherStudents = null;
     this.schoolStudents = null;
+    this.teacherStudentSongs = null;
     // Reset "show all school classes" when switching schools
     const allSchoolCheckbox = document.getElementById('show-all-school-classes');
     if (allSchoolCheckbox) allSchoolCheckbox.checked = false;
@@ -7129,7 +7130,7 @@ class CadenceApp {
     // Fetch student songs data if not already loaded
     if (!this.teacherStudentSongs) {
       try {
-        const result = await this.callRpcDirect('get_teacher_student_songs', {});
+        const result = await this.callRpcDirect('get_teacher_student_songs', { p_school_id: this.currentSchool?.id || null });
         this.teacherStudentSongs = result.data || [];
       } catch (err) {
         console.error('Error loading student songs for class:', err);
@@ -7241,7 +7242,7 @@ class CadenceApp {
 
     let result;
     try {
-      result = await this.callRpcDirect('get_teacher_student_songs', {});
+      result = await this.callRpcDirect('get_teacher_student_songs', { p_school_id: this.currentSchool?.id || null });
     } catch (err) {
       console.error('Error loading student songs:', err);
       listEl.innerHTML = '<div class="empty-state">Failed to load student songs. Please try again.</div>';
