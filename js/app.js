@@ -705,7 +705,7 @@ class CadenceApp {
     const savedView = sessionStorage.getItem('cadence_currentView');
     const validViews = {
       student: ['pathway', 'songs', 'progress'],
-      teacher: ['songs', 'classes', 'student-songs', 'flagged', 'school'],
+      teacher: ['songs', 'classes', 'flagged', 'school'],
       admin: ['songs', 'classes', 'flagged', 'accounts', 'admin']
     };
     const restoredView = savedView && validViews[user.role]?.includes(savedView) ? savedView : null;
@@ -1765,6 +1765,13 @@ class CadenceApp {
   // ============================================
 
   switchView(viewName, { addToHistory = true } = {}) {
+    // Student songs is now a sub-tab within the classes view
+    if (viewName === 'student-songs') {
+      this.switchView('classes', { addToHistory });
+      this.switchClassesViewTab('student-songs');
+      return;
+    }
+
     // Push a browser history entry so the back button can return here
     if (addToHistory) {
       if (this.currentView && this.currentView !== viewName) {
@@ -1832,8 +1839,6 @@ class CadenceApp {
         loadViewAsync(() => this.renderProgress());
       } else if (viewName === 'classes') {
         this.renderClassesList();
-      } else if (viewName === 'student-songs') {
-        loadViewAsync(() => this.loadStudentSongs());
       } else if (viewName === 'flagged') {
         // Load flagged ratings. Admins bypass the class guard because they
         // also review submissions from students not linked to any class.
@@ -3307,7 +3312,7 @@ class CadenceApp {
           this.filterSongs();
         } else if (this.currentView === 'progress') {
           this.renderProgress();
-        } else if (this.currentView === 'student-songs') {
+        } else if (this.currentView === 'classes' && document.querySelector('.classes-view-tab.active')?.dataset.classesTab === 'student-songs') {
           if (this.teacherStudentSongs) {
             this.teacherStudentSongs.forEach(row => {
               if (row.song_id === songId) row[fieldName] = url || null;
@@ -5988,8 +5993,9 @@ class CadenceApp {
     }
     this.allTeacherStudents = null;
 
-    // Ensure My Classes tab is active and All Students is hidden
+    // Ensure My Classes tab is active and other tabs are hidden
     document.getElementById('all-students-content')?.classList.add('hidden');
+    document.getElementById('student-songs-content')?.classList.add('hidden');
     document.getElementById('my-classes-content')?.classList.remove('hidden');
     document.querySelectorAll('.classes-view-tab').forEach(tab => {
       tab.classList.toggle('active', tab.dataset.classesTab === 'my-classes');
@@ -6046,6 +6052,7 @@ class CadenceApp {
     document.getElementById('classes-list').classList.remove('hidden');
     // Restore My Classes tab
     document.getElementById('all-students-content')?.classList.add('hidden');
+    document.getElementById('student-songs-content')?.classList.add('hidden');
     document.getElementById('my-classes-content')?.classList.remove('hidden');
     document.querySelectorAll('.classes-view-tab').forEach(tab => {
       tab.classList.toggle('active', tab.dataset.classesTab === 'my-classes');
@@ -6098,22 +6105,29 @@ class CadenceApp {
   }
 
   switchClassesViewTab(tabName) {
-    // Update tab button active states
     document.querySelectorAll('.classes-view-tab').forEach(tab => {
       tab.classList.toggle('active', tab.dataset.classesTab === tabName);
     });
 
     const myClassesContent = document.getElementById('my-classes-content');
     const allStudentsContent = document.getElementById('all-students-content');
+    const studentSongsContent = document.getElementById('student-songs-content');
 
     if (tabName === 'all-students') {
-      // Hide class detail if open
       document.getElementById('class-detail-view')?.classList.add('hidden');
       myClassesContent?.classList.add('hidden');
       allStudentsContent?.classList.remove('hidden');
+      studentSongsContent?.classList.add('hidden');
       this.loadAllStudents();
+    } else if (tabName === 'student-songs') {
+      document.getElementById('class-detail-view')?.classList.add('hidden');
+      myClassesContent?.classList.add('hidden');
+      allStudentsContent?.classList.add('hidden');
+      studentSongsContent?.classList.remove('hidden');
+      this.loadStudentSongs();
     } else {
       allStudentsContent?.classList.add('hidden');
+      studentSongsContent?.classList.add('hidden');
       myClassesContent?.classList.remove('hidden');
     }
   }
@@ -6125,8 +6139,7 @@ class CadenceApp {
 
     let students = [];
     try {
-      const params = this.currentSchool?.id ? { p_school_id: this.currentSchool.id } : {};
-      const result = await this.callRpcDirect('search_teacher_students', params);
+      const result = await this.callRpcDirect('search_teacher_students', {});
       students = result.data || [];
     } catch (err) {
       try {
@@ -6373,8 +6386,7 @@ class CadenceApp {
     // Lazy-load all students on first search
     if (!this.allTeacherStudents) {
       try {
-        const params = this.currentSchool?.id ? { p_school_id: this.currentSchool.id } : {};
-        const result = await this.callRpcDirect('search_teacher_students', params);
+        const result = await this.callRpcDirect('search_teacher_students', {});
         this.allTeacherStudents = result.data || [];
       } catch (err) {
         // Fallback to the simpler RPC if the new one isn't deployed yet

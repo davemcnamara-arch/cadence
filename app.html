@@ -116,14 +116,8 @@
           <button class="nav-tab student-tab hidden" data-view="pathway">My Pathway</button>
           <button class="nav-tab student-tab teacher-tab admin-tab hidden" data-view="songs">Song Library</button>
           <button class="nav-tab student-tab hidden" data-view="progress">My Progress</button>
-          <!-- Teaching dropdown: Classes + Student Songs -->
-          <div class="nav-dropdown-group teacher-tab admin-tab hidden">
-            <button class="nav-tab nav-dropdown-trigger">Teaching <span class="dropdown-arrow">▾</span></button>
-            <div class="nav-dropdown-menu">
-              <button class="nav-dropdown-item teacher-tab admin-tab hidden" data-view="classes">Classes</button>
-              <button class="nav-dropdown-item teacher-tab hidden" data-view="student-songs">Student Songs</button>
-            </div>
-          </div>
+          <!-- Teaching: direct nav tab -->
+          <button class="nav-tab teacher-tab admin-tab hidden" data-view="classes">Teaching</button>
           <button class="nav-tab teacher-tab admin-tab hidden" data-view="flagged">Review <span id="flagged-count-badge" class="tab-notification-badge hidden"></span></button>
           <!-- School: direct nav tab for teachers -->
           <button class="nav-tab teacher-tab hidden" data-view="school">School</button>
@@ -315,10 +309,11 @@
           <button id="create-class-btn" class="btn btn-primary">+ Create New Class</button>
         </div>
 
-        <!-- Top-level tabs: My Classes | All Students -->
+        <!-- Top-level tabs: My Classes | My Students | My Students' Songs -->
         <div class="class-tabs" id="classes-view-tabs">
           <button class="classes-view-tab active" data-classes-tab="my-classes">My Classes</button>
-          <button class="classes-view-tab" data-classes-tab="all-students">All Students</button>
+          <button class="classes-view-tab" data-classes-tab="all-students">My Students</button>
+          <button class="classes-view-tab teacher-tab" data-classes-tab="student-songs">My Students' Songs</button>
         </div>
 
         <!-- My Classes content -->
@@ -345,12 +340,31 @@
           </div>
         </div>
 
-        <!-- All Students content -->
+        <!-- My Students content -->
         <div id="all-students-content" class="hidden">
           <div class="accounts-filters" style="margin-bottom: 1rem;">
             <input type="text" id="all-students-search" placeholder="Search by name or email..." class="search-input">
           </div>
           <div id="all-students-list" class="accounts-list">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- My Students' Songs content -->
+        <div id="student-songs-content" class="hidden">
+          <div class="song-filters">
+            <input type="text" id="student-songs-search" placeholder="Search by song or student..." class="search-input">
+            <select id="student-songs-class-filter" class="filter-select">
+              <option value="">All Classes</option>
+            </select>
+            <select id="student-songs-instrument-filter" class="filter-select">
+              <option value="">All Instruments</option>
+            </select>
+          </div>
+
+          <p id="student-songs-count" class="results-count"></p>
+
+          <div id="student-songs-list" class="student-songs-list">
             <!-- Populated by JS -->
           </div>
         </div>
@@ -425,29 +439,6 @@
         </div>
       </div>
 
-      <!-- Teacher: Student Songs View -->
-      <div id="student-songs-view" class="view teacher-view hidden">
-        <div class="view-header">
-          <h2>Student Songs</h2>
-          <p class="view-subtitle">Songs your students are currently learning</p>
-        </div>
-
-        <div class="song-filters">
-          <input type="text" id="student-songs-search" placeholder="Search by song or student..." class="search-input">
-          <select id="student-songs-class-filter" class="filter-select">
-            <option value="">All Classes</option>
-          </select>
-          <select id="student-songs-instrument-filter" class="filter-select">
-            <option value="">All Instruments</option>
-          </select>
-        </div>
-
-        <p id="student-songs-count" class="results-count"></p>
-
-        <div id="student-songs-list" class="student-songs-list">
-          <!-- Populated by JS -->
-        </div>
-      </div>
 
       <!-- Teacher: Submissions View -->
       <!-- Teacher: Flagged Ratings View -->
