@@ -291,6 +291,12 @@ class CadenceApp {
       pathwayGoToLibraryBtn.addEventListener('click', () => this.switchView('songs'));
     }
 
+    // Next song suggestions button
+    const whatNextBtn = document.getElementById('what-next-btn');
+    if (whatNextBtn) {
+      whatNextBtn.addEventListener('click', () => this.showNextSongModal());
+    }
+
     // Song grading form
     this.setupSongGradingForm();
 
@@ -1640,7 +1646,10 @@ class CadenceApp {
     });
 
     // Load and render currently-learning songs strip at top of pathway
-    this.loadLearningSongsForStrip().then(songs => this.renderLearningSongsStrip(songs));
+    this.loadLearningSongsForStrip().then(songs => {
+      this.renderLearningSongsStrip(songs);
+      this._refreshNextSongButton();
+    });
   }
 
   navigateToLevelSongs(levelNumber) {
@@ -2018,6 +2027,75 @@ class CadenceApp {
     });
 
     container.classList.remove('hidden');
+  }
+
+  async loadNextSongSuggestions(instrumentId) {
+    if (this.previewMode.active) return [];
+    const user = auth.getCurrentUser();
+    if (!user || !instrumentId) return [];
+    try {
+      const result = await this.callRpcDirect('get_next_song_suggestions', {
+        p_user_id: user.id,
+        p_instrument_id: instrumentId,
+        p_limit: 10,
+        p_min_count: 2
+      });
+      return result.data || [];
+    } catch (err) {
+      console.warn('Could not load next song suggestions:', err);
+      return [];
+    }
+  }
+
+  async _refreshNextSongButton() {
+    const btn = document.getElementById('what-next-btn');
+    if (!btn) return;
+    const suggestions = await this.loadNextSongSuggestions(this.currentInstrument);
+    this._nextSongSuggestions = suggestions;
+    if (suggestions.length > 0) {
+      btn.classList.remove('hidden');
+    } else {
+      btn.classList.add('hidden');
+    }
+  }
+
+  showNextSongModal() {
+    const modal = document.getElementById('next-song-modal');
+    const list = document.getElementById('next-song-list');
+    const empty = document.getElementById('next-song-empty');
+    if (!modal || !list || !empty) return;
+
+    const suggestions = this._nextSongSuggestions || [];
+
+    if (suggestions.length === 0) {
+      list.innerHTML = '';
+      empty.classList.remove('hidden');
+    } else {
+      empty.classList.add('hidden');
+      list.innerHTML = suggestions.map(s => `
+        <div class="trending-card" data-song-id="${s.song_id}" role="button" tabindex="0">
+          <div class="trending-card-title">${this.escapeHtml(s.title)}</div>
+          <div class="trending-card-artist">${this.escapeHtml(s.artist)}</div>
+          <span class="trending-card-badge">${s.student_count} student${s.student_count !== 1 ? 's' : ''} chose this</span>
+        </div>
+      `).join('');
+
+      list.querySelectorAll('.trending-card').forEach(card => {
+        const songId = card.dataset.songId;
+        const handler = () => {
+          modal.classList.add('hidden');
+          this.viewSongDetails(songId);
+        };
+        card.addEventListener('click', handler);
+        card.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
+        });
+      });
+    }
+
+    modal.classList.remove('hidden');
+    modal.querySelector('.modal-close').onclick = () => modal.classList.add('hidden');
+    modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
   }
 
   async renderSongs() {

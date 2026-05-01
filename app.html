@@ -205,7 +205,10 @@
         <div id="learning-strip-container" class="trending-strip-container hidden">
           <div class="trending-strip-header">
             <h3 class="trending-strip-title">Currently Learning</h3>
-            <button id="pathway-go-to-library-btn" class="btn-text pathway-library-link student-tab hidden">Browse Song Library to add songs →</button>
+            <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+              <button id="what-next-btn" class="btn-text hidden">What should I learn next? →</button>
+              <button id="pathway-go-to-library-btn" class="btn-text pathway-library-link student-tab hidden">Browse Song Library to add songs →</button>
+            </div>
           </div>
           <div id="learning-strip" class="trending-strip">
             <!-- Learning song cards populated by JS -->
@@ -1697,6 +1700,27 @@
           </div>
           <button type="button" id="school-onboarding-done-btn" class="btn btn-primary" style="width: 100%;">Go to app</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Next Song Suggestions Modal -->
+  <div id="next-song-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>What should I learn next?</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1.25rem;">
+          Based on what students who mastered the same songs as you went on to learn:
+        </p>
+        <div id="next-song-list" class="trending-strip" style="flex-wrap: wrap;">
+          <!-- Populated by JS -->
+        </div>
+        <p id="next-song-empty" class="hidden" style="color: var(--text-secondary); font-size: 0.9rem; text-align: center; padding: 1.5rem 0;">
+          Looks like you're the first student to master this song in Cadence — well done!
+        </p>
       </div>
     </div>
   </div>
