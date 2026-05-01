@@ -172,6 +172,15 @@ class CadenceApp {
   }
 
   setupEventListeners() {
+    // Scroll-to-top button: show when scrolled down 400px in the songs view
+    const scrollToTopBtn = document.getElementById('scroll-to-top-btn');
+    if (scrollToTopBtn) {
+      window.addEventListener('scroll', () => {
+        const shouldShow = window.scrollY > 400 && this.currentView === 'songs';
+        scrollToTopBtn.classList.toggle('hidden', !shouldShow);
+      }, { passive: true });
+    }
+
     // Login
     const loginBtn = document.getElementById('google-login-btn');
     if (loginBtn) {
