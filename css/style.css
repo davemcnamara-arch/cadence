@@ -4575,8 +4575,8 @@ body {
 
 .scroll-to-top-btn {
   position: fixed;
-  bottom: 2rem;
-  right: 2rem;
+  bottom: 5.5rem;
+  right: 1.5rem;
   width: 3rem;
   height: 3rem;
   border-radius: 50%;
