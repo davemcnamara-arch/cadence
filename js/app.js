@@ -2400,11 +2400,12 @@ class CadenceApp {
     if (this.teacherSongStudentCounts) {
       const counts = this.teacherSongStudentCounts[song.id];
       if (counts) {
-        const total = counts.learning + counts.mastered;
         const parts = [];
-        if (counts.mastered > 0) parts.push(`${counts.mastered} mastered`);
         if (counts.learning > 0) parts.push(`${counts.learning} learning`);
-        studentCountBadge = `<span class="song-tag students" title="${parts.join(', ')}">${total} student${total !== 1 ? 's' : ''}</span>`;
+        if (counts.mastered > 0) parts.push(`${counts.mastered} mastered`);
+        if (counts.learning > 0) {
+          studentCountBadge = `<span class="song-tag students" title="${parts.join(', ')}">${counts.learning} student${counts.learning !== 1 ? 's' : ''}</span>`;
+        }
       }
     }
 
