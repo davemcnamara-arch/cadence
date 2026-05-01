@@ -50,14 +50,15 @@ All teacher tabs plus:
 - Shows your 5-level progression map for the selected instrument
 - Switch between instruments using the instrument tabs
 - A **"Currently Learning"** strip at the top shows songs you're actively working on
+- **"What should I learn next?"** — a button that appears next to the Currently Learning strip (when enough data exists) that opens a modal showing songs other students went on to learn after mastering the same songs as you
 - Customise the background colour using the colour swatches (6 options)
 - **"Remove Current"** removes the current instrument from your tracking
 
 ### Song Library
 - Search songs by title or artist
 - Filter by instrument and level
-- **"Popular Right Now"** strip shows songs currently being learned by the most students
-- Each song card shows average level ratings from all students
+- **"Popular Right Now"** strip shows songs currently being learned by the most students — clicking a song navigates to that song card in the library
+- Each song card shows average level ratings from all students; the badge shows how many students are currently learning it (hover to see the full learning + mastered breakdown)
 - **"Start Learning"** — adds a song to your Currently Learning list
 - **"Learning Resources"** — opens a modal with all teaching resources for that song (YouTube links, chords, tabs, tutorials, student-submitted resources). You can also submit your own resource links here for teacher approval.
 - **"+ Add New Song"** — opens the **"Grade a Song"** wizard to submit a new song
@@ -68,6 +69,9 @@ All teacher tabs plus:
 3. **Level Suggestion**: the app recommends a level based on your answers; you can accept or adjust
 
 After grading, you can immediately add the song to Currently Learning.
+
+### After Mastering a Song
+When you click **"Mark Mastered"**, the app records the date and then automatically navigates you back to **My Pathway** so you can choose your next song.
 
 ### My Progress
 - Shows all your Currently Learning and Mastered songs with dates
