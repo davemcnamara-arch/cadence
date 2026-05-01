@@ -56,7 +56,7 @@ All teacher tabs plus:
 ### Song Library
 - Search songs by title or artist
 - Filter by instrument and level
-- **"Popular this Fortnight"** strip shows trending songs at the top
+- **"Popular Right Now"** strip shows songs currently being learned by the most students
 - Each song card shows average level ratings from all students
 - **"Start Learning"** — adds a song to your Currently Learning list
 - **"Learning Resources"** — opens a modal with all teaching resources for that song (YouTube links, chords, tabs, tutorials, student-submitted resources). You can also submit your own resource links here for teacher approval.

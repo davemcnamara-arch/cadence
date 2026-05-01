@@ -1875,7 +1875,6 @@ class CadenceApp {
 
     try {
       const result = await this.callRpcDirect('get_trending_songs', {
-        days_back: 14,
         limit_count: 10,
         instrument_filter: instrumentName,
         level_filter: levelNumber
@@ -1904,7 +1903,7 @@ class CadenceApp {
       <div class="trending-card" data-song-id="${song.song_id}" role="button" tabindex="0">
         <div class="trending-card-title">${this.escapeHtml(song.title)}</div>
         <div class="trending-card-artist">${this.escapeHtml(song.artist)}</div>
-        <span class="trending-card-badge">${song.trending_score} student${song.trending_score !== 1 ? 's' : ''} this fortnight</span>
+        <span class="trending-card-badge">${song.trending_score} student${song.trending_score !== 1 ? 's' : ''} learning now</span>
       </div>
     `).join('');
 
