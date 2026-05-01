@@ -2172,9 +2172,14 @@ class CadenceApp {
       });
     } else if (instrumentFilter) {
       filteredSongs = filteredSongs.filter(song => {
-        // Check if song has this specific instrument assigned OR has ratings for this instrument
-        return song.instrument_id === instrumentFilter ||
-               song.song_ratings?.some(r => r.instrument_id === instrumentFilter);
+        // If the song has any ratings, those are the authoritative source of which instruments
+        // it belongs to — instrument_id is a legacy/default field that can be stale.
+        // Only fall back to instrument_id for songs that have never been rated.
+        const hasAnyRatings = song.song_ratings?.length > 0;
+        if (hasAnyRatings) {
+          return song.song_ratings.some(r => r.instrument_id === instrumentFilter);
+        }
+        return song.instrument_id === instrumentFilter;
       });
     }
 
