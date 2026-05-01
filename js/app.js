@@ -2037,8 +2037,7 @@ class CadenceApp {
       const result = await this.callRpcDirect('get_next_song_suggestions', {
         p_user_id: user.id,
         p_instrument_id: instrumentId,
-        p_limit: 10,
-        p_min_count: 2
+        p_limit: 10
       });
       return result.data || [];
     } catch (err) {

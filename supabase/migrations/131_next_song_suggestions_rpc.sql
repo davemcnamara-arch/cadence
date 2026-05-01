@@ -1,14 +1,18 @@
 -- Collaborative filtering: "students who mastered the same song then chose these songs".
 -- For a given student + instrument, finds songs they have mastered, then aggregates what
 -- other students started learning after mastering those same songs. Returns ranked results
--- excluding songs the current student already has, filtered to a minimum student count to
--- suppress sparse data.
+-- excluding songs the current student already has.
+--
+-- p_min_count defaults to 1 (show any suggestion) because:
+--   a) the platform may be small and 2+ independent matches per song is rare
+--   b) date_completed may be NULL on older mastered records (pre-migration), so the
+--      temporal guard is relaxed to include those peers rather than discard them
 
 CREATE OR REPLACE FUNCTION get_next_song_suggestions(
   p_user_id       UUID,
   p_instrument_id UUID,
   p_limit         INT DEFAULT 10,
-  p_min_count     INT DEFAULT 2
+  p_min_count     INT DEFAULT 1
 )
 RETURNS TABLE (
   song_id       UUID,
@@ -35,11 +39,13 @@ BEGIN
     AND ss_peer.user_id       <> p_user_id
     AND ss_peer.status         = 'mastered'
     AND ss_peer.deleted_at     IS NULL
-  -- Songs those peers started learning after mastering the matched song
+  -- Songs those peers started learning after mastering the matched song.
+  -- Allow NULL date_completed: older records may not have it set, but their
+  -- subsequent learning choices are still valid signal.
   JOIN student_songs ss_next
     ON  ss_next.user_id        = ss_peer.user_id
     AND ss_next.instrument_id  = p_instrument_id
-    AND ss_next.date_started   > ss_peer.date_completed
+    AND (ss_peer.date_completed IS NULL OR ss_next.date_started > ss_peer.date_completed)
     AND ss_next.deleted_at     IS NULL
   JOIN songs s
     ON  s.id               = ss_next.song_id
