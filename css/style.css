@@ -728,20 +728,6 @@ body {
 }
 
 /* Pathway "go to library" hint link */
-.pathway-library-link {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  opacity: 0.8;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  text-decoration-color: var(--text-muted);
-}
-
-.pathway-library-link:hover {
-  color: var(--primary-color);
-  text-decoration-color: var(--primary-color);
-  opacity: 1;
-}
 
 /* Background Colour Selector */
 .bg-color-selector {
