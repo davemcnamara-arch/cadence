@@ -11234,6 +11234,14 @@ class CadenceApp {
         <div class="school-stat-value">${stats.student_count ?? 0}</div>
         <div class="school-stat-label">Students</div>
       </div>
+      <div class="school-stat-card">
+        <div class="school-stat-value">${stats.songs_learning ?? 0}</div>
+        <div class="school-stat-label">Songs Learning</div>
+      </div>
+      <div class="school-stat-card">
+        <div class="school-stat-value">${stats.songs_mastered ?? 0}</div>
+        <div class="school-stat-label">Songs Mastered</div>
+      </div>
     `;
   }
 
