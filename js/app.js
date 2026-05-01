@@ -2181,10 +2181,15 @@ class CadenceApp {
     if (levelFilter) {
       filteredSongs = filteredSongs.filter(song => {
         const levelNum = parseInt(levelFilter);
-        // When instrument filter is active, only count ratings for that specific instrument.
-        // suggested_level is not instrument-specific so it must not bypass this check.
         if (instrumentFilter && instrumentFilter !== 'my-instruments') {
-          return song.song_ratings?.some(r => r.assessed_level === levelNum && r.instrument_id === instrumentFilter);
+          // If instrument-specific ratings exist, they take precedence over suggested_level.
+          // suggested_level is instrument-agnostic and only applies as a fallback when
+          // the song has never been rated for this instrument.
+          const hasAnyInstrumentRating = song.song_ratings?.some(r => r.instrument_id === instrumentFilter);
+          if (hasAnyInstrumentRating) {
+            return song.song_ratings.some(r => r.assessed_level === levelNum && r.instrument_id === instrumentFilter);
+          }
+          return song.suggested_level === levelNum;
         } else if (instrumentFilter === 'my-instruments') {
           const myInstrumentIds = this.studentProgress.map(p => p.instrument_id);
           return song.song_ratings?.some(r => r.assessed_level === levelNum && myInstrumentIds.includes(r.instrument_id));
