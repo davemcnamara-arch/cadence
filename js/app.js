@@ -1909,11 +1909,15 @@ class CadenceApp {
 
     strip.querySelectorAll('.trending-card').forEach(card => {
       const songId = card.dataset.songId;
-      card.addEventListener('click', () => this.viewSongDetails(songId));
+      const navigateToSong = () => {
+        this._highlightSongId = songId;
+        this.switchView('songs');
+      };
+      card.addEventListener('click', navigateToSong);
       card.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          this.viewSongDetails(songId);
+          navigateToSong();
         }
       });
     });
