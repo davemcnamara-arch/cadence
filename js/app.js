@@ -2144,9 +2144,6 @@ class CadenceApp {
     // Store current filter instrument for use in rendering
     this.currentFilterInstrument = instrumentFilter;
 
-    // Reload trending strip to match current instrument + level filters
-    this.loadTrendingSongs().then(trending => this.renderTrendingStrip(trending));
-
     // Check for duplicates in this.songs before filtering
     const songIds = this.songs.map(s => s.id);
     const uniqueIds = [...new Set(songIds)];
@@ -2196,6 +2193,14 @@ class CadenceApp {
         return song.song_ratings?.some(r => r.assessed_level === levelNum);
       });
     }
+
+    // Reload trending strip, filtering to only songs visible after the current filters.
+    // If none of the trending songs appear in the filtered list, the strip is hidden.
+    const filteredSongIds = new Set((filteredSongs || []).map(s => s.id));
+    this.loadTrendingSongs().then(trending => {
+      const validTrending = trending.filter(t => filteredSongIds.has(t.song_id));
+      this.renderTrendingStrip(validTrending);
+    });
 
     const grid = document.getElementById('songs-grid');
     const countEl = document.getElementById('songs-count');
