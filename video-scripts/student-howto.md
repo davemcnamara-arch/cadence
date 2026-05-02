@@ -11,19 +11,19 @@
 
 **[SCREEN: Cadence logo / landing page]**
 
-> "Welcome to Cadence — the app that helps you track your music skills and see how far you've come. In this video, I'll walk you through getting started from scratch. It only takes a couple of minutes, and you'll be set up by the end."
+> "Welcome to Cadence — the app you'll use to track your music skills and log your progress. In this video I'll walk you through everything from signing in to grading your first song. It only takes a few minutes to get set up."
 
 ---
 
 ## [STEP 1: Sign In]
 
-**[SCREEN: Login page with the Cadence logo, tagline, and Sign in with Google button]**
+**[SCREEN: Login page with the Cadence logo and Sign in with Google button]**
 
-> "To get started, open Cadence in your browser. You'll see the sign-in screen. Click **Sign in with Google** and choose your school Google account."
+> "Open Cadence in your browser and click **Sign in with Google**. Choose your school Google account."
 
 **[SCREEN: Google account picker]**
 
-> "Pick your account and you're in. No password to create — it uses your existing Google login."
+> "That's your only login — no password to create."
 
 ---
 
@@ -31,111 +31,119 @@
 
 **[SCREEN: Role selection screen — Student and Teacher cards]**
 
-> "The first time you sign in, you'll be asked who you are. Since you're a student, click the **Student** option — the one that says 'Learn and track your musical progress' — then hit Continue."
-
-> "You only need to do this once. Cadence will remember your role."
+> "The first time you sign in, you'll be asked to pick a role. Click **Student** — the card that says 'Learn and track your musical progress' — then hit Continue. Cadence will remember this, so you only need to do it once."
 
 ---
 
 ## [STEP 3: Pick Your Instrument]
 
-**[SCREEN: Instrument selection screen showing Guitar, Bass, Piano, Drums, Vocals]**
+**[SCREEN: Instrument selection screen — Guitar, Bass, Piano, Drums, Vocals]**
 
-> "Next, choose the instrument you're learning. You can pick from Guitar, Bass, Piano, Drums, or Vocals. Click the one your teacher has you on — or all of them if you're learning more than one."
-
-> "Don't worry if you're not sure yet. You can add or change instruments any time."
+> "Choose the instrument you're learning. You can pick from Guitar, Bass, Piano, Drums, or Vocals. If you're learning more than one, select all of them — you can always add or remove instruments later from the Pathway screen."
 
 **[SCREEN: Main app loads, My Pathway tab active]**
 
-> "And just like that, you're in."
+> "You're in."
 
 ---
 
-## [STEP 4: Explore Your Pathway]
+## [STEP 4: Your Pathway]
 
-**[SCREEN: My Pathway view — 5-level visual map for one instrument]**
+**[SCREEN: My Pathway view — instrument tabs across the top, 5-level visual map below]**
 
-> "This is your **Pathway**. It shows your musical journey from Level 1 all the way to Level 5. Think of it as a roadmap — each level has specific skills to learn, and you progress by mastering songs at that level."
+> "This is your **Pathway**. It maps your musical journey from Level 1 to Level 5 for each instrument. Click any level to see the skills it covers and example songs that fit that level."
 
-**[SCREEN: Clicking a level to expand it — skills list and example songs visible]**
+**[SCREEN: Switching between instrument tabs]**
 
-> "Click on any level to see what skills are covered and what songs fit that level. This is a great way to know exactly what you're working towards."
+> "If you're tracking more than one instrument, switch between them using the tabs at the top."
 
-**[SCREEN: Switching instrument tabs — e.g. Guitar → Drums]**
+**[SCREEN: Background colour swatches — default, lavender, sage, sky, rose, amber]**
 
-> "If you're learning more than one instrument, use the tabs across the top to switch between them."
+> "You can also pick a **background colour** from the swatches next to the instrument selector — just a small way to make it feel like yours."
 
----
+**[SCREEN: Currently Learning strip — horizontal scroll of song cards at the top of the Pathway]**
 
-## [STEP 5: Browse the Song Library]
+> "As you start logging songs, a **Currently Learning** strip will appear above your pathway. It's a quick reminder of what you're actively working on."
 
-**[SCREEN: Clicking Song Library tab]**
+**[SCREEN: 'Song suggestions for you →' button appearing next to the strip]**
 
-> "The **Song Library** is where all the songs live. You can search for any song, or filter by instrument and level to find something that matches where you're at."
-
-**[SCREEN: Filtering by instrument and level, clicking a song]**
-
-> "Click a song to see its details — including links to YouTube tutorials and chord charts added by other students."
-
-**[SCREEN: Clicking 'Start Learning' on a song]**
-
-> "When you find a song you want to work on, hit **Start Learning**. It'll show up in your progress so you and your teacher can both see what you're practising."
+> "Once you've graded a few songs, a **Song suggestions for you** button will appear. Click it to see songs that other students at your level are learning — a good way to find your next challenge."
 
 ---
 
-## [STEP 6: Grade a Song You've Learned]
+## [STEP 5: The Song Library]
 
-**[SCREEN: Grade a Song button or grading wizard opening]**
+**[SCREEN: Song Library tab — search bar, instrument and level filters]**
 
-> "Once you've worked on a song, you can **grade it** to log your progress. Click the Grade a Song button and follow the three steps."
+> "The **Song Library** is the shared collection of songs that students have graded. Search by title or artist, or filter by instrument and level to find something that matches where you're at."
 
-**[SCREEN: Step 1 — Song details: title, artist, YouTube/Spotify link]**
+**[SCREEN: Popular Right Now trending strip — horizontal scroll of song cards]**
 
-> "First, fill in the song name and artist. You can also add a YouTube or Spotify link so other students can find it."
+> "At the top of the library you'll see **Popular Right Now** — songs other students are currently working on. It's a quick way to discover what's worth learning."
 
-**[SCREEN: Step 2 — Grading checklist with skill checkboxes]**
+**[SCREEN: Clicking a song — details panel with YouTube link, chord link, ratings]**
 
-> "Next, go through the checklist. These questions match the skills for your current level. Just answer honestly — this is about tracking your growth, not getting a perfect score."
+> "Click any song to see its details, including links to YouTube tutorials and chord charts added by other students."
 
-**[SCREEN: Step 3 — Level suggestion appears]**
+**[SCREEN: 'Start Learning' button on a song card]**
 
-> "Based on your answers, Cadence will suggest a level for the song. You can mark it as **Currently Learning** if you're still working on it."
+> "Hit **Start Learning** to add it to your progress. It'll appear in your Currently Learning strip on the Pathway and in My Progress."
+
+---
+
+## [STEP 6: Adding and Grading a Song]
+
+**[SCREEN: Song Library header — '+ Add New Song' button]**
+
+> "To add a song that isn't in the library yet, click **+ Add New Song** in the Song Library. The same button also grading a song you've already been learning."
+
+**[SCREEN: Step 1 — Song details: title, artist, YouTube link, Spotify link]**
+
+> "Step one: fill in the song title and artist. Add a YouTube or Spotify link if you have one — it helps other students find it too."
+
+**[SCREEN: Step 2 — Grading checklist with skill checkboxes for the current level]**
+
+> "Step two: go through the checklist. These are the skills for your current level — just answer honestly. This is about tracking your growth, not hitting a perfect score."
+
+**[SCREEN: Step 3 — Level suggestion appears, 'Currently Learning' option visible]**
+
+> "Based on your answers, Cadence suggests a level for the song. You can mark it as **Currently Learning** if you're still working on it, or submit it as mastered."
 
 **[SCREEN: Song appears in My Progress]**
 
-> "The song is now saved to your profile. Your teacher will be able to see it too."
+> "The song is saved to your profile and your teacher can see it."
 
 ---
 
-## [STEP 7: Track Your Progress]
+## [STEP 7: My Progress]
 
-**[SCREEN: My Progress tab]**
+**[SCREEN: My Progress tab — stats bar, Currently Learning section, Mastered Songs section]**
 
-> "Head to **My Progress** any time to see an overview of what you're working on and what you've already mastered."
+> "Head to **My Progress** any time to see an overview of your work. Your songs are split into **Currently Learning** and **Mastered**. As you complete songs, this view fills up — it's a record of everything you've achieved."
 
-**[SCREEN: Currently Learning section and Mastered section visible]**
+**[SCREEN: 'Join Class' button in the My Progress header]**
 
-> "Your songs are split into two groups — **Currently Learning** and **Mastered**. As you complete songs and level up, this view fills up. It's a great reminder of how much you've achieved."
+> "If your teacher has given you a **class code**, click **Join Class** here and enter it. Once you're in a class, your teacher gets full visibility of your progress."
 
----
+> "If your teacher set up the class in advance with your email address, you may already be enrolled — check My Progress to confirm."
 
-## [STEP 8: Join Your Teacher's Class]
+**[SCREEN: 'Generate Reflection' button — modal opens with a loading spinner, then a block of text appears]**
 
-**[SCREEN: My Progress or a Join Class button/modal]**
+> "The **Generate Reflection** button writes a first-person progress summary based on everything you've logged — instruments, songs, levels. Hit **Copy to Clipboard** and paste it straight into your LMS, Seqta, or wherever your teacher asks for reflections."
 
-> "Your teacher may give you a **class code** — a short 6-character code. To join their class, look for the Join a Class option and enter the code."
+**[SCREEN: 'Export Data' button — modal with CSV download option]**
 
-> "Once you're in, your teacher can see your progress and help guide your learning."
+> "You can also export your full progress to a **CSV file** from the **Export Data** button — useful if you need to show your work in a spreadsheet."
 
 ---
 
 ## [OUTRO]
 
-**[SCREEN: My Pathway view with a few levels showing progress]**
+**[SCREEN: My Pathway with levels filled in and a Currently Learning strip showing]**
 
-> "That's everything you need to get started with Cadence. Sign in, pick your instrument, find songs to learn, grade your work, and watch your pathway fill up."
+> "That's everything you need to get started. Sign in, pick your instrument, find songs to work on, grade them as you go, and watch your pathway fill up."
 
-> "Good luck with your musical journey — and remember, every song you master is a step forward."
+> "Good luck — and remember, every song you add is a step forward."
 
 ---
 
