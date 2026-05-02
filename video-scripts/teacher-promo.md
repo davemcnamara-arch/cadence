@@ -21,7 +21,7 @@
 
 **[SCREEN: Cadence logo animates in — 'Music learning platform: student choice, teacher insight.']**
 
-> "Cadence is a music learning platform: student choice, teacher insight. built for classrooms. It lets students log and self-assess their learning across five instruments — Guitar, Bass, Piano, Drums, and Vocals — while giving you the oversight you need to guide every student individually."
+> "Cadence is a music learning platform: student choice, teacher insight. Built for classrooms. It lets students log and self-assess their learning across five instruments — Guitar, Bass, Piano, Drums, and Vocals — while giving you the oversight you need to guide every student individually."
 
 ---
 
@@ -51,51 +51,89 @@
 
 ## [FEATURE 3: Class Management]
 
-**[SCREEN: Teacher's Classes view — multiple class cards]**
+**[SCREEN: Teaching view — My Classes tab with multiple class cards]**
 
 > "Setting up a class takes seconds. Generate a unique **class code**, share it with your students, and they're enrolled. You can run multiple classes, organised by year level or group."
 
-**[SCREEN: Roster view — student names and their instruments]**
+> "Need to pre-load a class before your students arrive? Use **Bulk Add Students** — paste in a list of school email addresses and Cadence will automatically enrol each student the moment they sign in for the first time."
 
-> "Your **class roster** gives you an at-a-glance view of who's in the class and which instruments they're tracking."
+**[SCREEN: Roster tab — student names, instruments, join dates]**
+
+> "Your **class roster** gives you an at-a-glance view of who's in the class, which instruments they're tracking, and when they joined."
 
 ---
 
 ## [FEATURE 4: Progress Heatmap]
 
-**[SCREEN: Heatmap — colour-coded grid, students × instruments, levels shown]**
+**[SCREEN: Progress Heatmap tab — colour-coded grid, students × instruments, instrument filter dropdown]**
 
-> "The **Progress Heatmap** is where the picture really comes together. Every student, every instrument, every level — colour-coded in a single view."
+> "The **Progress Heatmap** is where the picture really comes together. Every student, every instrument, every level — colour-coded in a single view. Use the instrument filter to focus on one group at a time."
 
 > "You can see in an instant who's progressing steadily, who might need a push, and who's ready for the next challenge. No spreadsheets. No manual tracking."
 
 ---
 
-## [FEATURE 5: Activity & Submissions]
+## [FEATURE 5: Timeline & Songs]
 
-**[SCREEN: Student Songs / timeline view — recent submissions from students]**
+**[SCREEN: Timeline tab — recent submissions from students in the class]**
 
-> "As students submit work, it appears in your **activity feed**. You can review every song assessment, see the skill checklist they filled in, and — where needed — adjust the level rating yourself."
+> "The **Timeline** shows a live feed of everything your class has been working on — every song graded, every status update, in order."
 
-**[SCREEN: Flagged Ratings panel]**
+**[SCREEN: Songs tab — class-level song list]**
 
-> "Cadence even flags songs where student ratings differ significantly from each other — a built-in quality control check that helps you spot where students might need guidance on self-assessment."
+> "The **Songs** tab shows all songs your class has rated, so you can see at a glance what repertoire your students are building."
 
 ---
 
-## [FEATURE 6: Student Detail & Export]
+## [FEATURE 6: My Students & My Students' Songs]
+
+**[SCREEN: Teaching view — My Students tab, searchable student list across all classes]**
+
+> "The **My Students** tab lets you browse every student across all your classes in one place — search by name or email, and click through to any student's full profile."
+
+**[SCREEN: My Students' Songs tab — song list filtered by class and instrument]**
+
+> "**My Students' Songs** gives you a cross-class view of all submitted song assessments, filterable by class and instrument. You can review every rating and — where needed — adjust the level yourself."
+
+---
+
+## [FEATURE 7: Flagged Ratings]
+
+**[SCREEN: Review tab — notification badge, flagged songs panel]**
+
+> "Cadence keeps a running **Review** tab — you'll see a notification badge the moment there are songs that need attention."
+
+> "It automatically flags songs where student ratings differ significantly from each other — a built-in quality control check that helps you spot where students might need guidance on self-assessment."
+
+---
+
+## [FEATURE 8: Student Detail & Export]
 
 **[SCREEN: Student detail modal — instruments, levels, mastered songs list]**
 
 > "Click any student to see their full profile — every instrument they're tracking, every song they've mastered, and their current level across the board."
 
-**[SCREEN: Export to CSV — class data download]**
+**[SCREEN: Export Class Data button — CSV download]**
 
 > "When report time comes, export your entire class's progress to **CSV** in one click. It's ready to drop straight into your gradebook or LMS."
 
 ---
 
-## [FEATURE 7: Student-Driven, Teacher-Informed]
+## [FEATURE 9: Plans — Individual & School]
+
+**[SCREEN: Individual plan banner — '1 teacher · X / 25 students']**
+
+> "The **Individual plan** is perfect for a single teacher managing up to 25 students."
+
+**[SCREEN: School tab — school dashboard with teacher list, all-students view, invite section, Export All Data]**
+
+> "For departments and whole schools, the **School plan** gives you unlimited teachers and unlimited students — all centrally managed. Invite colleagues directly from the School tab, see every teacher and every student in one place, and export school-wide data with a single click."
+
+> "School plan teachers also get a **Show all school classes** toggle, so you can view your colleagues' classes and collaborate across the department."
+
+---
+
+## [FEATURE 10: Student-Driven, Teacher-Informed]
 
 **[SCREEN: Student using Pathway on one side, teacher heatmap on the other]**
 
