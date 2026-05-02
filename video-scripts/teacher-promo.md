@@ -35,7 +35,7 @@
 
 ---
 
-## [FEATURE 2: Song-Based Assessment]
+## [FEATURE 2: Song-Based Assessment & the Song Library]
 
 **[SCREEN: Grade a Song wizard — checklist, level suggestion]**
 
@@ -43,9 +43,27 @@
 
 > "This turns every song into a formative assessment. Students develop self-awareness. You get documented evidence of their progress."
 
-**[SCREEN: Song Library with ratings, YouTube/Spotify links, chord links]**
+**[SCREEN: Song Library — song cards with level badges, rating counts, YouTube/chord links]**
 
-> "All graded songs feed into a shared **Song Library** — a growing, student-built resource with links to tutorials, chord charts, and recordings. The more students use it, the more valuable it becomes."
+> "Every graded song feeds into the shared **Song Library** — and this is where things get genuinely useful for you as a teacher."
+
+> "Each song shows an **aggregate difficulty rating**: an average of every student assessment ever submitted for that song. The more students grade it, the more reliable that number gets. After a full year with a class, you have crowd-sourced, evidence-backed difficulty data across hundreds of songs — built entirely by your students."
+
+**[SCREEN: Filtering by instrument and level — list narrows to level-appropriate songs]**
+
+> "Students can filter by instrument and level to find songs that match exactly where they are. No more 'what should I learn next?' — the library answers that question for them."
+
+**[SCREEN: Song card expanded — YouTube link, chord chart / bass tab / drum notation link, resource helpfulness rating]**
+
+> "Each song can carry instrument-specific resources: chord charts for guitar and piano, bass tabs for bass players, drum notation for drummers, plus YouTube tutorials. Students rate how helpful each resource actually is, so the best links rise to the top."
+
+> "When a student submits a new link, it doesn't go live immediately — it sits in a **pending approval queue** for you to review first. You're in control of what external content your students see."
+
+**[SCREEN: Popular Right Now strip — horizontal scroll of trending song cards]**
+
+> "The **Popular Right Now** strip shows what students are actively working on right now — a live pulse of your class's repertoire. It's a great conversation starter: 'I can see half the class is learning this song — let's talk about it.'"
+
+> "The bottom line: the Song Library is a curriculum resource that builds itself. Every student who grades a song makes it more useful for the next student. By the end of a school year, it's a living document of what your cohort has learned — and you didn't have to curate a single entry."
 
 ---
 
