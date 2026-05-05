@@ -1326,15 +1326,38 @@ class CadenceApp {
 
   showOtherInstrumentNameStep(instrumentId) {
     this._pendingOtherInstrumentId = instrumentId;
+    this._similarInstrumentsDismissed = false;
     document.getElementById('instrument-grid-step').classList.add('hidden');
     document.getElementById('other-instrument-name-step').classList.remove('hidden');
+    document.getElementById('similar-instruments-container').classList.add('hidden');
+
     const input = document.getElementById('other-instrument-name');
     input.focus();
     input.onkeydown = (e) => { if (e.key === 'Enter') this.confirmOtherInstrument(); };
+
+    // Debounced similar-instrument detection
+    if (!this._otherInstrumentInputBound) {
+      let debounceTimer = null;
+      input.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => this.findSimilarInstruments(), 500);
+      });
+
+      const dismissBtn = document.getElementById('dismiss-similar-instruments');
+      if (dismissBtn) {
+        dismissBtn.addEventListener('click', () => {
+          document.getElementById('similar-instruments-container').classList.add('hidden');
+          this._similarInstrumentsDismissed = true;
+        });
+      }
+
+      this._otherInstrumentInputBound = true;
+    }
   }
 
   backToInstrumentGrid() {
     document.getElementById('other-instrument-name-step').classList.add('hidden');
+    document.getElementById('similar-instruments-container').classList.add('hidden');
     document.getElementById('instrument-grid-step').classList.remove('hidden');
   }
 
@@ -1346,6 +1369,66 @@ class CadenceApp {
       return;
     }
     this.addInstrument(this._pendingOtherInstrumentId, customName);
+  }
+
+  async findSimilarInstruments() {
+    if (this._similarInstrumentsDismissed) return;
+
+    const name = document.getElementById('other-instrument-name').value.trim();
+    const container = document.getElementById('similar-instruments-container');
+    const list = document.getElementById('similar-instruments-list');
+
+    if (name.length < 2) {
+      container.classList.add('hidden');
+      return;
+    }
+
+    try {
+      const user = auth.getCurrentUser();
+      const studentId = this.previewMode.active ? this.previewMode.studentId : user?.id;
+
+      const { data, error } = await this.callRpcDirect('find_similar_instruments', {
+        p_name: name,
+        p_student_id: studentId || null,
+        p_threshold: 0.3,
+        p_limit: 5
+      });
+
+      if (error) {
+        container.classList.add('hidden');
+        return;
+      }
+
+      const matches = (data || []).filter(i => i.similarity_score > 0.4);
+
+      if (matches.length === 0) {
+        container.classList.add('hidden');
+        return;
+      }
+
+      list.innerHTML = matches.map(inst => `
+        <div class="similar-song-item" data-name="${this.escapeHtml(inst.custom_name)}">
+          <div class="similar-song-info">
+            <span class="similar-song-title">${this.escapeHtml(inst.custom_name)}</span>
+          </div>
+          <span class="similar-song-match">${Math.round(inst.similarity_score * 100)}% match</span>
+        </div>
+      `).join('');
+
+      list.querySelectorAll('.similar-song-item').forEach(item => {
+        item.addEventListener('click', () => this.selectSimilarInstrument(item.dataset.name));
+      });
+
+      container.classList.remove('hidden');
+    } catch (err) {
+      console.error('Error in findSimilarInstruments:', err);
+    }
+  }
+
+  selectSimilarInstrument(name) {
+    document.getElementById('other-instrument-name').value = name;
+    document.getElementById('similar-instruments-container').classList.add('hidden');
+    this._similarInstrumentsDismissed = true;
   }
 
   async addInstrument(instrumentId, customInstrumentName = null) {
