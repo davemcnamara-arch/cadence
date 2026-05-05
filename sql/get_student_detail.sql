@@ -58,11 +58,12 @@ BEGIN
     'progress', (
       SELECT COALESCE(json_agg(
         json_build_object(
-          'id',             sp.id,
-          'user_id',        sp.user_id,
-          'instrument_id',  sp.instrument_id,
-          'current_level',  sp.current_level,
-          'current_branch', sp.current_branch,
+          'id',                    sp.id,
+          'user_id',               sp.user_id,
+          'instrument_id',         sp.instrument_id,
+          'current_level',         sp.current_level,
+          'current_branch',        sp.current_branch,
+          'custom_instrument_name', sp.custom_instrument_name,
           'instruments', json_build_object(
             'id',   i.id,
             'name', i.name,
