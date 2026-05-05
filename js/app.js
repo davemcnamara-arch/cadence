@@ -785,10 +785,18 @@ class CadenceApp {
       if (this.studentProgress.length === 0) {
         this.showInstrumentSelection();
       } else {
-        // Keep current instrument if it's still valid, otherwise select first
+        // Restore last-used instrument from session, otherwise select first
+        const savedProgressId = sessionStorage.getItem('cadence_currentProgressId');
         const validProgress = this.currentProgressId &&
           this.studentProgress.some(p => p.id === this.currentProgressId);
-        if (!validProgress) {
+        const savedProgress = !validProgress && savedProgressId &&
+          this.studentProgress.find(p => p.id === savedProgressId);
+        if (validProgress) {
+          // already set (e.g. grading auto-switch before load completed)
+        } else if (savedProgress) {
+          this.currentProgressId = savedProgress.id;
+          this.currentInstrument = savedProgress.instrument_id;
+        } else {
           const first = this.studentProgress[0];
           this.currentProgressId = first.id;
           this.currentInstrument = first.instrument_id;
@@ -1587,6 +1595,9 @@ class CadenceApp {
       this.currentInstrument = progressId;
       const progress = this.studentProgress.find(p => p.instrument_id === progressId);
       this.currentProgressId = progress?.id || null;
+    }
+    if (this.currentProgressId) {
+      sessionStorage.setItem('cadence_currentProgressId', this.currentProgressId);
     }
     await this.loadLevels(this.currentInstrument);
     this.updatePathwayInstrument();
