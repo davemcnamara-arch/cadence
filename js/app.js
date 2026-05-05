@@ -2712,6 +2712,7 @@ class CadenceApp {
     // Resolve custom name for "Other Instrument" entries. Prefer the currently-active
     // progress record (identified by currentProgressId) so that students with multiple
     // "Other Instrument" tabs (e.g. Violin + Clarinet) see the right custom name.
+    // In teacher mode, fall back to classStudents data (requires get_class_students SQL deployment).
     let instrumentName = instrument?.name || '';
     if (instrument) {
       const currentProgress = this.getCurrentProgress();
@@ -2719,6 +2720,14 @@ class CadenceApp {
         || this.studentProgress.find(p => p.instrument_id === instrument.id && p.custom_instrument_name);
       if (instrumentProgress?.custom_instrument_name) {
         instrumentName = instrumentProgress.custom_instrument_name;
+      } else {
+        // Teacher mode: scan classStudents for the first matching custom name
+        for (const member of (this.classStudents || [])) {
+          const p = member.student_progress?.find(
+            p => p.instrument_id === instrument.id && p.custom_instrument_name
+          );
+          if (p) { instrumentName = p.custom_instrument_name; break; }
+        }
       }
     }
     const instrumentIcon = instrument?.icon || '';
@@ -2765,9 +2774,15 @@ class CadenceApp {
       const instrumentOptions = ratedInstrumentIds.map(instId => {
         const inst = this.instruments.find(i => i.id === instId);
         if (!inst) return '';
-        const instProgress = this.studentProgress.find(p => p.instrument_id === instId && p.custom_instrument_name)
-                          || this.studentProgress.find(p => p.instrument_id === instId);
-        const instName = instProgress?.custom_instrument_name || inst.name;
+        const instProgress = this.studentProgress.find(p => p.instrument_id === instId && p.custom_instrument_name);
+        let instName = instProgress?.custom_instrument_name;
+        if (!instName) {
+          for (const member of (this.classStudents || [])) {
+            const mp = member.student_progress?.find(p => p.instrument_id === instId && p.custom_instrument_name);
+            if (mp) { instName = mp.custom_instrument_name; break; }
+          }
+        }
+        instName = instName || inst.name;
         const isSelected = inst.id === instrument?.id;
         return `<option value="${inst.id}" ${isSelected ? 'selected' : ''}>${inst.icon} ${instName}</option>`;
       }).join('');

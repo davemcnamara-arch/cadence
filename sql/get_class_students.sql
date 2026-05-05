@@ -59,7 +59,8 @@ BEGIN
           json_build_object(
             'instrument_id', sp.instrument_id,
             'current_level', sp.current_level,
-            'current_branch', sp.current_branch
+            'current_branch', sp.current_branch,
+            'custom_instrument_name', sp.custom_instrument_name
           )
         )
         FROM student_progress sp
