@@ -12,7 +12,8 @@ class CadenceApp {
   // ============================================
 
   constructor() {
-    this.currentInstrument = null;
+    this.currentInstrument = null;   // instrument_id (FK to instruments table)
+    this.currentProgressId = null;   // student_progress.id — needed when a student has multiple "Other" rows
     this.currentFilterInstrument = null;
     this.instruments = [];
     this.levels = [];
@@ -275,7 +276,11 @@ class CadenceApp {
     const instrumentDropdown = document.getElementById('current-instrument');
     if (instrumentDropdown) {
       instrumentDropdown.addEventListener('change', (e) => {
-        this.selectInstrument(e.target.value);
+        const progressId = e.target.value;
+        const progress = this.studentProgress.find(p => p.id === progressId);
+        if (progress) {
+          this.selectInstrument(progressId, progress.instrument_id);
+        }
       });
     }
 
@@ -781,10 +786,12 @@ class CadenceApp {
         this.showInstrumentSelection();
       } else {
         // Keep current instrument if it's still valid, otherwise select first
-        const validInstrument = this.currentInstrument &&
-          this.studentProgress.some(p => p.instrument_id === this.currentInstrument);
-        if (!validInstrument) {
-          this.currentInstrument = this.studentProgress[0].instrument_id;
+        const validProgress = this.currentProgressId &&
+          this.studentProgress.some(p => p.id === this.currentProgressId);
+        if (!validProgress) {
+          const first = this.studentProgress[0];
+          this.currentProgressId = first.id;
+          this.currentInstrument = first.instrument_id;
         }
         await this.loadLevels(this.currentInstrument);
         await this.loadSongs();
@@ -1255,13 +1262,37 @@ class CadenceApp {
   // INSTRUMENTS: Selection & Management
   // ============================================
 
+  // Returns the display name for a progress record: the student's entered name for
+  // "Other Instrument" entries, or the standard instrument name otherwise.
+  getProgressDisplayName(progress) {
+    if (progress?.custom_instrument_name) return progress.custom_instrument_name;
+    const instrument = this.instruments.find(i => i.id === progress?.instrument_id);
+    return instrument?.name || '';
+  }
+
+  // Returns the current student_progress record (the one matching currentProgressId,
+  // or falls back to the first record whose instrument_id matches currentInstrument).
+  getCurrentProgress() {
+    if (this.currentProgressId) {
+      const byId = this.studentProgress.find(p => p.id === this.currentProgressId);
+      if (byId) return byId;
+    }
+    return this.studentProgress.find(p => p.instrument_id === this.currentInstrument) || null;
+  }
+
   showInstrumentSelection() {
     const container = document.getElementById('instrument-selection');
     const grid = document.getElementById('instrument-grid');
 
-    // Filter out already selected instruments
-    const selectedIds = this.studentProgress.map(p => p.instrument_id);
-    const availableInstruments = this.instruments.filter(i => !selectedIds.includes(i.id));
+    // Standard instruments: hidden once already selected.
+    // "Other Instrument" is always available (students can add multiple).
+    const selectedStandardIds = this.studentProgress
+      .filter(p => !p.custom_instrument_name)
+      .map(p => p.instrument_id);
+
+    const availableInstruments = this.instruments.filter(i =>
+      i.name === 'Other Instrument' || !selectedStandardIds.includes(i.id)
+    );
 
     if (availableInstruments.length === 0) {
       this.showToast('You are already tracking all instruments!', 'info');
@@ -1269,32 +1300,65 @@ class CadenceApp {
     }
 
     grid.innerHTML = availableInstruments.map(instrument => `
-      <div class="instrument-card" data-id="${instrument.id}">
+      <div class="instrument-card" data-id="${instrument.id}" data-name="${instrument.name}">
         <div class="icon">${instrument.icon}</div>
-        <div class="name">${instrument.name}</div>
+        <div class="name">${instrument.name === 'Other Instrument' ? 'Other Instrument' : instrument.name}</div>
       </div>
     `).join('');
 
-    // Add click handlers
     grid.querySelectorAll('.instrument-card').forEach(card => {
       card.addEventListener('click', () => {
-        const id = card.dataset.id;
-        this.addInstrument(id);
+        if (card.dataset.name === 'Other Instrument') {
+          this.showOtherInstrumentNameStep(card.dataset.id);
+        } else {
+          this.addInstrument(card.dataset.id);
+        }
       });
     });
+
+    // Ensure grid step is visible and name step is hidden
+    document.getElementById('instrument-grid-step').classList.remove('hidden');
+    document.getElementById('other-instrument-name-step').classList.add('hidden');
+    document.getElementById('other-instrument-name').value = '';
 
     container.classList.remove('hidden');
   }
 
-  async addInstrument(instrumentId) {
+  showOtherInstrumentNameStep(instrumentId) {
+    this._pendingOtherInstrumentId = instrumentId;
+    document.getElementById('instrument-grid-step').classList.add('hidden');
+    document.getElementById('other-instrument-name-step').classList.remove('hidden');
+    document.getElementById('other-instrument-name').focus();
+  }
+
+  backToInstrumentGrid() {
+    document.getElementById('other-instrument-name-step').classList.add('hidden');
+    document.getElementById('instrument-grid-step').classList.remove('hidden');
+  }
+
+  confirmOtherInstrument() {
+    const nameInput = document.getElementById('other-instrument-name');
+    const customName = nameInput.value.trim();
+    if (!customName) {
+      nameInput.focus();
+      return;
+    }
+    this.addInstrument(this._pendingOtherInstrumentId, customName);
+  }
+
+  async addInstrument(instrumentId, customInstrumentName = null) {
     const user = auth.getCurrentUser();
-    // Use student ID if in preview mode, otherwise use current user
     const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
-    const { data, error } = await this.callRpcDirect('add_instrument_for_student', {
+    const rpcParams = {
       p_student_id: userId,
       p_instrument_id: instrumentId
-    });
+    };
+    if (customInstrumentName) {
+      rpcParams.p_custom_instrument_name = customInstrumentName;
+    }
+
+    const { data, error } = await this.callRpcDirect('add_instrument_for_student', rpcParams);
 
     if (error) {
       console.error('Error adding instrument:', error);
@@ -1305,9 +1369,13 @@ class CadenceApp {
     this.studentProgress.push(data);
     document.getElementById('instrument-selection').classList.add('hidden');
 
-    // If this is the first instrument, show it
+    const displayName = customInstrumentName
+      || this.instruments.find(i => i.id === instrumentId)?.name
+      || 'Instrument';
+
     if (this.studentProgress.length === 1) {
       this.currentInstrument = instrumentId;
+      this.currentProgressId = data.id;
       await this.loadLevels(instrumentId);
       await this.loadSongs();
       this.updatePathwayInstrument();
@@ -1319,28 +1387,28 @@ class CadenceApp {
       this.renderInstrumentTabs();
     }
 
-    this.showToast('Instrument added successfully!', 'success');
+    this.showToast(`${displayName} added successfully!`, 'success');
   }
 
   async removeCurrentInstrument() {
-    if (!this.currentInstrument) {
+    if (!this.currentProgressId && !this.currentInstrument) {
       this.showToast('No instrument selected', 'error');
       return;
     }
 
-    const instrumentName = this.instruments.find(i => i.id === this.currentInstrument)?.name;
+    const progress = this.getCurrentProgress();
+    const displayName = this.getProgressDisplayName(progress);
 
-    if (!confirm(`Are you sure you want to remove ${instrumentName}? This will delete all your progress and songs for this instrument.`)) {
+    if (!confirm(`Are you sure you want to remove ${displayName}? This will delete all your progress and songs for this instrument.`)) {
       return;
     }
 
     const user = auth.getCurrentUser();
-    // Use student ID if in preview mode, otherwise use current user
     const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
 
     const { error } = await this.callRpcDirect('remove_instrument_for_student', {
       p_student_id: userId,
-      p_instrument_id: this.currentInstrument
+      p_progress_id: progress.id
     });
 
     if (error) {
@@ -1349,21 +1417,20 @@ class CadenceApp {
       return;
     }
 
-    // Remove from local array
-    this.studentProgress = this.studentProgress.filter(p => p.instrument_id !== this.currentInstrument);
+    this.studentProgress = this.studentProgress.filter(p => p.id !== progress.id);
 
-    // If there are other instruments, switch to the first one
     if (this.studentProgress.length > 0) {
-      const nextInstrument = this.studentProgress[0].instrument_id;
-      this.currentInstrument = nextInstrument;
-      await this.loadLevels(nextInstrument);
+      const next = this.studentProgress[0];
+      this.currentProgressId = next.id;
+      this.currentInstrument = next.instrument_id;
+      await this.loadLevels(next.instrument_id);
       await this.loadSongs();
       this.updatePathwayInstrument();
       this.renderPathway();
       this.updateInstrumentDropdown();
     } else {
-      // No instruments left, show instrument selection
       this.currentInstrument = null;
+      this.currentProgressId = null;
       this.levels = [];
       this.songs = [];
       document.getElementById('pathway-container').innerHTML = '<p>Select an instrument to get started!</p>';
@@ -1371,12 +1438,23 @@ class CadenceApp {
       this.showInstrumentSelection();
     }
 
-    this.showToast(`${instrumentName} removed successfully`, 'success');
+    this.showToast(`${displayName} removed successfully`, 'success');
   }
 
-  async selectInstrument(instrumentId) {
-    this.currentInstrument = instrumentId;
-    await this.loadLevels(instrumentId);
+  // progressId is student_progress.id; instrumentId is the instruments FK.
+  // When called with just instrumentId (legacy callers), we look up the progress record.
+  async selectInstrument(progressId, instrumentId) {
+    if (instrumentId) {
+      // Called with both — direct (tabs, add-instrument flow)
+      this.currentProgressId = progressId;
+      this.currentInstrument = instrumentId;
+    } else {
+      // Called with just an instrument_id (legacy callers like grading auto-switch)
+      this.currentInstrument = progressId;
+      const progress = this.studentProgress.find(p => p.instrument_id === progressId);
+      this.currentProgressId = progress?.id || null;
+    }
+    await this.loadLevels(this.currentInstrument);
     this.updatePathwayInstrument();
     this.renderPathway();
   }
@@ -1386,12 +1464,12 @@ class CadenceApp {
     const instrument = this.instruments.find(i => i.id === this.currentInstrument);
 
     if (pathwayView && instrument) {
-      // Set data attribute for instrument-specific styling
-      const instrumentSlug = instrument.name.toLowerCase().split('/')[0].replace(/\s+/g, '');
-      pathwayView.setAttribute('data-instrument', instrumentSlug);
+      const slug = instrument.name === 'Other Instrument'
+        ? 'other'
+        : instrument.name.toLowerCase().split('/')[0].replace(/\s+/g, '');
+      pathwayView.setAttribute('data-instrument', slug);
     }
 
-    // Render instrument tabs
     this.renderInstrumentTabs();
   }
 
@@ -1401,15 +1479,18 @@ class CadenceApp {
 
     const tabsHtml = this.studentProgress.map(progress => {
       const instrument = this.instruments.find(i => i.id === progress.instrument_id);
-      const isActive = progress.instrument_id === this.currentInstrument;
-      const instrumentSlug = instrument.name.toLowerCase().split('/')[0].replace(/\s+/g, '');
+      const isActive = progress.id === this.currentProgressId;
+      const slug = instrument.name === 'Other Instrument'
+        ? 'other'
+        : instrument.name.toLowerCase().split('/')[0].replace(/\s+/g, '');
+      const displayName = this.getProgressDisplayName(progress);
 
       return `
         <button
-          class="instrument-tab ${instrumentSlug} ${isActive ? 'active' : ''}"
-          data-instrument-id="${instrument.id}"
-          onclick="app.selectInstrument('${instrument.id}')">
-          ${instrument.icon} ${instrument.name}
+          class="instrument-tab ${slug} ${isActive ? 'active' : ''}"
+          data-progress-id="${progress.id}"
+          onclick="app.selectInstrument('${progress.id}', '${instrument.id}')">
+          ${instrument.icon} ${displayName}
         </button>
       `;
     }).join('');
@@ -1435,20 +1516,32 @@ class CadenceApp {
     const gradingDropdown = document.getElementById('grading-instrument');
     const user = auth.getCurrentUser();
 
-    // Only build student progress dropdown if there is progress
-    let html = '';
+    // Student pathway dropdown: one option per progress record, value = progress.id
+    // so that two "Other Instrument" entries (e.g. Violin + Clarinet) are distinguishable.
+    let pathwayHtml = '';
     if (this.studentProgress && this.studentProgress.length > 0) {
-      html = this.studentProgress.map(progress => {
+      pathwayHtml = this.studentProgress.map(progress => {
         const instrument = this.instruments.find(i => i.id === progress.instrument_id);
-        return `<option value="${instrument.id}">${instrument.icon} ${instrument.name}</option>`;
+        const displayName = this.getProgressDisplayName(progress);
+        return `<option value="${progress.id}">${instrument.icon} ${displayName}</option>`;
+      }).join('');
+    }
+
+    // Grading dropdown: value = instrument.id (required by grade_song RPC)
+    // Show custom name for "Other" entries so the student sees the right label.
+    let gradingHtml = '';
+    if (this.studentProgress && this.studentProgress.length > 0) {
+      gradingHtml = this.studentProgress.map(progress => {
+        const instrument = this.instruments.find(i => i.id === progress.instrument_id);
+        const displayName = this.getProgressDisplayName(progress);
+        return `<option value="${instrument.id}">${instrument.icon} ${displayName}</option>`;
       }).join('');
     }
 
     if (dropdown) {
-      dropdown.innerHTML = html;
-      // Restore selection to the currently active instrument
-      if (this.currentInstrument && dropdown.querySelector(`option[value="${this.currentInstrument}"]`)) {
-        dropdown.value = this.currentInstrument;
+      dropdown.innerHTML = pathwayHtml;
+      if (this.currentProgressId && dropdown.querySelector(`option[value="${this.currentProgressId}"]`)) {
+        dropdown.value = this.currentProgressId;
       }
     }
 
@@ -1495,7 +1588,7 @@ class CadenceApp {
         ).join('');
         gradingDropdown.innerHTML = allInstrumentsHtml;
       } else {
-        gradingDropdown.innerHTML = html;
+        gradingDropdown.innerHTML = gradingHtml;
       }
 
       // Restore previous selection if modal was open, otherwise default to active instrument
@@ -1562,7 +1655,7 @@ class CadenceApp {
       return;
     }
 
-    const progress = this.studentProgress.find(p => p.instrument_id === this.currentInstrument);
+    const progress = this.getCurrentProgress();
 
     if (!progress) {
       container.innerHTML = '<p style="color: var(--text-secondary);">Loading pathway...</p>';
@@ -1578,6 +1671,7 @@ class CadenceApp {
     const currentLevel = progress.current_level;
     const currentBranch = progress.current_branch;
     const instrument = this.instruments.find(i => i.id === this.currentInstrument);
+    const displayName = this.getProgressDisplayName(progress);
 
     // Group levels
     const regularLevels = this.levels.filter(l => !l.is_branch && l.level_number <= 3);
@@ -1589,7 +1683,7 @@ class CadenceApp {
       <div class="pathway-header">
         <div class="pathway-header-icon">${instrument.icon}</div>
         <div class="pathway-header-content">
-          <h2>${instrument.name} Pathway</h2>
+          <h2>${displayName} Pathway</h2>
           <p>Currently at Level ${currentLevel}${currentBranch ? ` - ${currentBranch}` : ''}</p>
         </div>
       </div>
@@ -1682,8 +1776,8 @@ class CadenceApp {
       existingBanner.remove();
     }
 
-    // Get instrument name
-    const instrumentName = this.instruments.find(i => i.id === this.currentInstrument)?.name || '';
+    // Get instrument name (custom name for "Other Instrument" entries)
+    const instrumentName = this.getProgressDisplayName(this.getCurrentProgress()) || '';
 
     // Create and insert banner
     const banner = document.createElement('div');
@@ -1881,7 +1975,7 @@ class CadenceApp {
   // ============================================
 
   async loadTrendingSongs() {
-    const instrumentName = this.instruments.find(i => i.id === this.currentInstrument)?.name || null;
+    const instrumentName = this.getProgressDisplayName(this.getCurrentProgress()) || null;
     const levelRaw = document.getElementById('filter-level')?.value || '';
     const levelNumber = levelRaw ? parseInt(levelRaw, 10) : null;
 
@@ -2722,9 +2816,10 @@ class CadenceApp {
 
     // Update modal title with instrument if available (use song's instrument or current filter instrument)
     const currentInstrument = this.instruments.find(i => i.id === this.currentInstrument);
+    const currentDisplayName = this.getProgressDisplayName(this.getCurrentProgress());
     const instrumentDisplay = song.instruments
-      ? ` (${song.instruments.icon} ${song.instruments.name})`
-      : (currentInstrument ? ` (${currentInstrument.icon} ${currentInstrument.name})` : '');
+      ? ` (${song.instruments.icon} ${song.instruments.name === 'Other Instrument' ? currentDisplayName : song.instruments.name})`
+      : (currentInstrument ? ` (${currentInstrument.icon} ${currentDisplayName})` : '');
     const titleEl = document.getElementById('song-details-title');
     const titleText = `${song.title} - ${song.artist}${instrumentDisplay}`;
     titleEl.innerHTML = `<a href="#" class="song-details-title-link" data-song-id="${this.escapeHtml(songId)}">${this.escapeHtml(titleText)}</a>`;
@@ -3957,6 +4052,43 @@ class CadenceApp {
           "Advanced — experienced players",
           "Expert — very challenging"
         ]
+      },
+      'Other Instrument': {
+        "Melody & notes": [
+          "Simple 5-note melody, small range",
+          "One-octave melodies, mostly stepwise",
+          "Wider range with leaps, two octaves",
+          "Demanding multi-octave melody",
+          "Complex or extended-range melody throughout"
+        ],
+        "Tone & intonation": [
+          "Inconsistent tone or tuning",
+          "Mostly in tune, developing tone",
+          "Solid intonation, clear tone across range",
+          "Very good intonation, expressive tone",
+          "Excellent intonation and tone quality throughout"
+        ],
+        "Technique": [
+          "Basic bow/breath/finger control",
+          "Developing articulation and control",
+          "Consistent technique, varied articulation",
+          "Advanced technique for the instrument",
+          "Virtuosic or extended technique"
+        ],
+        "Rhythm & phrasing": [
+          "Simple rhythms, follows the beat",
+          "Some syncopation or longer note values",
+          "Varied rhythms with musical phrasing",
+          "Complex rhythms and expressive phrasing",
+          "Advanced or free phrasing, polyrhythm"
+        ],
+        "Overall difficulty": [
+          "Beginner — easy to pick up",
+          "Beginner+ — needs a bit of practice",
+          "Intermediate — solid skills needed",
+          "Advanced — experienced players",
+          "Expert — very challenging"
+        ]
       }
     };
   }
@@ -4053,13 +4185,11 @@ class CadenceApp {
       const gradedInstrumentId = this.gradingData.instrument;
       const shouldAutoSwitch = (!auth.hasRole('teacher') && !auth.hasRole('admin')) || this.previewMode.active;
       if (shouldAutoSwitch && gradedInstrumentId && gradedInstrumentId !== this.currentInstrument) {
-        const hasProgress = this.studentProgress.some(p => p.instrument_id === gradedInstrumentId);
-        if (hasProgress) {
-          const switchedInst = this.instruments.find(i => i.id === gradedInstrumentId);
-          await this.selectInstrument(gradedInstrumentId);
-          if (switchedInst) {
-            this.showToast(`Switched to ${switchedInst.name} pathway`, 'info');
-          }
+        const matchingProgress = this.studentProgress.find(p => p.instrument_id === gradedInstrumentId);
+        if (matchingProgress) {
+          await this.selectInstrument(matchingProgress.id, gradedInstrumentId);
+          const displayName = this.getProgressDisplayName(matchingProgress);
+          this.showToast(`Switched to ${displayName} pathway`, 'info');
         }
       }
 
@@ -4705,9 +4835,10 @@ class CadenceApp {
   showRateResourcesModal(song, hasChords, hasTutorial) {
     // Update modal content with instrument if available (use song's instrument or current filter instrument)
     const currentInstrument = this.instruments.find(i => i.id === this.currentInstrument);
+    const currentDisplayName = this.getProgressDisplayName(this.getCurrentProgress());
     const instrumentDisplay = song.instruments
-      ? ` (${song.instruments.icon} ${song.instruments.name})`
-      : (currentInstrument ? ` (${currentInstrument.icon} ${currentInstrument.name})` : '');
+      ? ` (${song.instruments.icon} ${song.instruments.name === 'Other Instrument' ? currentDisplayName : song.instruments.name})`
+      : (currentInstrument ? ` (${currentInstrument.icon} ${currentDisplayName})` : '');
     document.getElementById('rate-resources-song-info').textContent =
       `${song.title} - ${song.artist}${instrumentDisplay}`;
 
@@ -5082,7 +5213,8 @@ class CadenceApp {
       this.studentProgress.forEach(progress => {
         const inst = this.instruments.find(i => i.id === progress.instrument_id);
         if (inst) {
-          let levelText = `  • ${inst.name}: Level ${progress.current_level}`;
+          const displayName = this.getProgressDisplayName(progress);
+          let levelText = `  • ${displayName}: Level ${progress.current_level}`;
           if (progress.current_branch) {
             levelText += ` (${progress.current_branch})`;
           }
@@ -5112,6 +5244,7 @@ class CadenceApp {
 
   resetAppState() {
     this.currentInstrument = null;
+    this.currentProgressId = null;
     this.instruments = [];
     this.levels = [];
     this.songs = [];
@@ -7023,6 +7156,7 @@ class CadenceApp {
     this.studentProgress = [];
     this.instruments = [];
     this.currentInstrument = null;
+    this.currentProgressId = null;
     this.levels = [];
     this.studentSongs = [];
     this.previewMode.dataLoaded = false;
@@ -7139,6 +7273,7 @@ class CadenceApp {
 
     // Set first instrument as current
     if (progressData.length > 0) {
+      this.currentProgressId = progressData[0].id;
       this.currentInstrument = progressData[0].instrument_id;
 
       // Load levels for the student's instrument
@@ -7146,6 +7281,7 @@ class CadenceApp {
       await this.loadSongs();
     } else {
       this.currentInstrument = null;
+      this.currentProgressId = null;
     }
 
     this.studentSongs = songsData || [];

@@ -30,6 +30,8 @@
   --drums-light: #fecaca;
   --vocals-color: #c026d3;
   --vocals-light: #f5d0fe;
+  --other-color: #0d9488;
+  --other-light: #ccfbf1;
 
   /* Default instrument color (dynamic) */
   --instrument-color: var(--primary-color);
@@ -914,6 +916,11 @@ body {
 #pathway-view[data-instrument="vocals"] {
   --instrument-color: var(--vocals-color);
   --instrument-light: var(--vocals-light);
+}
+
+#pathway-view[data-instrument="other"] {
+  --instrument-color: var(--other-color);
+  --instrument-light: var(--other-light);
 }
 
 #pathway-view .level-number,
