@@ -1016,6 +1016,26 @@
     </div>
   </div>
 
+  <!-- Rename custom instrument modal -->
+  <div id="rename-instrument-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>Rename Instrument</h2>
+        <button class="modal-close" onclick="document.getElementById('rename-instrument-modal').classList.add('hidden')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="rename-instrument-input">Instrument name</label>
+          <input type="text" id="rename-instrument-input" class="form-input" maxlength="60" placeholder="e.g. Violin, Clarinet, Trumpet…">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('rename-instrument-modal').classList.add('hidden')">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="app.submitRenameInstrument()">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal for Rating Resources -->
   <div id="rate-resources-modal" class="modal hidden">
     <div class="modal-content modal-small">

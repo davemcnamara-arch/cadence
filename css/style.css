@@ -1090,6 +1090,31 @@ body {
   border-bottom-color: var(--vocals-color);
 }
 
+.instrument-tab.other.active {
+  border-bottom-color: var(--other-color);
+}
+
+/* Rename button inside an instrument tab */
+.tab-rename-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.35rem;
+  padding: 0 0.2rem;
+  font-size: 0.75rem;
+  opacity: 0.5;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.tab-rename-btn:hover {
+  opacity: 1;
+}
+
 /* Pathway header with instrument info */
 .pathway-header {
   background: linear-gradient(135deg, var(--instrument-light), #f3f4f6);
