@@ -1339,6 +1339,7 @@ class CadenceApp {
     if (!this._otherInstrumentInputBound) {
       let debounceTimer = null;
       input.addEventListener('input', () => {
+        console.log('[similar-instruments] input event, value:', input.value);
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => this.findSimilarInstruments(), 500);
       });
@@ -1378,6 +1379,8 @@ class CadenceApp {
     const container = document.getElementById('similar-instruments-container');
     const list = document.getElementById('similar-instruments-list');
 
+    console.log('[similar-instruments] findSimilarInstruments called, name:', name);
+
     if (name.length < 2) {
       container.classList.add('hidden');
       return;
@@ -1387,12 +1390,14 @@ class CadenceApp {
       const user = auth.getCurrentUser();
       const studentId = this.previewMode.active ? this.previewMode.studentId : user?.id;
 
+      console.log('[similar-instruments] calling RPC with p_name:', name, 'p_student_id:', studentId);
       const { data, error } = await this.callRpcDirect('find_similar_instruments', {
         p_name: name,
         p_student_id: studentId || null,
         p_threshold: 0.3,
         p_limit: 5
       });
+      console.log('[similar-instruments] RPC result:', data, 'error:', error);
 
       if (error) {
         container.classList.add('hidden');
