@@ -182,17 +182,22 @@
 
           <!-- Step 2: shown only when "Other Instrument" is chosen -->
           <div id="other-instrument-name-step" class="hidden">
-            <button class="btn-text" onclick="app.backToInstrumentGrid()" style="margin-bottom:1rem;">&larr; Back</button>
-            <p>What instrument do you play?</p>
-            <input
-              type="text"
-              id="other-instrument-name"
-              class="form-input"
-              placeholder="e.g. Violin, Clarinet, Trumpet…"
-              maxlength="60"
-              style="width:100%; margin-bottom:1rem;"
-            />
-            <button class="btn-primary" onclick="app.confirmOtherInstrument()">Add Instrument</button>
+            <div class="other-name-prompt">
+              <div class="other-name-icon">🎵</div>
+              <h3>What instrument do you play?</h3>
+              <input
+                type="text"
+                id="other-instrument-name"
+                class="other-name-input"
+                placeholder="Violin, Clarinet, Trumpet…"
+                maxlength="60"
+                autocomplete="off"
+              />
+              <div class="other-name-actions">
+                <button class="btn-text" onclick="app.backToInstrumentGrid()">&larr; Back</button>
+                <button class="btn-primary" onclick="app.confirmOtherInstrument()">Add Instrument</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

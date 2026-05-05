@@ -712,6 +712,56 @@ body {
   font-size: 0.875rem;
 }
 
+/* Other-instrument name entry step */
+.other-name-prompt {
+  text-align: center;
+  padding: 0.5rem 0 0.25rem;
+}
+
+.other-name-icon {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+}
+
+.other-name-prompt h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+  color: var(--text-primary);
+}
+
+.other-name-input {
+  width: 100%;
+  font-size: 1.25rem;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  text-align: center;
+  outline: none;
+  margin-bottom: 1.25rem;
+  box-sizing: border-box;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.other-name-input:focus {
+  border-color: var(--primary-color);
+  background: var(--bg-primary);
+}
+
+.other-name-input::placeholder {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.other-name-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  align-items: center;
+}
+
 /* Instrument Selector */
 .instrument-selector {
   display: flex;

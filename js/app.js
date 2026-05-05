@@ -1328,7 +1328,9 @@ class CadenceApp {
     this._pendingOtherInstrumentId = instrumentId;
     document.getElementById('instrument-grid-step').classList.add('hidden');
     document.getElementById('other-instrument-name-step').classList.remove('hidden');
-    document.getElementById('other-instrument-name').focus();
+    const input = document.getElementById('other-instrument-name');
+    input.focus();
+    input.onkeydown = (e) => { if (e.key === 'Enter') this.confirmOtherInstrument(); };
   }
 
   backToInstrumentGrid() {
