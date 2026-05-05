@@ -2709,11 +2709,18 @@ class CadenceApp {
       }
     }
 
-    const instrumentProgress = instrument ? (
-      this.studentProgress.find(p => p.instrument_id === instrument.id && p.custom_instrument_name)
-      || this.studentProgress.find(p => p.instrument_id === instrument.id)
-    ) : null;
-    const instrumentName = instrumentProgress?.custom_instrument_name || instrument?.name || '';
+    // Resolve custom name for "Other Instrument" entries. Prefer the currently-active
+    // progress record (identified by currentProgressId) so that students with multiple
+    // "Other Instrument" tabs (e.g. Violin + Clarinet) see the right custom name.
+    let instrumentName = instrument?.name || '';
+    if (instrument) {
+      const currentProgress = this.getCurrentProgress();
+      const instrumentProgress = (currentProgress?.instrument_id === instrument.id ? currentProgress : null)
+        || this.studentProgress.find(p => p.instrument_id === instrument.id && p.custom_instrument_name);
+      if (instrumentProgress?.custom_instrument_name) {
+        instrumentName = instrumentProgress.custom_instrument_name;
+      }
+    }
     const instrumentIcon = instrument?.icon || '';
 
     // Chord link details (instrument-specific)
@@ -7428,6 +7435,7 @@ class CadenceApp {
             instrument_id: p.instrument_id,
             current_level: p.current_level,
             current_branch: p.current_branch,
+            custom_instrument_name: p.custom_instrument_name || null,
             instruments: inst ? { id: inst.id, name: inst.name, icon: inst.icon } : { id: p.instrument_id, name: 'Unknown', icon: '🎵' }
           };
         });
