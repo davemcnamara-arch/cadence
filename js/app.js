@@ -1824,7 +1824,7 @@ class CadenceApp {
           <p>Currently at Level ${currentLevel}${currentBranch ? ` - ${currentBranch}` : ''}</p>
         </div>
         <button class="pathway-find-songs-btn" data-level="${currentLevel}">
-          Find ${instrument.name} songs at your level
+          Find ${displayName} songs at your level
         </button>
       </div>
     `;
