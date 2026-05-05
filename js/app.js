@@ -1399,7 +1399,7 @@ class CadenceApp {
         return;
       }
 
-      const matches = (data || []).filter(i => i.similarity_score > 0.4);
+      const matches = data || [];
 
       if (matches.length === 0) {
         container.classList.add('hidden');
