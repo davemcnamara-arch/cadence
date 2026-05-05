@@ -1333,6 +1333,7 @@ class CadenceApp {
   }
 
   showOtherInstrumentNameStep(instrumentId) {
+    console.log('[similar-instruments] showOtherInstrumentNameStep called, id:', instrumentId);
     this._pendingOtherInstrumentId = instrumentId;
     this._similarInstrumentsDismissed = false;
     document.getElementById('instrument-grid-step').classList.add('hidden');
@@ -1344,9 +1345,12 @@ class CadenceApp {
     input.onkeydown = (e) => { if (e.key === 'Enter') this.confirmOtherInstrument(); };
 
     // Debounced similar-instrument detection
+    console.log('[similar-instruments] _otherInstrumentInputBound:', this._otherInstrumentInputBound, 'input el:', input);
     if (!this._otherInstrumentInputBound) {
+      console.log('[similar-instruments] attaching input listener');
       let debounceTimer = null;
       input.addEventListener('input', () => {
+        console.log('[similar-instruments] input event, value:', input.value);
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => this.findSimilarInstruments(), 500);
       });
@@ -1386,6 +1390,8 @@ class CadenceApp {
     const container = document.getElementById('similar-instruments-container');
     const list = document.getElementById('similar-instruments-list');
 
+    console.log('[similar-instruments] findSimilarInstruments called, name:', name);
+
     if (name.length < 2) {
       container.classList.add('hidden');
       return;
@@ -1395,12 +1401,14 @@ class CadenceApp {
       const user = auth.getCurrentUser();
       const studentId = this.previewMode.active ? this.previewMode.studentId : user?.id;
 
+      console.log('[similar-instruments] calling RPC with p_name:', name, 'p_student_id:', studentId);
       const { data, error } = await this.callRpcDirect('find_similar_instruments', {
         p_name: name,
         p_student_id: studentId || null,
         p_threshold: 0.3,
         p_limit: 5
       });
+      console.log('[similar-instruments] RPC result:', data, 'error:', error);
 
       if (error) {
         container.classList.add('hidden');
