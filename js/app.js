@@ -1383,6 +1383,25 @@ class CadenceApp {
       return;
     }
 
+    // Check own instruments first (client-side, no DB call needed)
+    const alreadyHave = (this.studentProgress || []).find(
+      p => p.custom_instrument_name && p.custom_instrument_name.toLowerCase() === name.toLowerCase()
+    );
+
+    if (alreadyHave) {
+      list.innerHTML = `
+        <div class="similar-song-item similar-instrument-already-have">
+          <div class="similar-song-info">
+            <span class="similar-song-title">${this.escapeHtml(alreadyHave.custom_instrument_name)}</span>
+          </div>
+          <span class="similar-song-match">Already added</span>
+        </div>
+      `;
+      // No click handler — just informational
+      container.classList.remove('hidden');
+      return;
+    }
+
     try {
       const user = auth.getCurrentUser();
       const studentId = this.previewMode.active ? this.previewMode.studentId : user?.id;
