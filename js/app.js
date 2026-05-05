@@ -3111,8 +3111,7 @@ class CadenceApp {
       searchTutorialBtn.addEventListener('click', () => {
         const title = document.getElementById('song-title').value;
         const artist = document.getElementById('song-artist').value;
-        const instrument = document.getElementById('grading-instrument').value;
-        const instrumentName = this.instruments.find(i => i.id === instrument)?.name || '';
+        const instrumentName = this.getGradingInstrumentDisplayName();
         if (title && artist) {
           const searchQuery = `${title} ${artist} ${instrumentName} tutorial`;
           const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
