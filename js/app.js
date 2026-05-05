@@ -1421,7 +1421,7 @@ class CadenceApp {
 
       container.classList.remove('hidden');
     } catch (err) {
-      console.error('Error in findSimilarInstruments:', err);
+      console.warn('find_similar_instruments RPC failed — migration may not be applied:', err?.message || err);
     }
   }
 
