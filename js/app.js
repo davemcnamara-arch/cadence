@@ -2385,6 +2385,11 @@ class CadenceApp {
 
         // Load student-song counts for teachers to show badges on song cards
         if (user.role === 'teacher' || user.role === 'admin') {
+          // Ensure class students are loaded so "Other Instrument" ratings resolve
+          // to custom names (e.g. "Violin") rather than showing "Other Instrument"
+          if (this.currentClass && this.classStudents.length === 0) {
+            await this.loadClassStudents();
+          }
           try {
             const includeArchived = document.getElementById('filter-include-archived')?.checked || false;
             const result = await this.callRpcDirect('get_teacher_student_song_counts', { p_include_archived: includeArchived });
@@ -6759,12 +6764,14 @@ class CadenceApp {
       if (pendingCount > 0) {
         countText += ` (${pendingCount} pending)`;
       }
-      document.getElementById('class-detail-count').textContent = countText;
+      const countEl = document.getElementById('class-detail-count');
+      if (countEl) countEl.textContent = countText;
     } catch (err) {
       console.error('Exception in loadClassStudents:', err);
       this.classStudents = [];
       this.pendingEnrollments = [];
-      document.getElementById('class-detail-count').textContent = '0 students';
+      const countEl = document.getElementById('class-detail-count');
+      if (countEl) countEl.textContent = '0 students';
     }
   }
 
