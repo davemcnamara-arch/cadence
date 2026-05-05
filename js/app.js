@@ -2138,7 +2138,8 @@ class CadenceApp {
       const chordsUrlField = this.getChordsUrlField(instrument?.name || '');
       const chordsLabel = this.getChordsLabelForInstrument(instrument?.name || '');
       const chordsUrl = song[chordsUrlField];
-      const youtubeUrl = song.youtube_url;
+      const youtubeUrl = song.youtube_url
+        || this.getMyPendingLink(song.id, 'youtube_url')?.url;
 
       const tutorialUrl = song.tutorial_url;
 
