@@ -1443,6 +1443,55 @@ class CadenceApp {
     this.showToast(`${displayName} removed successfully`, 'success');
   }
 
+  showRenameInstrumentModal(progressId) {
+    const progress = this.studentProgress.find(p => p.id === progressId);
+    if (!progress?.custom_instrument_name) return;
+    this._renamingProgressId = progressId;
+    const input = document.getElementById('rename-instrument-input');
+    input.value = progress.custom_instrument_name;
+    document.getElementById('rename-instrument-modal').classList.remove('hidden');
+    input.focus();
+    input.select();
+    input.onkeydown = (e) => { if (e.key === 'Enter') this.submitRenameInstrument(); };
+  }
+
+  async submitRenameInstrument() {
+    const newName = document.getElementById('rename-instrument-input').value.trim();
+    if (!newName) return;
+
+    const progress = this.studentProgress.find(p => p.id === this._renamingProgressId);
+    if (!progress) return;
+
+    const user = auth.getCurrentUser();
+    const userId = this.previewMode.active ? this.previewMode.studentId : user.id;
+
+    const { error } = await this.callRpcDirect('rename_custom_instrument', {
+      p_student_id: userId,
+      p_progress_id: progress.id,
+      p_new_name: newName
+    });
+
+    if (error) {
+      console.error('Error renaming instrument:', error);
+      this.showToast('Failed to rename instrument', 'error');
+      return;
+    }
+
+    // Update local state
+    progress.custom_instrument_name = newName;
+    document.getElementById('rename-instrument-modal').classList.add('hidden');
+
+    // Re-render all name-bearing UI
+    this.renderInstrumentTabs();
+    this.updateInstrumentDropdown();
+    if (this.currentProgressId === progress.id) {
+      this.updatePathwayInstrument();
+      this.renderPathway();
+    }
+
+    this.showToast(`Renamed to "${newName}"`, 'success');
+  }
+
   // progressId is student_progress.id; instrumentId is the instruments FK.
   // When called with just instrumentId (legacy callers), we look up the progress record.
   async selectInstrument(progressId, instrumentId) {
@@ -1486,13 +1535,16 @@ class CadenceApp {
         ? 'other'
         : instrument.name.toLowerCase().split('/')[0].replace(/\s+/g, '');
       const displayName = this.getProgressDisplayName(progress);
+      const renameBtn = progress.custom_instrument_name
+        ? `<span class="tab-rename-btn" title="Rename" onclick="event.stopPropagation(); app.showRenameInstrumentModal('${progress.id}')">✎</span>`
+        : '';
 
       return `
         <button
           class="instrument-tab ${slug} ${isActive ? 'active' : ''}"
           data-progress-id="${progress.id}"
           onclick="app.selectInstrument('${progress.id}', '${instrument.id}')">
-          ${instrument.icon} ${displayName}
+          ${instrument.icon} ${displayName}${renameBtn}
         </button>
       `;
     }).join('');
@@ -2048,11 +2100,7 @@ class CadenceApp {
     const user = auth.getCurrentUser();
     if (!user) return [];
 
-    // If studentSongs already has embedded song data (loaded by renderProgress), reuse it
-    if (this.studentSongs.some(s => s.songs)) {
-      return this.studentSongs.filter(s => s.status === 'learning' && s.songs);
-    }
-
+    // Always fetch fresh so newly-graded songs show their youtube_url immediately.
     try {
       const { data } = await this.callSelectDirect(
         'student_songs',
@@ -2083,9 +2131,12 @@ class CadenceApp {
 
       const instrument = this.instruments.find(i => i.id === studentSong.instrument_id);
       const instrumentIcon = instrument?.icon || '';
-      const instrumentName = instrument?.name || '';
-      const chordsUrlField = this.getChordsUrlField(instrumentName);
-      const chordsLabel = this.getChordsLabelForInstrument(instrumentName);
+      // Use the student's custom name for "Other Instrument" entries
+      const progress = this.studentProgress.find(p => p.instrument_id === studentSong.instrument_id && p.custom_instrument_name)
+                    || this.studentProgress.find(p => p.instrument_id === studentSong.instrument_id);
+      const instrumentName = progress?.custom_instrument_name || instrument?.name || '';
+      const chordsUrlField = this.getChordsUrlField(instrument?.name || '');
+      const chordsLabel = this.getChordsLabelForInstrument(instrument?.name || '');
       const chordsUrl = song[chordsUrlField];
       const youtubeUrl = song.youtube_url;
 
