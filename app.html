@@ -171,9 +171,28 @@
             <h2>Choose Your Instrument</h2>
             <button id="close-instrument-selection" class="modal-close">&times;</button>
           </div>
-          <p>Select an instrument to begin your musical journey</p>
-          <div id="instrument-grid" class="instrument-grid">
-            <!-- Populated by JS -->
+
+          <!-- Step 1: instrument grid -->
+          <div id="instrument-grid-step">
+            <p>Select an instrument to begin your musical journey</p>
+            <div id="instrument-grid" class="instrument-grid">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Step 2: shown only when "Other Instrument" is chosen -->
+          <div id="other-instrument-name-step" class="hidden">
+            <button class="btn-text" onclick="app.backToInstrumentGrid()" style="margin-bottom:1rem;">&larr; Back</button>
+            <p>What instrument do you play?</p>
+            <input
+              type="text"
+              id="other-instrument-name"
+              class="form-input"
+              placeholder="e.g. Violin, Clarinet, Trumpet…"
+              maxlength="60"
+              style="width:100%; margin-bottom:1rem;"
+            />
+            <button class="btn-primary" onclick="app.confirmOtherInstrument()">Add Instrument</button>
           </div>
         </div>
       </div>
