@@ -2709,7 +2709,11 @@ class CadenceApp {
       }
     }
 
-    const instrumentName = instrument?.name || '';
+    const instrumentProgress = instrument ? (
+      this.studentProgress.find(p => p.instrument_id === instrument.id && p.custom_instrument_name)
+      || this.studentProgress.find(p => p.instrument_id === instrument.id)
+    ) : null;
+    const instrumentName = instrumentProgress?.custom_instrument_name || instrument?.name || '';
     const instrumentIcon = instrument?.icon || '';
 
     // Chord link details (instrument-specific)
@@ -2754,8 +2758,11 @@ class CadenceApp {
       const instrumentOptions = ratedInstrumentIds.map(instId => {
         const inst = this.instruments.find(i => i.id === instId);
         if (!inst) return '';
+        const instProgress = this.studentProgress.find(p => p.instrument_id === instId && p.custom_instrument_name)
+                          || this.studentProgress.find(p => p.instrument_id === instId);
+        const instName = instProgress?.custom_instrument_name || inst.name;
         const isSelected = inst.id === instrument?.id;
-        return `<option value="${inst.id}" ${isSelected ? 'selected' : ''}>${inst.icon} ${inst.name}</option>`;
+        return `<option value="${inst.id}" ${isSelected ? 'selected' : ''}>${inst.icon} ${instName}</option>`;
       }).join('');
 
       // Store ratings data as JSON for the change handler
