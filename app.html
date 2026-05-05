@@ -193,6 +193,16 @@
                 maxlength="60"
                 autocomplete="off"
               />
+              <!-- Similar instrument names used by other students -->
+              <div id="similar-instruments-container" class="similar-songs-container hidden">
+                <div class="similar-songs-header">
+                  <span>Other students play this — use the same name?</span>
+                </div>
+                <div id="similar-instruments-list" class="similar-songs-list">
+                  <!-- Populated dynamically -->
+                </div>
+                <button type="button" class="btn btn-link" id="dismiss-similar-instruments">No, use my own name</button>
+              </div>
               <div class="other-name-actions">
                 <button class="btn btn-text" onclick="app.backToInstrumentGrid()">&larr; Back</button>
                 <button class="btn btn-primary" onclick="app.confirmOtherInstrument()">Add Instrument</button>
