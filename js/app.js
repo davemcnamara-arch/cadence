@@ -3081,7 +3081,9 @@ class CadenceApp {
         const title = document.getElementById('song-title').value;
         const artist = document.getElementById('song-artist').value;
         if (title && artist) {
-          const searchQuery = `${title} ${artist} youtube`;
+          const instrName = this.getGradingInstrumentDisplayName();
+          const instrPart = instrName && instrName !== 'Other Instrument' ? ` ${instrName}` : '';
+          const searchQuery = `${title} ${artist}${instrPart} youtube`;
           const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
           window.open(searchUrl, '_blank');
         } else {
@@ -3203,6 +3205,18 @@ class CadenceApp {
     return song[field];
   }
 
+  // Returns the display name for the instrument currently selected in the grading dropdown,
+  // using the student's custom_instrument_name when the instrument is "Other Instrument".
+  getGradingInstrumentDisplayName() {
+    const instrumentId = document.getElementById('grading-instrument').value;
+    const instrument = this.instruments.find(i => i.id === instrumentId);
+    if (instrument?.name === 'Other Instrument') {
+      const progress = this.studentProgress.find(p => p.instrument_id === instrumentId && p.custom_instrument_name);
+      return progress?.custom_instrument_name || instrument.name;
+    }
+    return instrument?.name || '';
+  }
+
   getChordsSearchTerm() {
     const instrumentId = document.getElementById('grading-instrument').value;
     const instrument = this.instruments.find(i => i.id === instrumentId);
@@ -3215,12 +3229,25 @@ class CadenceApp {
     return this.getChordsLabelForInstrument(instrument?.name);
   }
 
+  // Returns true for instruments where chords/tabs are relevant
+  instrumentHasChords(instrumentName) {
+    const name = (instrumentName || '').toLowerCase();
+    // Guitar, Bass, Piano/Keyboard, Vocals — hide for Other Instrument
+    return !name.includes('other');
+  }
+
   updateChordsLabel() {
+    const instrumentId = document.getElementById('grading-instrument').value;
+    const instrument = this.instruments.find(i => i.id === instrumentId);
     const label = this.getChordsLabel();
     const chordsLabel = document.querySelector('label[for="song-chords"]');
     const searchChordsBtn = document.getElementById('search-chords-btn');
+    const chordsGroup = document.getElementById('chords-url-group');
     if (chordsLabel) chordsLabel.textContent = `${label} URL (optional)`;
     if (searchChordsBtn) searchChordsBtn.title = `Search for ${label.toLowerCase()}`;
+    if (chordsGroup) {
+      chordsGroup.style.display = this.instrumentHasChords(instrument?.name) ? '' : 'none';
+    }
   }
 
   setupEditResourceModal() {
@@ -3327,7 +3354,8 @@ class CadenceApp {
       } else if (fieldName === 'tutorial_url') {
         searchQuery = instrumentName ? `${title} ${instrumentName} tutorial` : `${title} tutorial`;
       } else if (fieldName === 'youtube_url') {
-        searchQuery = `${title} ${artist} youtube`;
+        const instrPart = instrumentName && instrumentName !== 'Other Instrument' ? ` ${instrumentName}` : '';
+        searchQuery = `${title} ${artist}${instrPart} youtube`;
       }
 
       if (searchQuery) {
