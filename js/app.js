@@ -1823,6 +1823,9 @@ class CadenceApp {
           <h2>${displayName} Pathway</h2>
           <p>Currently at Level ${currentLevel}${currentBranch ? ` - ${currentBranch}` : ''}</p>
         </div>
+        <button class="pathway-find-songs-btn" data-level="${currentLevel}">
+          Find ${instrument.name} songs at your level
+        </button>
       </div>
     `;
 
@@ -1861,6 +1864,14 @@ class CadenceApp {
 
     html += '</div>';
     container.innerHTML = html;
+
+    // Add click handler for the find songs button
+    const findSongsBtn = container.querySelector('.pathway-find-songs-btn');
+    if (findSongsBtn) {
+      findSongsBtn.addEventListener('click', () => {
+        this.navigateToLevelSongs(currentLevel);
+      });
+    }
 
     // Add click handlers to level nodes and branch nodes
     container.querySelectorAll('.level-node, .branch-node').forEach(node => {

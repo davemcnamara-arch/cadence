@@ -1144,6 +1144,25 @@ body {
   color: var(--text-secondary);
 }
 
+.pathway-find-songs-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  background: var(--instrument-color);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 0.875rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s ease;
+}
+
+.pathway-find-songs-btn:hover {
+  opacity: 0.85;
+}
+
 /* Song Filters */
 .song-filters {
   display: flex;
