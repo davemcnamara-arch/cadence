@@ -1325,6 +1325,7 @@ class CadenceApp {
   }
 
   showOtherInstrumentNameStep(instrumentId) {
+    console.log('[similar-instruments] showOtherInstrumentNameStep called, id:', instrumentId);
     this._pendingOtherInstrumentId = instrumentId;
     this._similarInstrumentsDismissed = false;
     document.getElementById('instrument-grid-step').classList.add('hidden');
@@ -1336,7 +1337,9 @@ class CadenceApp {
     input.onkeydown = (e) => { if (e.key === 'Enter') this.confirmOtherInstrument(); };
 
     // Debounced similar-instrument detection
+    console.log('[similar-instruments] _otherInstrumentInputBound:', this._otherInstrumentInputBound, 'input el:', input);
     if (!this._otherInstrumentInputBound) {
+      console.log('[similar-instruments] attaching input listener');
       let debounceTimer = null;
       input.addEventListener('input', () => {
         console.log('[similar-instruments] input event, value:', input.value);
