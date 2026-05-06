@@ -31,6 +31,7 @@ class CadenceApp {
     this.allTeacherStudents = null;
     this.teacherSongStudentCounts = null;
     this.flaggedRatings = [];
+    this.otherInstrumentCustomNames = {};
 
     // School properties
     this.currentSchool = null;
@@ -2385,10 +2386,34 @@ class CadenceApp {
 
         // Load student-song counts for teachers to show badges on song cards
         if (user.role === 'teacher' || user.role === 'admin') {
-          // Ensure class students are loaded so "Other Instrument" ratings resolve
-          // to custom names (e.g. "Violin") rather than showing "Other Instrument"
-          if (this.currentClass && this.classStudents.length === 0) {
-            await this.loadClassStudents();
+          // Build a user_id → custom_instrument_name lookup for "Other Instrument"
+          // ratings so song cards can show the real name (e.g. "Violin") rather than
+          // "Other Instrument". Uses the rating's user_id so the correct student's name
+          // is shown even when classStudents hasn't been loaded yet.
+          const otherInstrument = this.instruments?.find(i => i.name === 'Other Instrument');
+          if (otherInstrument) {
+            const otherRatingUserIds = [...new Set(
+              (this.songs || []).flatMap(song =>
+                (song.song_ratings || [])
+                  .filter(r => r.instrument_id === otherInstrument.id)
+                  .map(r => r.user_id)
+              )
+            )];
+            if (otherRatingUserIds.length > 0) {
+              const { data: customNameRecords } = await this.callSelectDirect(
+                'student_progress',
+                'user_id,custom_instrument_name',
+                { in: { user_id: otherRatingUserIds }, eq: { instrument_id: otherInstrument.id } }
+              );
+              this.otherInstrumentCustomNames = {};
+              (customNameRecords || []).forEach(p => {
+                if (p.custom_instrument_name && !this.otherInstrumentCustomNames[p.user_id]) {
+                  this.otherInstrumentCustomNames[p.user_id] = p.custom_instrument_name;
+                }
+              });
+            } else {
+              this.otherInstrumentCustomNames = {};
+            }
           }
           try {
             const includeArchived = document.getElementById('filter-include-archived')?.checked || false;
@@ -2717,7 +2742,8 @@ class CadenceApp {
     // Resolve custom name for "Other Instrument" entries. Prefer the currently-active
     // progress record (identified by currentProgressId) so that students with multiple
     // "Other Instrument" tabs (e.g. Violin + Clarinet) see the right custom name.
-    // In teacher mode, fall back to classStudents data (requires get_class_students SQL deployment).
+    // In teacher mode, use the pre-loaded otherInstrumentCustomNames map (keyed by
+    // the rating's user_id) so the correct name shows regardless of which class is open.
     let instrumentName = instrument?.name || '';
     if (instrument) {
       const currentProgress = this.getCurrentProgress();
@@ -2726,12 +2752,24 @@ class CadenceApp {
       if (instrumentProgress?.custom_instrument_name) {
         instrumentName = instrumentProgress.custom_instrument_name;
       } else {
-        // Teacher mode: scan classStudents for the first matching custom name
-        for (const member of (this.classStudents || [])) {
-          const p = member.student_progress?.find(
-            p => p.instrument_id === instrument.id && p.custom_instrument_name
-          );
-          if (p) { instrumentName = p.custom_instrument_name; break; }
+        // Teacher mode: look up custom name via rating user_id (most accurate),
+        // then fall back to any classStudent with this instrument.
+        const ratingUserIds = (song.song_ratings || [])
+          .filter(r => r.instrument_id === instrument.id)
+          .map(r => r.user_id);
+        for (const uid of ratingUserIds) {
+          if (this.otherInstrumentCustomNames?.[uid]) {
+            instrumentName = this.otherInstrumentCustomNames[uid];
+            break;
+          }
+        }
+        if (instrumentName === (instrument?.name || '')) {
+          for (const member of (this.classStudents || [])) {
+            const p = member.student_progress?.find(
+              p => p.instrument_id === instrument.id && p.custom_instrument_name
+            );
+            if (p) { instrumentName = p.custom_instrument_name; break; }
+          }
         }
       }
     }
@@ -2781,6 +2819,14 @@ class CadenceApp {
         if (!inst) return '';
         const instProgress = this.studentProgress.find(p => p.instrument_id === instId && p.custom_instrument_name);
         let instName = instProgress?.custom_instrument_name;
+        if (!instName) {
+          // Teacher mode: look up custom name via rating user_id first
+          const ratingUserForInst = (song.song_ratings || [])
+            .find(r => r.instrument_id === instId && this.otherInstrumentCustomNames?.[r.user_id]);
+          if (ratingUserForInst) {
+            instName = this.otherInstrumentCustomNames[ratingUserForInst.user_id];
+          }
+        }
         if (!instName) {
           for (const member of (this.classStudents || [])) {
             const mp = member.student_progress?.find(p => p.instrument_id === instId && p.custom_instrument_name);
