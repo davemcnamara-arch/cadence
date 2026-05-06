@@ -3337,9 +3337,7 @@ class CadenceApp {
         const title = document.getElementById('song-title').value;
         const artist = document.getElementById('song-artist').value;
         if (title && artist) {
-          const instrName = this.getGradingInstrumentDisplayName();
-          const instrPart = instrName && instrName !== 'Other Instrument' ? ` ${instrName}` : '';
-          const searchQuery = `${title} ${artist}${instrPart} youtube`;
+          const searchQuery = `${title} ${artist} youtube`;
           const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
           window.open(searchUrl, '_blank');
         } else {
@@ -3609,8 +3607,7 @@ class CadenceApp {
       } else if (fieldName === 'tutorial_url') {
         searchQuery = instrumentName ? `${title} ${instrumentName} tutorial` : `${title} tutorial`;
       } else if (fieldName === 'youtube_url') {
-        const instrPart = instrumentName && instrumentName !== 'Other Instrument' ? ` ${instrumentName}` : '';
-        searchQuery = `${title} ${artist}${instrPart} youtube`;
+        searchQuery = `${title} ${artist} youtube`;
       }
 
       if (searchQuery) {
