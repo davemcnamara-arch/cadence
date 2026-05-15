@@ -424,7 +424,7 @@
           throw new Error(error.message || 'Could not redeem code. Please try again.');
         }
 
-        window.location.href = 'app.html';
+        window.location.href = 'app.html?subscribed=1';
       } catch (err) {
         errorEl.textContent = err.message;
         errorEl.classList.remove('hidden');
