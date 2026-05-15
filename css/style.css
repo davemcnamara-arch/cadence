@@ -4437,6 +4437,54 @@ body {
 }
 
 /* =====================================================
+ * Trial Banner
+ * ===================================================== */
+
+.trial-banner {
+  background: #eff6ff;
+  border-bottom: 1px solid #bfdbfe;
+  padding: 0.45rem 1.5rem;
+  font-size: 0.8125rem;
+  color: #1e40af;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.trial-banner.trial-urgent {
+  background: #fff7ed;
+  border-bottom-color: #fed7aa;
+  color: #92400e;
+}
+
+.trial-banner a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.trial-banner a:hover {
+  opacity: 0.8;
+}
+
+.trial-banner-dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: inherit;
+  opacity: 0.55;
+  padding: 0.125rem 0.25rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.trial-banner-dismiss:hover {
+  opacity: 1;
+}
+
+/* =====================================================
  * Bulk-add modal: plan limit notices
  * ===================================================== */
 

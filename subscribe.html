@@ -233,6 +233,64 @@
       opacity: 0.65;
       cursor: not-allowed;
     }
+
+    .promo-divider {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 1.25rem 0 1rem;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+    }
+
+    .promo-divider::before,
+    .promo-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-color);
+    }
+
+    .promo-input-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .promo-input {
+      flex: 1;
+      padding: 0.625rem 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      font-size: 0.9375rem;
+      font-family: inherit;
+      color: var(--text-primary);
+      background: var(--bg-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .promo-input::placeholder {
+      text-transform: none;
+      letter-spacing: normal;
+      color: var(--text-secondary);
+    }
+
+    .promo-input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+    }
+
+    .promo-error {
+      margin: 0.5rem 0 0;
+      font-size: 0.85rem;
+      color: #b91c1c;
+    }
+
+    #redeem-btn:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -275,6 +333,17 @@
         <button class="btn btn-primary btn-full" id="subscribe-btn">
           Subscribe Now
         </button>
+
+        <div class="promo-divider">Have a promo code?</div>
+
+        <div class="promo-section">
+          <div class="promo-input-row">
+            <input type="text" id="promo-code-input" class="promo-input"
+              placeholder="Enter promo code" autocomplete="off" spellcheck="false" maxlength="32">
+            <button class="btn btn-secondary" id="redeem-btn">Redeem</button>
+          </div>
+          <p id="promo-error" class="promo-error hidden"></p>
+        </div>
 
         <div class="divider">or</div>
 
@@ -322,6 +391,47 @@
 
     // Pre-select the school card
     selectCard(document.querySelector('.plan-card[data-plan="school"]'));
+
+    // Force promo code input to uppercase as the user types
+    const promoInput = document.getElementById('promo-code-input');
+    promoInput.addEventListener('input', () => {
+      const pos = promoInput.selectionStart;
+      promoInput.value = promoInput.value.toUpperCase();
+      promoInput.setSelectionRange(pos, pos);
+    });
+
+    document.getElementById('redeem-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('redeem-btn');
+      const errorEl = document.getElementById('promo-error');
+      const code = promoInput.value.trim();
+
+      errorEl.classList.add('hidden');
+      errorEl.textContent = '';
+
+      if (!code) {
+        errorEl.textContent = 'Please enter a promo code.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Redeeming…';
+
+      try {
+        const { error } = await supabase.rpc('redeem_promo_code', { promo_code: code });
+
+        if (error) {
+          throw new Error(error.message || 'Could not redeem code. Please try again.');
+        }
+
+        window.location.href = 'app.html';
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Redeem';
+      }
+    });
 
     document.getElementById('subscribe-btn').addEventListener('click', async () => {
       const btn = document.getElementById('subscribe-btn');

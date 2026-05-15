@@ -690,6 +690,11 @@ class CadenceApp {
         // Their role is NOT changed in the DB; this is a pure UI gate.
         this.showSubscriptionExpiredOverlay();
         // Fall through so the app shell (header, etc.) still renders correctly.
+      } else if (subResult.status === 'trialing' && subResult.currentPeriodEnd) {
+        // Active promo trial — show a countdown banner so the teacher knows when it ends.
+        const msLeft = subResult.currentPeriodEnd - new Date();
+        const daysRemaining = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
+        this.showTrialBanner(daysRemaining);
       }
 
       // Remove the subscribed flag from the URL without reloading
@@ -892,6 +897,33 @@ class CadenceApp {
   hideSubscriptionExpiredOverlay() {
     const overlay = document.getElementById('subscription-expired-overlay');
     if (overlay) overlay.classList.add('hidden');
+  }
+
+  showTrialBanner(daysRemaining) {
+    if (sessionStorage.getItem('cadence_trial_banner_dismissed')) return;
+
+    const banner = document.getElementById('trial-banner');
+    const textEl = document.getElementById('trial-banner-text');
+    if (!banner || !textEl) return;
+
+    const upgradeLink = '<a href="subscribe.html">Upgrade now</a>';
+    if (daysRemaining > 7) {
+      textEl.innerHTML = `🎉 You're on a free trial — <strong>${daysRemaining} days remaining</strong>. ${upgradeLink}`;
+    } else {
+      textEl.innerHTML = `⏳ Your trial ends in <strong>${daysRemaining} days</strong>. Subscribe to keep access to your class progress. ${upgradeLink}`;
+      banner.classList.add('trial-urgent');
+    }
+
+    banner.classList.remove('hidden');
+
+    const dismissBtn = document.getElementById('trial-banner-dismiss');
+    if (dismissBtn && !dismissBtn._trialBannerBound) {
+      dismissBtn._trialBannerBound = true;
+      dismissBtn.addEventListener('click', () => {
+        banner.classList.add('hidden');
+        sessionStorage.setItem('cadence_trial_banner_dismissed', '1');
+      });
+    }
   }
 
   // Total active students across all loaded classes (client-side sum)
