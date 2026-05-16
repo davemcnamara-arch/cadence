@@ -3740,6 +3740,19 @@ body {
   flex-shrink: 0;
 }
 
+@media (max-width: 480px) {
+  .account-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.625rem;
+  }
+
+  .account-meta {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
 .delete-warning {
   background: #fef2f2;
   border: 1px solid #fecaca;
