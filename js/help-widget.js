@@ -118,6 +118,20 @@
       margin-left: 1px;
     }
     @keyframes hw-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .hw-msg.hw-rendered { white-space: normal; }
+    .hw-msg p { margin: 0; }
+    .hw-msg p + p { margin-top: 0.35rem; }
+    .hw-msg ul, .hw-msg ol { margin: 0.2rem 0; padding-left: 1.1rem; }
+    .hw-msg li { margin: 0.1rem 0; }
+    .hw-msg strong { font-weight: 700; }
+    .hw-msg em { font-style: italic; }
+    .hw-msg code {
+      font-family: monospace;
+      font-size: 0.85em;
+      background: rgba(0,0,0,0.07);
+      padding: 0.1em 0.25em;
+      border-radius: 3px;
+    }
     .hw-msg.hw-system {
       align-self: center;
       background: none;
@@ -258,6 +272,31 @@
     msgs.innerHTML = '<div class="hw-msg hw-system">Ask me anything about using Cadence!</div>';
   }
 
+  // ── Markdown renderer ────────────────────────────────────────────────────────
+  function renderMarkdown(text) {
+    function esc(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function inline(s) {
+      return esc(s)
+        .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>');
+    }
+    return text.trim().split(/\n{2,}/).map(block => {
+      const lines = block.split('\n').filter(l => l.trim());
+      if (!lines.length) return '';
+      if (lines.every(l => /^\s*[-*]\s/.test(l))) {
+        return '<ul>' + lines.map(l => '<li>' + inline(l.replace(/^\s*[-*]\s+/, '')) + '</li>').join('') + '</ul>';
+      }
+      if (lines.every(l => /^\s*\d+\.\s/.test(l))) {
+        return '<ol>' + lines.map(l => '<li>' + inline(l.replace(/^\s*\d+\.\s+/, '')) + '</li>').join('') + '</ol>';
+      }
+      return '<p>' + lines.map(inline).join('<br>') + '</p>';
+    }).join('');
+  }
+
   // ── Messaging ────────────────────────────────────────────────────────────────
   function appendMessage(type, text, isStreaming) {
     const msgs = document.getElementById('hw-messages');
@@ -327,6 +366,10 @@
       }
 
       botDiv.classList.remove('hw-streaming');
+      botDiv.classList.add('hw-rendered');
+      botDiv.innerHTML = renderMarkdown(fullText);
+      document.getElementById('hw-messages').scrollTop =
+        document.getElementById('hw-messages').scrollHeight;
       history.push({ role: 'assistant', content: fullText });
     } catch {
       botDiv.textContent = 'Sorry, something went wrong. Please try again.';

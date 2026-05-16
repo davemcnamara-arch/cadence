@@ -13,6 +13,7 @@ Cadence is a music learning platform: student choice, teacher insight. for stude
 - Piano/Keyboard 🎹 (cyan)
 - Drums 🥁 (red)
 - Vocals 🎤 (magenta)
+- **Other Instrument** — students can add any instrument not in the list (e.g. Violin, Cello, Ukulele) and give it a custom name. The custom name appears on song cards and in the teacher's song library view.
 
 ## Level Structure
 - Levels 1–3: Linear progression
@@ -51,8 +52,11 @@ All teacher tabs plus:
 - Switch between instruments using the instrument tabs
 - A **"Currently Learning"** strip at the top shows songs you're actively working on
 - **"What should I learn next?"** — a button that appears next to the Currently Learning strip (when enough data exists) that opens a modal showing songs other students went on to learn after mastering the same songs as you
+- **"Find songs at your level"** — a button in the pathway header that navigates to the Song Library pre-filtered to your current level for the selected instrument
 - Customise the background colour using the colour swatches (6 options)
 - **"Remove Current"** removes the current instrument from your tracking
+- The last instrument you viewed is remembered across page refreshes
+- If you type an instrument name similar to one you already track, an **"Already added"** notice appears to prevent duplicates
 
 ### Song Library
 - Search songs by title or artist
@@ -101,6 +105,8 @@ Opened via the **"Learning Resources"** button on any song card.
 - **"+ Create New Class"** — create a class (name, year level, optional school assignment)
 - Each class gets a unique 6-character **class code** — share this with students so they can join via **My Progress → Join Class**
 - Click a class to open its detail view
+- **Co-teaching** — class owners can invite another teacher to co-teach a class. Pending co-teacher invites are shown until the invited teacher accepts. Co-teachers have the same access to the class as the owner.
+- **Ownership handoff** — a class owner can transfer ownership of the class to another teacher
 
 ### Class Detail Tabs
 - **Roster** — list of students with join dates, instruments tracked; actions: Edit (student name), Transfer (to another class), Remove
@@ -141,6 +147,7 @@ Available under the **School** tab:
 - **School plan**: unlimited teachers and students (A$199/year)
 - A plan limits banner shows how many students have been used (e.g. "3/25 students")
 - If the subscription expires, a full-screen overlay appears — click **"Renew Subscription"** to restore access (data is preserved)
+- **Promo code / free trial** — teachers can redeem a promo code for a 30-day trial. After a trial expires the code cannot be re-used. Redeeming a School plan promo code automatically triggers school onboarding.
 
 ### School Onboarding
 After subscribing to the School plan, a setup modal asks you to name your school and generates a **school join code** to share with other teachers at your school.
