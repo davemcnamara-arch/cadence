@@ -5914,15 +5914,13 @@ class CadenceApp {
       }
 
       // Update the class
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('classes')
         .update({
           name: className,
           year_level: yearLevel || null
         })
-        .eq('id', this.currentClass.id)
-        .select()
-        .single();
+        .eq('id', this.currentClass.id);
 
       if (error) {
         console.error('Error updating class:', error);
@@ -5930,22 +5928,25 @@ class CadenceApp {
         return;
       }
 
+      // Build updated class object locally (avoid select() which fails for peer teachers)
+      const updatedClass = { ...this.currentClass, name: className, year_level: yearLevel || null };
+
       // Update local data
       const classIndex = this.classes.findIndex(c => c.id === this.currentClass.id);
       if (classIndex !== -1) {
-        this.classes[classIndex] = data;
+        this.classes[classIndex] = updatedClass;
       }
-      this.currentClass = data;
+      this.currentClass = updatedClass;
 
       // Update UI
-      document.getElementById('class-detail-name').textContent = data.name;
+      document.getElementById('class-detail-name').textContent = updatedClass.name;
       const yearLevelEl = document.getElementById('class-detail-year-level');
       if (yearLevelEl) {
-        yearLevelEl.textContent = data.year_level || '';
+        yearLevelEl.textContent = updatedClass.year_level || '';
       }
       const schoolEl = document.getElementById('class-detail-school');
       if (schoolEl) {
-        schoolEl.textContent = this.currentClass.school_name ? `School: ${this.currentClass.school_name}` : '';
+        schoolEl.textContent = updatedClass.school_name ? `School: ${updatedClass.school_name}` : '';
       }
 
       // Close modal and show success
@@ -6681,7 +6682,9 @@ class CadenceApp {
 
     let students = [];
     try {
-      const result = await this.callRpcDirect('search_teacher_students', {});
+      const result = await this.callRpcDirect('search_teacher_students', {
+        p_school_id: this.currentSchool?.id || null
+      });
       students = result.data || [];
     } catch (err) {
       try {
@@ -6930,7 +6933,9 @@ class CadenceApp {
     // Lazy-load all students on first search
     if (!this.allTeacherStudents) {
       try {
-        const result = await this.callRpcDirect('search_teacher_students', {});
+        const result = await this.callRpcDirect('search_teacher_students', {
+          p_school_id: this.currentSchool?.id || null
+        });
         this.allTeacherStudents = result.data || [];
       } catch (err) {
         // Fallback to the simpler RPC if the new one isn't deployed yet
