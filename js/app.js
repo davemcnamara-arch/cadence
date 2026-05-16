@@ -4820,7 +4820,8 @@ class CadenceApp {
     try {
       const headers = {
         'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY
+        'apikey': SUPABASE_ANON_KEY,
+        'Prefer': 'return=minimal'
       };
       if (accessToken) {
         headers['Authorization'] = `Bearer ${accessToken}`;
@@ -5987,7 +5988,7 @@ class CadenceApp {
 
       if (error) {
         console.error('Error updating class:', error);
-        this.showToast('Failed to update class', 'error');
+        this.showToast(`Failed to update class: ${error.message || JSON.stringify(error)}`, 'error');
         return;
       }
 
