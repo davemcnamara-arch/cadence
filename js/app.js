@@ -4802,6 +4802,71 @@ class CadenceApp {
   }
 
 
+  // Direct PATCH query using fetch to bypass stale Supabase client connections
+  async callUpdateDirect(table, body, filters = {}, options = {}, _isRetry = false) {
+    const session = await this.getSessionWithTimeout();
+    const accessToken = session?.access_token;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), options.timeout || 15000);
+
+    const params = new URLSearchParams();
+    for (const [op, conditions] of Object.entries(filters)) {
+      for (const [column, value] of Object.entries(conditions)) {
+        params.append(column, `${op}.${value}`);
+      }
+    }
+
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY
+      };
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/${table}?${params.toString()}`,
+        {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify(body),
+          signal: controller.signal
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (response.status === 401 && !_isRetry) {
+        const { data: { session: refreshed } } = await supabase.auth.refreshSession();
+        if (refreshed?.access_token) {
+          return this.callUpdateDirect(table, body, filters, options, true);
+        }
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return {
+          data: null,
+          error: {
+            message: errorData.message || `HTTP ${response.status}`,
+            details: errorData.details
+          }
+        };
+      }
+
+      return { data: null, error: null };
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        this.showToast('Connection lost. Retrying...', 'error');
+        return { data: null, error: { message: 'Connection timeout' } };
+      }
+      return { data: null, error: { message: err.message } };
+    }
+  }
+
   // ============================================
   // STUDENT: Progress Tracking & Mastery
   // ============================================
@@ -5914,13 +5979,11 @@ class CadenceApp {
       }
 
       // Update the class
-      const { error } = await supabase
-        .from('classes')
-        .update({
-          name: className,
-          year_level: yearLevel || null
-        })
-        .eq('id', this.currentClass.id);
+      const { error } = await this.callUpdateDirect(
+        'classes',
+        { name: className, year_level: yearLevel || null },
+        { eq: { id: this.currentClass.id } }
+      );
 
       if (error) {
         console.error('Error updating class:', error);
