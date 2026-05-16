@@ -6138,7 +6138,7 @@ class CadenceApp {
     const isOwner = this.currentClass.teacher_id === currentUser?.id;
     const isAdmin = currentUser?.role === 'admin';
 
-    // Load current co-teachers
+    // Load current co-teachers (active + pending)
     const { data: coTeachers } = await this.callRpcDirect('get_class_co_teachers', {
       p_class_id: this.currentClass.id
     });
@@ -6151,13 +6151,18 @@ class CadenceApp {
       listEl.innerHTML = coTeachers.map(ct => {
         const isSelf = ct.teacher_id === currentUser?.id;
         const canRemove = isOwner || isAdmin || isSelf;
+        const pendingBadge = ct.is_pending
+          ? `<span style="font-size: 0.75rem; color: var(--text-secondary); background: var(--bg-tertiary); padding: 0.125rem 0.4rem; border-radius: 4px; margin-left: 0.4rem;">pending</span>`
+          : '';
         const removeBtn = canRemove
-          ? `<button class="btn btn-secondary btn-sm" onclick="app.removeCoTeacher('${ct.teacher_id}')">Remove</button>`
+          ? ct.is_pending
+            ? `<button class="btn btn-secondary btn-sm" onclick="app.removePendingCoTeacher('${ct.email}')">Remove</button>`
+            : `<button class="btn btn-secondary btn-sm" onclick="app.removeCoTeacher('${ct.teacher_id}')">Remove</button>`
           : '';
         return `
           <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);">
             <div>
-              <div style="font-weight: 500;">${ct.name}</div>
+              <div style="font-weight: 500;">${ct.name}${pendingBadge}</div>
               <div style="color: var(--text-secondary); font-size: 0.8125rem;">${ct.email}</div>
             </div>
             ${removeBtn}
@@ -6169,22 +6174,35 @@ class CadenceApp {
     const addSection = document.getElementById('add-co-teacher-section');
     if (isOwner || isAdmin) {
       addSection.classList.remove('hidden');
-      // Populate peer teachers dropdown, excluding existing co-teachers
-      const existingIds = new Set((coTeachers || []).map(ct => ct.teacher_id));
-      existingIds.add(this.currentClass.teacher_id); // exclude class owner
+
+      // Track already-added emails and IDs so we can exclude them from the dropdown
+      const existingIds  = new Set((coTeachers || []).filter(ct => !ct.is_pending).map(ct => ct.teacher_id));
+      const existingEmails = new Set((coTeachers || []).map(ct => ct.email?.toLowerCase()));
+      existingIds.add(this.currentClass.teacher_id);
 
       const schoolId = this.currentSchool?.id || null;
       const params = schoolId ? { p_school_id: schoolId } : {};
-      const { data: peers, error } = await supabase.rpc('get_school_peer_teachers', params);
+
+      const [peersResult, pendingResult] = await Promise.all([
+        supabase.rpc('get_school_peer_teachers', params),
+        supabase.from('pre_registered_accounts').select('id, name, email').order('name')
+      ]);
 
       const select = document.getElementById('co-teacher-select');
-      const available = (peers || []).filter(p => !existingIds.has(p.id));
-      if (available.length === 0) {
+      const activePeers = (peersResult.data || []).filter(p => !existingIds.has(p.id));
+      const pendingPeers = (pendingResult.data || []).filter(p => !existingEmails.has(p.email?.toLowerCase()));
+
+      if (activePeers.length === 0 && pendingPeers.length === 0) {
         select.innerHTML = '<option value="">No eligible teachers available</option>';
         document.getElementById('confirm-add-co-teacher-btn').disabled = true;
       } else {
-        select.innerHTML = '<option value="">Select a teacher...</option>' +
-          available.map(p => `<option value="${p.id}">${p.name} (${p.email})</option>`).join('');
+        const activeOptions = activePeers.map(p => `<option value="${p.id}">${p.name || p.email}</option>`).join('');
+        let pendingOptions = '';
+        if (pendingPeers.length > 0) {
+          pendingOptions = `<option disabled>── Pending Teachers ──</option>` +
+            pendingPeers.map(p => `<option value="pending:${p.email}">${p.name || p.email} (Pending)</option>`).join('');
+        }
+        select.innerHTML = '<option value="">Select a teacher...</option>' + activeOptions + pendingOptions;
         document.getElementById('confirm-add-co-teacher-btn').disabled = false;
       }
     } else {
@@ -6195,21 +6213,29 @@ class CadenceApp {
   }
 
   async addCoTeacher() {
-    const teacherId = document.getElementById('co-teacher-select').value;
-    if (!teacherId) {
+    const value = document.getElementById('co-teacher-select').value;
+    if (!value) {
       this.showToast('Please select a teacher', 'error');
       return;
     }
     if (!this.currentClass) return;
 
-    const { data } = await this.callRpcDirect('add_co_teacher', {
-      p_class_id: this.currentClass.id,
-      p_teacher_id: teacherId
-    });
+    let data;
+    if (value.startsWith('pending:')) {
+      const email = value.substring(8);
+      ({ data } = await this.callRpcDirect('add_pending_co_teacher', {
+        p_class_id: this.currentClass.id,
+        p_email: email
+      }));
+    } else {
+      ({ data } = await this.callRpcDirect('add_co_teacher', {
+        p_class_id: this.currentClass.id,
+        p_teacher_id: value
+      }));
+    }
 
     if (data?.success) {
-      this.showToast('Co-teacher added', 'success');
-      // Refresh the modal
+      this.showToast(data.message || 'Co-teacher added', 'success');
       await this.showCoTeachersModal();
     } else {
       this.showToast(data?.message || 'Failed to add co-teacher', 'error');
@@ -6227,7 +6253,6 @@ class CadenceApp {
     if (data?.success) {
       this.showToast('Co-teacher removed', 'success');
 
-      // If the current user removed themselves, navigate away from the class
       const currentUser = auth.getCurrentUser();
       if (teacherId === currentUser?.id) {
         document.getElementById('co-teachers-modal').classList.add('hidden');
@@ -6238,6 +6263,22 @@ class CadenceApp {
       }
     } else {
       this.showToast(data?.message || 'Failed to remove co-teacher', 'error');
+    }
+  }
+
+  async removePendingCoTeacher(email) {
+    if (!this.currentClass) return;
+
+    const { data } = await this.callRpcDirect('remove_pending_co_teacher', {
+      p_class_id: this.currentClass.id,
+      p_email: email
+    });
+
+    if (data?.success) {
+      this.showToast('Pending co-teacher removed', 'success');
+      await this.showCoTeachersModal();
+    } else {
+      this.showToast(data?.message || 'Failed to remove pending co-teacher', 'error');
     }
   }
 
