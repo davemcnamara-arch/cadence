@@ -2167,6 +2167,22 @@ body {
   flex-wrap: wrap;
 }
 
+.class-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .class-actions {
+    justify-content: stretch;
+  }
+  .class-actions .btn {
+    flex: 1 1 calc(50% - 0.25rem);
+  }
+}
+
 .class-detail-title h2 {
   margin-bottom: 0.5rem;
 }
