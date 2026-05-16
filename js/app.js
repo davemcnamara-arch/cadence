@@ -431,6 +431,30 @@ class CadenceApp {
       archiveClassBtn.addEventListener('click', () => this.showArchiveClassModal());
     }
 
+    // Teacher: Co-teachers
+    const coTeachersBtn = document.getElementById('co-teachers-btn');
+    if (coTeachersBtn) {
+      coTeachersBtn.addEventListener('click', () => this.showCoTeachersModal());
+    }
+
+    // Teacher: Hand off class
+    const handoffClassBtn = document.getElementById('handoff-class-btn');
+    if (handoffClassBtn) {
+      handoffClassBtn.addEventListener('click', () => this.showHandoffClassModal());
+    }
+
+    // Teacher: Confirm add co-teacher
+    const confirmAddCoTeacherBtn = document.getElementById('confirm-add-co-teacher-btn');
+    if (confirmAddCoTeacherBtn) {
+      confirmAddCoTeacherBtn.addEventListener('click', () => this.addCoTeacher());
+    }
+
+    // Teacher: Confirm handoff
+    const confirmHandoffBtn = document.getElementById('confirm-handoff-btn');
+    if (confirmHandoffBtn) {
+      confirmHandoffBtn.addEventListener('click', () => this.confirmHandoffClass());
+    }
+
     // Admin: Delete class
     const deleteClassBtn = document.getElementById('delete-class-btn');
     if (deleteClassBtn) {
@@ -6104,6 +6128,169 @@ class CadenceApp {
   }
 
   // ============================================
+  // TEACHER: Co-Teaching
+  // ============================================
+
+  async showCoTeachersModal() {
+    if (!this.currentClass) return;
+
+    const currentUser = auth.getCurrentUser();
+    const isOwner = this.currentClass.teacher_id === currentUser?.id;
+    const isAdmin = currentUser?.role === 'admin';
+
+    // Load current co-teachers
+    const { data: coTeachers } = await this.callRpcDirect('get_class_co_teachers', {
+      p_class_id: this.currentClass.id
+    });
+
+    // Render the co-teacher list
+    const listEl = document.getElementById('co-teachers-list');
+    if (!coTeachers || coTeachers.length === 0) {
+      listEl.innerHTML = '<p style="color: var(--text-secondary); font-style: italic; font-size: 0.875rem;">No co-teachers yet.</p>';
+    } else {
+      listEl.innerHTML = coTeachers.map(ct => {
+        const isSelf = ct.teacher_id === currentUser?.id;
+        const canRemove = isOwner || isAdmin || isSelf;
+        const removeBtn = canRemove
+          ? `<button class="btn btn-secondary btn-sm" onclick="app.removeCoTeacher('${ct.teacher_id}')">Remove</button>`
+          : '';
+        return `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);">
+            <div>
+              <div style="font-weight: 500;">${ct.name}</div>
+              <div style="color: var(--text-secondary); font-size: 0.8125rem;">${ct.email}</div>
+            </div>
+            ${removeBtn}
+          </div>`;
+      }).join('');
+    }
+
+    // Show/hide the add section (owner and admin only)
+    const addSection = document.getElementById('add-co-teacher-section');
+    if (isOwner || isAdmin) {
+      addSection.classList.remove('hidden');
+      // Populate peer teachers dropdown, excluding existing co-teachers
+      const existingIds = new Set((coTeachers || []).map(ct => ct.teacher_id));
+      existingIds.add(this.currentClass.teacher_id); // exclude class owner
+
+      const schoolId = this.currentSchool?.id || null;
+      const params = schoolId ? { p_school_id: schoolId } : {};
+      const { data: peers, error } = await supabase.rpc('get_school_peer_teachers', params);
+
+      const select = document.getElementById('co-teacher-select');
+      const available = (peers || []).filter(p => !existingIds.has(p.id));
+      if (available.length === 0) {
+        select.innerHTML = '<option value="">No eligible teachers available</option>';
+        document.getElementById('confirm-add-co-teacher-btn').disabled = true;
+      } else {
+        select.innerHTML = '<option value="">Select a teacher...</option>' +
+          available.map(p => `<option value="${p.id}">${p.name} (${p.email})</option>`).join('');
+        document.getElementById('confirm-add-co-teacher-btn').disabled = false;
+      }
+    } else {
+      addSection.classList.add('hidden');
+    }
+
+    document.getElementById('co-teachers-modal').classList.remove('hidden');
+  }
+
+  async addCoTeacher() {
+    const teacherId = document.getElementById('co-teacher-select').value;
+    if (!teacherId) {
+      this.showToast('Please select a teacher', 'error');
+      return;
+    }
+    if (!this.currentClass) return;
+
+    const { data } = await this.callRpcDirect('add_co_teacher', {
+      p_class_id: this.currentClass.id,
+      p_teacher_id: teacherId
+    });
+
+    if (data?.success) {
+      this.showToast('Co-teacher added', 'success');
+      // Refresh the modal
+      await this.showCoTeachersModal();
+    } else {
+      this.showToast(data?.message || 'Failed to add co-teacher', 'error');
+    }
+  }
+
+  async removeCoTeacher(teacherId) {
+    if (!this.currentClass) return;
+
+    const { data } = await this.callRpcDirect('remove_co_teacher', {
+      p_class_id: this.currentClass.id,
+      p_teacher_id: teacherId
+    });
+
+    if (data?.success) {
+      this.showToast('Co-teacher removed', 'success');
+
+      // If the current user removed themselves, navigate away from the class
+      const currentUser = auth.getCurrentUser();
+      if (teacherId === currentUser?.id) {
+        document.getElementById('co-teachers-modal').classList.add('hidden');
+        this.showClassesList();
+        await this.loadClasses();
+      } else {
+        await this.showCoTeachersModal();
+      }
+    } else {
+      this.showToast(data?.message || 'Failed to remove co-teacher', 'error');
+    }
+  }
+
+  // ============================================
+  // TEACHER: Class Handoff
+  // ============================================
+
+  async showHandoffClassModal() {
+    if (!this.currentClass) return;
+
+    document.getElementById('handoff-class-name').textContent = this.currentClass.name;
+
+    const schoolId = this.currentSchool?.id || null;
+    const params = schoolId ? { p_school_id: schoolId } : {};
+    const { data: peers, error } = await supabase.rpc('get_school_peer_teachers', params);
+
+    const select = document.getElementById('handoff-teacher-select');
+    if (error || !peers || peers.length === 0) {
+      select.innerHTML = '<option value="">No other teachers available</option>';
+      document.getElementById('confirm-handoff-btn').disabled = true;
+    } else {
+      select.innerHTML = '<option value="">Select a teacher...</option>' +
+        peers.map(p => `<option value="${p.id}">${p.name} (${p.email})</option>`).join('');
+      document.getElementById('confirm-handoff-btn').disabled = false;
+    }
+
+    document.getElementById('handoff-class-modal').classList.remove('hidden');
+  }
+
+  async confirmHandoffClass() {
+    const newTeacherId = document.getElementById('handoff-teacher-select').value;
+    if (!newTeacherId) {
+      this.showToast('Please select a teacher to transfer to', 'error');
+      return;
+    }
+    if (!this.currentClass) return;
+
+    const { data } = await this.callRpcDirect('transfer_class_ownership', {
+      p_class_id: this.currentClass.id,
+      p_new_teacher_id: newTeacherId
+    });
+
+    if (data?.success) {
+      document.getElementById('handoff-class-modal').classList.add('hidden');
+      this.showToast('Class transferred successfully', 'success');
+      this.showClassesList();
+      await this.loadClasses();
+    } else {
+      this.showToast(data?.message || 'Failed to transfer class', 'error');
+    }
+  }
+
+  // ============================================
   // TEACHER: Bulk Student Enrollment
   // ============================================
 
@@ -6540,8 +6727,10 @@ class CadenceApp {
       const dateStr = new Date(cls.created_at).toLocaleDateString('en-GB');
       const isPeerClass = sharedVisibility && cls.teacher_id !== currentUser?.id;
 
+      const isCoTeacherClass = !isAdmin && cls.is_co_teacher && cls.teacher_id !== currentUser?.id;
       const yearLabel = cls.year_level ? `<span class="class-row-meta-label">${cls.year_level}</span>` : '';
-      const teacherLabel = (isAdmin || isPeerClass) && cls.teacher_name ? `<span class="class-row-meta-label">· ${cls.teacher_name}</span>` : '';
+      const teacherLabel = (isAdmin || isPeerClass || isCoTeacherClass) && cls.teacher_name ? `<span class="class-row-meta-label">· ${cls.teacher_name}</span>` : '';
+      const coTeachingBadge = isCoTeacherClass ? `<span class="class-row-meta-label" style="color: var(--primary-color);">co-teaching</span>` : '';
       const pendingBadge = pendingCount > 0 ? `<span class="roster-pending-badge">${pendingCount} pending</span>` : '';
       const archivedBadge = cls.archived ? `<span class="class-archived-badge">ARCHIVED</span>` : '';
       const unarchiveBtn = cls.archived ? `<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); app.unarchiveClass('${cls.id}')" style="flex-shrink: 0;">Unarchive</button>` : '';
@@ -6556,6 +6745,7 @@ class CadenceApp {
           <div class="class-card-meta">
             <span>${memberCount} student${memberCount !== 1 ? 's' : ''}</span>
             <span>${pendingBadge}</span>
+            <span>${coTeachingBadge}</span>
             <span>${dateStr}</span>
           </div>
           ${unarchiveBtn}
@@ -6619,14 +6809,15 @@ class CadenceApp {
     const currentUser = auth.getCurrentUser();
     const isAdmin = currentUser?.role === 'admin';
     const isOwnClass = this.currentClass.teacher_id === currentUser?.id;
+    const isCoTeacher = !isOwnClass && !!this.currentClass.is_co_teacher;
     const sharedVisibility = document.getElementById('show-all-school-classes')?.checked || false;
     // With show-all active, peer teachers can edit any class in the school
-    const canManage = isOwnClass || (sharedVisibility && !isAdmin);
+    const canManage = isAdmin || isOwnClass || isCoTeacher || (sharedVisibility && !isAdmin);
 
     document.getElementById('class-detail-name').textContent = this.currentClass.name;
     const yearLevelEl = document.getElementById('class-detail-year-level');
     if (yearLevelEl) {
-      const teacherInfo = (isAdmin || (sharedVisibility && !isOwnClass)) && this.currentClass.teacher_name
+      const teacherInfo = (isAdmin || isCoTeacher || (sharedVisibility && !isOwnClass)) && this.currentClass.teacher_name
         ? ` — Teacher: ${this.currentClass.teacher_name}` : '';
       yearLevelEl.textContent = (this.currentClass.year_level || '') + teacherInfo;
     }
@@ -6636,12 +6827,15 @@ class CadenceApp {
     }
     document.getElementById('class-detail-code').textContent = this.currentClass.class_code;
 
-    // Show/hide class management buttons based on ownership or shared visibility
-    // System admins can manage all classes; shared-visibility peers can manage school classes
-    const hideManagement = isAdmin ? false : !canManage;
+    // Show/hide class management buttons
+    const hideManagement = !canManage;
     document.getElementById('edit-class-btn')?.classList.toggle('hidden', hideManagement);
     document.getElementById('archive-class-btn')?.classList.toggle('hidden', hideManagement);
     document.getElementById('export-class-data-btn')?.classList.toggle('hidden', hideManagement);
+    // Co-teachers button: visible to owner, co-teachers, and admins when can manage
+    document.getElementById('co-teachers-btn')?.classList.toggle('hidden', hideManagement);
+    // Hand off: only the class owner can transfer (not co-teachers, not admins acting on others' classes)
+    document.getElementById('handoff-class-btn')?.classList.toggle('hidden', !isOwnClass);
     // Delete button is only shown to system admin (for any class)
     document.getElementById('delete-class-btn')?.classList.toggle('hidden', !isAdmin);
 
