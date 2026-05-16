@@ -430,8 +430,10 @@
             <div style="display: flex; gap: 0.5rem;">
               <button id="bulk-add-students-btn" class="btn btn-primary">Bulk Add Students</button>
               <button id="edit-class-btn" class="btn btn-secondary">Edit Class</button>
+              <button id="co-teachers-btn" class="btn btn-secondary hidden">Co-Teachers</button>
               <button id="export-class-data-btn" class="btn btn-secondary">Export Class Data</button>
               <button id="archive-class-btn" class="btn btn-secondary" style="color: var(--warning-color);">Archive Class</button>
+              <button id="handoff-class-btn" class="btn btn-secondary hidden" style="color: var(--warning-color);">Hand Off Class</button>
               <button id="delete-class-btn" class="btn btn-danger hidden">Delete Class</button>
             </div>
           </div>
@@ -1212,6 +1214,56 @@
         <div class="form-actions">
           <button type="button" class="btn btn-secondary modal-close">Cancel</button>
           <button id="confirm-archive-btn" class="btn btn-primary" style="background-color: var(--warning-color);">Archive Class</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Co-Teachers -->
+  <div id="co-teachers-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>Co-Teachers</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="co-teachers-list" style="margin-bottom: 1.5rem;">
+          <!-- Populated by JS -->
+        </div>
+        <div id="add-co-teacher-section" class="hidden">
+          <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Add Co-Teacher</h3>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <select id="co-teacher-select" style="flex: 1;">
+              <option value="">Select a teacher...</option>
+            </select>
+            <button id="confirm-add-co-teacher-btn" class="btn btn-primary">Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Hand Off Class -->
+  <div id="handoff-class-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>Hand Off Class</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 0.75rem;">Transfer ownership of "<strong><span id="handoff-class-name"></span></strong>" to another teacher.</p>
+        <p style="color: var(--warning-color); font-size: 0.875rem; margin-bottom: 1.5rem;">
+          You will lose all access to this class once the transfer is complete.
+        </p>
+        <div class="form-group">
+          <label for="handoff-teacher-select">Transfer to</label>
+          <select id="handoff-teacher-select">
+            <option value="">Select a teacher...</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button id="confirm-handoff-btn" class="btn btn-danger">Transfer Ownership</button>
         </div>
       </div>
     </div>
