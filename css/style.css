@@ -1163,6 +1163,20 @@ body {
   opacity: 0.85;
 }
 
+@media (max-width: 640px) {
+  .pathway-header {
+    flex-wrap: wrap;
+    padding: 1.25rem;
+    gap: 1rem;
+  }
+
+  .pathway-find-songs-btn {
+    margin-left: 0;
+    width: 100%;
+    white-space: normal;
+  }
+}
+
 /* Song Filters */
 .song-filters {
   display: flex;
