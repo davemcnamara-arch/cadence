@@ -12281,7 +12281,7 @@ class CadenceApp {
       const instData = (student.instruments || []).find(i => i.instrument_name === instrumentName);
       const levelBadge = instData ? `<span class="school-instrument-chip school-instrument-chip--sm">${instData.instrument_icon} L${instData.current_level}</span>` : '';
       return `
-        <div class="school-student-row school-student-row--clickable" onclick="app.viewStudentDetail('${student.user_id}', '${escapedName}')">
+        <div class="school-student-row school-student-row--clickable" onclick="document.getElementById('instrument-students-modal').classList.add('hidden'); app.viewStudentDetail('${student.user_id}', '${escapedName}')">
           <div class="school-student-name">${this.escapeHtml(student.name)}</div>
           <div class="school-student-class" title="Teacher: ${this.escapeHtml(student.teacher_name || '')}">${this.escapeHtml(student.class_name || '—')}</div>
           <div class="school-student-instruments">${levelBadge}</div>
