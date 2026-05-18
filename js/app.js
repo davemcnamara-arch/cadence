@@ -5698,7 +5698,8 @@ class CadenceApp {
     try {
       const params = {
         p_teacher_id: user.id,
-        p_include_archived: showArchived
+        p_include_archived: showArchived,
+        p_show_all_school: false
       };
       if (this.currentSchool?.id) {
         params.p_school_id = this.currentSchool.id;
