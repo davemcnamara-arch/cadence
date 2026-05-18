@@ -368,10 +368,6 @@
               <input type="checkbox" id="show-archived-classes" style="cursor: pointer;">
               <span>Show archived classes</span>
             </label>
-            <label id="show-all-school-classes-label" style="display: none; align-items: center; gap: 0.5rem; cursor: pointer;">
-              <input type="checkbox" id="show-all-school-classes" style="cursor: pointer;">
-              <span>Show all school classes</span>
-            </label>
           </div>
 
           <div id="student-search-results" class="class-roster hidden">
@@ -569,6 +565,7 @@
           <!-- School tabs -->
           <div class="school-tabs">
             <button class="school-tab active" data-tab="teachers" onclick="app.switchSchoolTab('teachers')">Teachers</button>
+            <button class="school-tab" data-tab="classes" onclick="app.switchSchoolTab('classes')">Classes</button>
             <button class="school-tab" data-tab="students" onclick="app.switchSchoolTab('students')">All Students</button>
           </div>
 
@@ -577,6 +574,16 @@
             <!-- Invite section (school plan only, populated by JS) -->
             <div id="school-invite-section" class="hidden" style="margin-bottom: 1.5rem;"></div>
             <div id="school-teachers-list" class="school-teachers-grid">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Classes tab -->
+          <div id="school-classes-tab" class="school-tab-pane hidden">
+            <div class="song-filters" style="margin-bottom: 1rem;">
+              <input type="text" id="school-class-search" class="search-input" placeholder="Search classes...">
+            </div>
+            <div id="school-classes-list" class="classes-grid">
               <!-- Populated by JS -->
             </div>
           </div>
