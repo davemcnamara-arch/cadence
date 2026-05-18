@@ -6967,7 +6967,7 @@ class CadenceApp {
     let students = [];
     try {
       const result = await this.callRpcDirect('search_teacher_students', {
-        p_school_id: this.currentSchool?.id || null
+        p_school_id: null
       });
       students = result.data || [];
     } catch (err) {
