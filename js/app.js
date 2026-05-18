@@ -6824,9 +6824,10 @@ class CadenceApp {
     });
 
     // Hide classes list, show class detail
-    // Push a history entry so the phone back button returns to the classes list
-    // instead of whatever view was in the initial history placeholder
-    history.pushState({ cadenceView: 'classes' }, '', window.location.pathname + window.location.search);
+    // Push a history entry so the back button can return to the right place.
+    // When entered from the school tab, record 'school' so back goes there directly.
+    const backView = this._classEnteredFromSchool ? 'school' : 'classes';
+    history.pushState({ cadenceView: backView }, '', window.location.pathname + window.location.search);
     document.getElementById('classes-list').classList.add('hidden');
     document.getElementById('class-detail-view').classList.remove('hidden');
 
@@ -6883,8 +6884,8 @@ class CadenceApp {
       this.classStudents = [];
       document.querySelector('#classes-view .view-header')?.classList.remove('hidden');
       document.getElementById('classes-view-tabs')?.classList.remove('hidden');
+      this._pendingSchoolTab = 'classes';
       this.switchView('school');
-      this.switchSchoolTab('classes');
       return;
     }
 
@@ -11369,6 +11370,12 @@ class CadenceApp {
       classDetailView.classList.add('hidden');
       const classesList = document.getElementById('classes-list');
       if (classesList) classesList.classList.remove('hidden');
+      if (this._classEnteredFromSchool) {
+        this._classEnteredFromSchool = false;
+        this._pendingSchoolTab = 'classes';
+        document.querySelector('#classes-view .view-header')?.classList.remove('hidden');
+        document.getElementById('classes-view-tabs')?.classList.remove('hidden');
+      }
     }
   }
 
@@ -11912,8 +11919,10 @@ class CadenceApp {
     this.schoolStudents = null;
     const studentsList = document.getElementById('school-students-list');
     if (studentsList) studentsList.innerHTML = '';
-    // Reset to Teachers tab so students tab always shows fresh data on re-entry
-    this.switchSchoolTab('teachers');
+    // Reset to Teachers tab so students tab always shows fresh data on re-entry,
+    // unless a specific tab was requested (e.g. returning from a school class)
+    this.switchSchoolTab(this._pendingSchoolTab || 'teachers');
+    this._pendingSchoolTab = null;
 
     this.showSchoolDashboardPanel();
 
@@ -12337,8 +12346,9 @@ class CadenceApp {
       this.classes = [...this.classes, cls];
     }
     this._classEnteredFromSchool = true;
-    // Switching to classes-view renders the list but class detail is opened next
-    this.switchView('classes');
+    // Activate classes-view (where class-detail-view lives) without adding a
+    // history entry — viewClass will push the correct 'school' entry instead
+    this.switchView('classes', { addToHistory: false });
     await this.viewClass(classId);
     // Hide the "My Classes" header and tab bar so the detail doesn't appear
     // as if the colleague's class belongs to the current teacher
