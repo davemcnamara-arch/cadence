@@ -6968,7 +6968,12 @@ class CadenceApp {
     } else {
       allStudentsContent?.classList.add('hidden');
       studentSongsContent?.classList.add('hidden');
+      document.getElementById('class-detail-view')?.classList.add('hidden');
+      document.getElementById('classes-list')?.classList.remove('hidden');
       myClassesContent?.classList.remove('hidden');
+      this.currentClass = null;
+      this.classStudents = [];
+      this.renderClassesList();
     }
   }
 
