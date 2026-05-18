@@ -6876,6 +6876,18 @@ class CadenceApp {
     if (modal) modal.classList.add('hidden');
 
     document.getElementById('class-detail-view').classList.add('hidden');
+
+    if (this._classEnteredFromSchool) {
+      this._classEnteredFromSchool = false;
+      this.currentClass = null;
+      this.classStudents = [];
+      document.querySelector('#classes-view .view-header')?.classList.remove('hidden');
+      document.getElementById('classes-view-tabs')?.classList.remove('hidden');
+      this.switchView('school');
+      this.switchSchoolTab('classes');
+      return;
+    }
+
     document.getElementById('classes-list').classList.remove('hidden');
     // Restore My Classes tab
     document.getElementById('all-students-content')?.classList.add('hidden');
@@ -12324,9 +12336,14 @@ class CadenceApp {
       if (!cls) return;
       this.classes = [...this.classes, cls];
     }
+    this._classEnteredFromSchool = true;
     // Switching to classes-view renders the list but class detail is opened next
     this.switchView('classes');
     await this.viewClass(classId);
+    // Hide the "My Classes" header and tab bar so the detail doesn't appear
+    // as if the colleague's class belongs to the current teacher
+    document.querySelector('#classes-view .view-header')?.classList.add('hidden');
+    document.getElementById('classes-view-tabs')?.classList.add('hidden');
   }
 
   switchAdminSchoolTab(tabName) {
