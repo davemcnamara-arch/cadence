@@ -6883,8 +6883,8 @@ class CadenceApp {
       this.classStudents = [];
       document.querySelector('#classes-view .view-header')?.classList.remove('hidden');
       document.getElementById('classes-view-tabs')?.classList.remove('hidden');
+      this._pendingSchoolTab = 'classes';
       this.switchView('school');
-      this.switchSchoolTab('classes');
       return;
     }
 
@@ -11369,6 +11369,11 @@ class CadenceApp {
       classDetailView.classList.add('hidden');
       const classesList = document.getElementById('classes-list');
       if (classesList) classesList.classList.remove('hidden');
+      if (this._classEnteredFromSchool) {
+        this._classEnteredFromSchool = false;
+        document.querySelector('#classes-view .view-header')?.classList.remove('hidden');
+        document.getElementById('classes-view-tabs')?.classList.remove('hidden');
+      }
     }
   }
 
@@ -11912,8 +11917,10 @@ class CadenceApp {
     this.schoolStudents = null;
     const studentsList = document.getElementById('school-students-list');
     if (studentsList) studentsList.innerHTML = '';
-    // Reset to Teachers tab so students tab always shows fresh data on re-entry
-    this.switchSchoolTab('teachers');
+    // Reset to Teachers tab so students tab always shows fresh data on re-entry,
+    // unless a specific tab was requested (e.g. returning from a school class)
+    this.switchSchoolTab(this._pendingSchoolTab || 'teachers');
+    this._pendingSchoolTab = null;
 
     this.showSchoolDashboardPanel();
 
