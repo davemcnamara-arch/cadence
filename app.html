@@ -1362,6 +1362,27 @@
     </div>
   </div>
 
+  <!-- Modal for Instrument Students -->
+  <div id="instrument-students-modal" class="modal hidden" onclick="if(event.target===this)this.classList.add('hidden')">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h2 id="instrument-students-title">Instrument Students</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="instrument-sort-bar">
+          <span class="instrument-sort-label">Sort by:</span>
+          <button class="instrument-sort-btn" data-sort="alpha">Alphabetical</button>
+          <button class="instrument-sort-btn" data-sort="year">Year Level</button>
+          <button class="instrument-sort-btn" data-sort="level">Instrument Level</button>
+        </div>
+        <div id="instrument-students-list">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal for Join Class -->
   <div id="join-class-modal" class="modal hidden">
     <div class="modal-content modal-small">

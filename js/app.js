@@ -6982,37 +6982,104 @@ class CadenceApp {
     if (!container) return;
     container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">Loading students...</p>';
 
-    let students = [];
+    // Try enriched RPC first (returns instruments + song counts), fall back to basic list
+    let enrichedStudents = null;
+    let legacyRows = [];
+
     try {
-      const result = await this.callRpcDirect('search_teacher_students', {
-        p_school_id: null
-      });
-      students = result.data || [];
-    } catch (err) {
+      const { data, error } = await supabase.rpc('get_teacher_students_with_progress', { p_school_id: null });
+      if (!error && data?.success) {
+        enrichedStudents = data.students || [];
+      }
+    } catch (_) {}
+
+    if (!enrichedStudents) {
       try {
-        const fallback = await this.callRpcDirect('get_all_teacher_students', {});
-        students = (fallback.data || []).map(s => ({ ...s, class_id: null, class_name: null, is_pending: false }));
-      } catch (e) {
-        container.innerHTML = '<p style="color: var(--error-color); text-align: center; padding: 2rem;">Failed to load students</p>';
-        return;
+        const result = await this.callRpcDirect('search_teacher_students', { p_school_id: null });
+        legacyRows = result.data || [];
+      } catch (err) {
+        try {
+          const fallback = await this.callRpcDirect('get_all_teacher_students', {});
+          legacyRows = (fallback.data || []).map(s => ({ ...s, class_id: null, class_name: null, is_pending: false }));
+        } catch (e) {
+          container.innerHTML = '<p style="color: var(--error-color); text-align: center; padding: 2rem;">Failed to load students</p>';
+          return;
+        }
       }
     }
 
-    // Set up search input
     const searchInput = document.getElementById('all-students-search');
-    if (searchInput) {
-      searchInput.oninput = () => this.renderAllStudents(students, searchInput.value);
-    }
 
-    this.renderAllStudents(students, searchInput?.value || '');
+    if (enrichedStudents) {
+      if (searchInput) {
+        searchInput.oninput = () => this.renderAllStudentsEnriched(enrichedStudents, searchInput.value);
+      }
+      this.renderAllStudentsEnriched(enrichedStudents, searchInput?.value || '');
+    } else {
+      if (searchInput) {
+        searchInput.oninput = () => this.renderAllStudentsLegacy(legacyRows, searchInput.value);
+      }
+      this.renderAllStudentsLegacy(legacyRows, searchInput?.value || '');
+    }
   }
 
-  renderAllStudents(allStudents, searchTerm = '') {
+  renderAllStudentsEnriched(allStudents, searchTerm = '') {
+    const container = document.getElementById('all-students-list');
+    if (!container) return;
+    const canDelete = auth.getCurrentUser()?.role === 'admin';
+
+    let students = allStudents.slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      students = students.filter(s => s.name.toLowerCase().includes(term) || s.email?.toLowerCase().includes(term));
+    }
+
+    if (!students.length) {
+      container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 3rem;">No students found</p>';
+      return;
+    }
+
+    const rows = students.map(student => {
+      const escapedName = student.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const classBadges = (student.classes || []).map(c =>
+        `<span class="class-code-badge" style="font-size: 0.75rem; cursor: pointer;" onclick="event.stopPropagation(); app.viewClass('${c.id}')">${this.escapeHtml(c.name)}</span>`
+      ).join(' ');
+      const instruments = (student.instruments || []).map(inst =>
+        `<span class="school-instrument-chip school-instrument-chip--sm" title="${this.escapeHtml(inst.instrument_name)} — Level ${inst.current_level}">${inst.instrument_icon} L${inst.current_level}</span>`
+      ).join('');
+      const deleteBtn = canDelete
+        ? `<div onclick="event.stopPropagation()"><button class="btn btn-danger btn-sm school-remove-btn" onclick="app.confirmDeleteAccount('${student.user_id}', '${escapedName}', 'student')">Delete</button></div>`
+        : '';
+
+      return `
+        <div class="school-student-row school-student-row--clickable" onclick="app.viewStudentDetail('${student.user_id}', '${escapedName}')">
+          <div class="school-student-name">${this.escapeHtml(student.name)}</div>
+          <div class="school-student-class">${classBadges || '<span style="color:var(--text-secondary)">—</span>'}</div>
+          <div class="school-student-instruments">${instruments || '<span style="color:var(--text-secondary)">—</span>'}</div>
+          <div class="school-student-counts">
+            <span title="Learning">${student.songs_learning} learning</span>
+            <span>·</span>
+            <span title="Mastered">${student.songs_mastered} mastered</span>
+          </div>
+          ${deleteBtn}
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = `
+      <p style="color: var(--text-secondary); margin-bottom: 0.75rem; font-size: 0.875rem;">
+        ${students.length} student${students.length !== 1 ? 's' : ''}
+      </p>
+      ${rows}
+    `;
+  }
+
+  renderAllStudentsLegacy(allStudents, searchTerm = '') {
     const container = document.getElementById('all-students-list');
     if (!container) return;
     const currentUserRole = auth.getCurrentUser()?.role;
 
-    // Deduplicate by user_id / email
     const studentMap = new Map();
     const pendingMap = new Map();
 
@@ -7034,7 +7101,6 @@ class CadenceApp {
     let activeStudents = Array.from(studentMap.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
     let pendingStudents = Array.from(pendingMap.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 
-    // Apply search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       activeStudents = activeStudents.filter(s => s.name.toLowerCase().includes(term) || s.email?.toLowerCase().includes(term));
@@ -12129,14 +12195,104 @@ class CadenceApp {
       return;
     }
 
+    // Store counts so the modal can reference them
+    this._schoolInstrumentCounts = instrumentCounts;
+
     section?.classList.remove('hidden');
-    container.innerHTML = instrumentCounts.map(inst => `
-      <div class="school-instrument-chip">
-        <span>${inst.icon || '🎵'}</span>
-        <span>${inst.name}</span>
-        <span class="school-instrument-count">${inst.count}</span>
-      </div>
-    `).join('');
+    container.innerHTML = instrumentCounts.map(inst => {
+      const escapedName = inst.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const escapedIcon = (inst.icon || '🎵').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      return `
+        <div class="school-instrument-chip school-instrument-chip--clickable" title="View ${this.escapeHtml(inst.name)} students" onclick="app.showInstrumentStudents('${escapedName}', '${escapedIcon}')">
+          <span>${inst.icon || '🎵'}</span>
+          <span>${this.escapeHtml(inst.name)}</span>
+          <span class="school-instrument-count">${inst.count}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async showInstrumentStudents(instrumentName, instrumentIcon) {
+    const modal = document.getElementById('instrument-students-modal');
+    if (!modal) return;
+
+    document.getElementById('instrument-students-title').textContent = `${instrumentIcon} ${instrumentName} Students`;
+    modal.classList.remove('hidden');
+
+    const listEl = document.getElementById('instrument-students-list');
+    listEl.innerHTML = '<p style="color:var(--text-secondary);padding:1rem;">Loading…</p>';
+
+    // Load school students if not already cached
+    if (!this.schoolStudents && this.currentSchool) {
+      const { data, error } = await supabase.rpc('get_school_students', { p_school_id: this.currentSchool.id });
+      if (!error && data?.success) {
+        this.schoolStudents = data.students || [];
+      }
+    }
+
+    const allStudents = this.schoolStudents || [];
+    const filtered = allStudents.filter(s =>
+      (s.instruments || []).some(i => i.instrument_name === instrumentName)
+    );
+
+    this._instrumentModalStudents = filtered;
+    this._instrumentModalName = instrumentName;
+
+    // Wire sort buttons
+    modal.querySelectorAll('.instrument-sort-btn').forEach(btn => {
+      btn.onclick = () => {
+        modal.querySelectorAll('.instrument-sort-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this._renderInstrumentStudentsList(btn.dataset.sort);
+      };
+    });
+
+    // Default sort: alphabetical
+    modal.querySelector('.instrument-sort-btn[data-sort="alpha"]')?.classList.add('active');
+    this._renderInstrumentStudentsList('alpha');
+  }
+
+  _renderInstrumentStudentsList(sortBy) {
+    const listEl = document.getElementById('instrument-students-list');
+    if (!listEl) return;
+
+    const students = (this._instrumentModalStudents || []).slice();
+    const instrumentName = this._instrumentModalName;
+
+    if (sortBy === 'alpha') {
+      students.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    } else if (sortBy === 'year') {
+      students.sort((a, b) => (a.class_name || '').localeCompare(b.class_name || '', undefined, { sensitivity: 'base' }));
+    } else if (sortBy === 'level') {
+      students.sort((a, b) => {
+        const lvlA = (a.instruments || []).find(i => i.instrument_name === instrumentName)?.current_level ?? 0;
+        const lvlB = (b.instruments || []).find(i => i.instrument_name === instrumentName)?.current_level ?? 0;
+        return lvlB - lvlA;
+      });
+    }
+
+    if (!students.length) {
+      listEl.innerHTML = '<p style="color:var(--text-secondary);padding:1rem;">No students found for this instrument.</p>';
+      return;
+    }
+
+    listEl.innerHTML = students.map(student => {
+      const escapedName = student.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const instData = (student.instruments || []).find(i => i.instrument_name === instrumentName);
+      const levelBadge = instData ? `<span class="school-instrument-chip school-instrument-chip--sm">${instData.instrument_icon} L${instData.current_level}</span>` : '';
+      return `
+        <div class="school-student-row school-student-row--clickable" onclick="app.viewStudentDetail('${student.user_id}', '${escapedName}')">
+          <div class="school-student-name">${this.escapeHtml(student.name)}</div>
+          <div class="school-student-class" title="Teacher: ${this.escapeHtml(student.teacher_name || '')}">${this.escapeHtml(student.class_name || '—')}</div>
+          <div class="school-student-instruments">${levelBadge}</div>
+          <div class="school-student-counts">
+            <span>${student.songs_learning} learning</span>
+            <span>·</span>
+            <span>${student.songs_mastered} mastered</span>
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 
   renderSchoolTeachers(teachers, prefix = 'school') {
