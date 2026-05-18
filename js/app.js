@@ -489,12 +489,6 @@ class CadenceApp {
       showArchivedCheckbox.addEventListener('change', () => this.loadClasses());
     }
 
-    // Teacher: Show all school classes toggle
-    const showAllSchoolCheckbox = document.getElementById('show-all-school-classes');
-    if (showAllSchoolCheckbox) {
-      showAllSchoolCheckbox.addEventListener('change', () => this.loadClasses());
-    }
-
     // Student: Join class
     const joinClassBtn = document.getElementById('join-class-btn');
     if (joinClassBtn) {
@@ -1009,9 +1003,6 @@ class CadenceApp {
       if (headerSchoolContext) headerSchoolContext.classList.add('hidden');
       this.currentSchool = null;
 
-      // Hide "Show all school classes" checkbox
-      const allSchoolLabel = document.getElementById('show-all-school-classes-label');
-      if (allSchoolLabel) allSchoolLabel.style.display = 'none';
     }
     // School plan: tab is already visible (added when teacher role is detected)
   }
@@ -1050,22 +1041,17 @@ class CadenceApp {
 
     container.classList.remove('hidden');
 
-    // Show "Show all school classes" checkbox now that the teacher has a school
-    const allSchoolLabel = document.getElementById('show-all-school-classes-label');
-    if (allSchoolLabel) allSchoolLabel.style.display = 'flex';
   }
 
   switchHeaderSchool(schoolId) {
     const school = this.teacherSchools.find(s => s.id === schoolId);
     if (!school) return;
     this.currentSchool = school;
-    // Reset cached student lists so next fetch is scoped to the new school
+    // Reset cached lists so next fetch is scoped to the new school
     this.allTeacherStudents = null;
     this.schoolStudents = null;
     this.teacherStudentSongs = null;
-    // Reset "show all school classes" when switching schools
-    const allSchoolCheckbox = document.getElementById('show-all-school-classes');
-    if (allSchoolCheckbox) allSchoolCheckbox.checked = false;
+    this._schoolTabClasses = null;
     // Navigate to classes view and reload — switching schools should always
     // show the new school's classes, regardless of which view is currently active
     this.switchView('classes');
@@ -5706,15 +5692,13 @@ class CadenceApp {
 
     // Check if we should include archived classes
     const showArchived = document.getElementById('show-archived-classes')?.checked || false;
-    const showAllSchool = document.getElementById('show-all-school-classes')?.checked || false;
 
     // Use direct RPC call to bypass stale Supabase client connections
     let data;
     try {
       const params = {
         p_teacher_id: user.id,
-        p_include_archived: showArchived,
-        p_show_all_school: showAllSchool
+        p_include_archived: showArchived
       };
       if (this.currentSchool?.id) {
         params.p_school_id = this.currentSchool.id;
@@ -6760,13 +6744,12 @@ class CadenceApp {
     );
 
     const currentUser = auth.getCurrentUser();
-    const sharedVisibility = document.getElementById('show-all-school-classes')?.checked || false;
 
     const html = sortedClasses.map(cls => {
       const memberCount = cls.student_count || 0;
       const pendingCount = cls.pending_count || 0;
       const dateStr = new Date(cls.created_at).toLocaleDateString('en-GB');
-      const isPeerClass = sharedVisibility && cls.teacher_id !== currentUser?.id;
+      const isPeerClass = cls.teacher_id !== currentUser?.id && !cls.is_co_teacher;
 
       const isCoTeacherClass = !isAdmin && cls.is_co_teacher && cls.teacher_id !== currentUser?.id;
       const yearLabel = cls.year_level ? `<span class="class-row-meta-label">${cls.year_level}</span>` : '';
@@ -6851,14 +6834,15 @@ class CadenceApp {
     const isAdmin = currentUser?.role === 'admin';
     const isOwnClass = this.currentClass.teacher_id === currentUser?.id;
     const isCoTeacher = !isOwnClass && !!this.currentClass.is_co_teacher;
-    const sharedVisibility = document.getElementById('show-all-school-classes')?.checked || false;
-    // With show-all active, peer teachers can edit any class in the school
-    const canManage = isAdmin || isOwnClass || isCoTeacher || (sharedVisibility && !isAdmin);
+    // Peer teachers at the same school can manage each other's classes
+    const isSameSchoolPeer = !isOwnClass && !isCoTeacher && !isAdmin
+      && !!(this.currentSchool?.id && this.currentClass.school_id === this.currentSchool.id);
+    const canManage = isAdmin || isOwnClass || isCoTeacher || isSameSchoolPeer;
 
     document.getElementById('class-detail-name').textContent = this.currentClass.name;
     const yearLevelEl = document.getElementById('class-detail-year-level');
     if (yearLevelEl) {
-      const teacherInfo = (isAdmin || isCoTeacher || (sharedVisibility && !isOwnClass)) && this.currentClass.teacher_name
+      const teacherInfo = !isOwnClass && this.currentClass.teacher_name
         ? ` — Teacher: ${this.currentClass.teacher_name}` : '';
       yearLevelEl.textContent = (this.currentClass.year_level || '') + teacherInfo;
     }
@@ -12257,9 +12241,91 @@ class CadenceApp {
 
     if (tabName === 'students' && !this.schoolStudents) {
       this.loadSchoolStudents('school');
+    } else if (tabName === 'classes') {
+      this.loadSchoolClasses();
     } else if (tabName === 'settings') {
       this.renderSchoolSettings('school');
     }
+  }
+
+  async loadSchoolClasses() {
+    if (!this.currentSchool) return;
+    const container = document.getElementById('school-classes-list');
+    if (!container) return;
+    container.innerHTML = '<p style="color:var(--text-secondary);padding:1rem;">Loading classes...</p>';
+
+    const user = auth.getCurrentUser();
+    try {
+      const result = await this.callRpcDirect('get_teacher_classes', {
+        p_teacher_id: user.id,
+        p_include_archived: false,
+        p_school_id: this.currentSchool.id,
+        p_show_all_school: true
+      });
+      this._schoolTabClasses = result.data || [];
+      this.renderSchoolClasses(this._schoolTabClasses);
+
+      const searchInput = document.getElementById('school-class-search');
+      if (searchInput) {
+        searchInput.oninput = () => {
+          const q = searchInput.value.toLowerCase();
+          this.renderSchoolClasses(
+            this._schoolTabClasses.filter(c =>
+              c.name.toLowerCase().includes(q) ||
+              c.teacher_name?.toLowerCase().includes(q) ||
+              c.class_code?.toLowerCase().includes(q)
+            )
+          );
+        };
+      }
+    } catch (err) {
+      container.innerHTML = '<p style="color:var(--error-color);padding:1rem;">Failed to load classes</p>';
+    }
+  }
+
+  renderSchoolClasses(classes) {
+    const container = document.getElementById('school-classes-list');
+    if (!container) return;
+
+    if (!classes.length) {
+      container.innerHTML = '<p style="color:var(--text-secondary);padding:1rem;">No classes in this school yet.</p>';
+      return;
+    }
+
+    const currentUser = auth.getCurrentUser();
+    const sorted = [...classes].sort((a, b) =>
+      (a.teacher_name || '').localeCompare(b.teacher_name || '') || a.name.localeCompare(b.name)
+    );
+
+    container.innerHTML = sorted.map(cls => {
+      const isOwn = cls.teacher_id === currentUser?.id;
+      const memberCount = cls.student_count || 0;
+      const yearLabel = cls.year_level ? `<span class="class-row-meta-label">${cls.year_level}</span>` : '';
+      const teacherLabel = cls.teacher_name ? `<span class="class-row-meta-label">· ${cls.teacher_name}${isOwn ? ' (you)' : ''}</span>` : '';
+      return `
+        <div class="class-card" onclick="app.viewSchoolClass('${cls.id}')">
+          <div class="class-card-header">
+            <h3>${cls.name}${yearLabel}${teacherLabel}</h3>
+          </div>
+          <span class="class-code-badge">${cls.class_code}</span>
+          <div class="class-card-meta">
+            <span>${memberCount} student${memberCount !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async viewSchoolClass(classId) {
+    // Ensure the class is findable by viewClass
+    if (!this.classes.find(c => c.id === classId)) {
+      const cls = this._schoolTabClasses?.find(c => c.id === classId);
+      if (!cls) return;
+      this.classes = [...this.classes, cls];
+    }
+    // Switching to classes-view renders the list but class detail is opened next
+    this.switchView('classes');
+    await this.viewClass(classId);
   }
 
   switchAdminSchoolTab(tabName) {
