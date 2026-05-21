@@ -2969,24 +2969,23 @@ class CadenceApp {
             </div>
           ` : this.getMyPendingLink(song.id, 'youtube_url') ? `
             <span class="btn btn-secondary btn-pending" onclick="event.stopPropagation()" title="Your YouTube link is awaiting teacher approval" style="opacity: 0.7; cursor: default; font-style: italic;">⏳ YouTube Pending</span>
-          ` : `
+          ` : !isStudent ? `
             <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'youtube_url', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add YouTube link">+ YouTube</button>
-          `}
-          <div class="chords-link-container">
-            ${chordsUrl ? `
-              <div class="resource-link-group">
-                <a href="${chordsUrl}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">${chordsLabel}</a>
-                ${!isStudent ? `<button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', '${chordsUrlField}', '${chordsUrl.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit ${chordsLabel.toLowerCase()} link">✎</button>` : ''}
-              </div>
-            ` : this.getMyPendingLink(song.id, chordsUrlField) ? `
-              <span class="btn btn-secondary btn-pending" onclick="event.stopPropagation()" title="Your ${chordsLabel} link is awaiting teacher approval" style="opacity: 0.7; cursor: default; font-style: italic;">⏳ ${chordsLabel} Pending</span>
-            ` : `
-              <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', '${chordsUrlField}', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add ${chordsLabel.toLowerCase()} link">+ ${chordsLabel}</button>
-            `}
-          </div>
+          ` : ''}
+          ${chordsUrl ? `
+            <div class="resource-link-group">
+              <a href="${chordsUrl}" target="_blank" class="btn btn-secondary" onclick="event.stopPropagation()">${chordsLabel}</a>
+              ${!isStudent ? `<button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', '${chordsUrlField}', '${chordsUrl.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit ${chordsLabel.toLowerCase()} link">✎</button>` : ''}
+            </div>
+          ` : this.getMyPendingLink(song.id, chordsUrlField) ? `
+            <span class="btn btn-secondary btn-pending" onclick="event.stopPropagation()" title="Your ${chordsLabel} link is awaiting teacher approval" style="opacity: 0.7; cursor: default; font-style: italic;">⏳ ${chordsLabel} Pending</span>
+          ` : !isStudent ? `
+            <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.editSongResource('${song.id}', '${chordsUrlField}', '', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Add ${chordsLabel.toLowerCase()} link">+ ${chordsLabel}</button>
+          ` : ''}
+          ${!isStudent || song.resource_count > 0 ? `
           <button class="btn btn-secondary btn-resources ${song.resource_count > 0 ? 'has-resources' : ''}" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}', '${instrument?.id || ''}')" title="View learning resources">
             Learning Resources${song.resource_count > 0 ? ` <span class="resource-count">${song.resource_count}</span>` : ''}
-          </button>
+          </button>` : ''}
         </div>
       </div>
     `;
