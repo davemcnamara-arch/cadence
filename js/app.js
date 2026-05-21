@@ -774,7 +774,6 @@ class CadenceApp {
 
       // Show teacher tabs
       document.querySelectorAll('.teacher-tab').forEach(tab => tab.classList.remove('hidden'));
-      document.getElementById('include-archived-filter')?.classList.remove('hidden');
       await this.loadTeacherData();
 
       // Switch to saved view or teacher's default view
@@ -793,7 +792,6 @@ class CadenceApp {
 
       // Show admin tabs (includes Classes tab for managing all teachers' classes)
       document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('hidden'));
-      document.getElementById('include-archived-filter')?.classList.remove('hidden');
 
       // Change "My Classes" to "Classes" for admin view
       const classesTitle = document.getElementById('classes-view-title');
