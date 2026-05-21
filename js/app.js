@@ -38,6 +38,8 @@ class CadenceApp {
     this.teacherSchools = [];
     this.schoolDashboardData = null;
     this.schoolStudents = null;
+    this.schoolHiddenSongIds = new Set();
+    this.schoolAllowedSongIds = new Set();
 
     // Subscription / plan info (teachers only)
     this.subscription = null;
@@ -1206,6 +1208,9 @@ class CadenceApp {
       return true;
     });
 
+    // Apply school-level song filtering (blocklist or curated mode)
+    await this.applySchoolSongFilter();
+
     // Load student's own pending links so they can see what they've already submitted
     if (auth.hasRole('student')) {
       try {
@@ -1223,6 +1228,40 @@ class CadenceApp {
     }
     } finally {
       this.loadingSongs = false;
+    }
+  }
+
+  async applySchoolSongFilter() {
+    const user = auth.getCurrentUser();
+    this.schoolHiddenSongIds = new Set();
+    this.schoolAllowedSongIds = new Set();
+
+    if ((user.role === 'teacher' || user.role === 'admin') && this.currentSchool) {
+      const schoolId = this.currentSchool.id;
+      const curatedMode = this.currentSchool.curated_mode;
+      const isSchoolAdmin = this.currentSchool.school_role === 'admin';
+
+      if (curatedMode) {
+        const { data } = await this.callSelectDirect('school_allowed_songs', 'song_id', { eq: { school_id: schoolId } });
+        this.schoolAllowedSongIds = new Set((data || []).map(r => r.song_id));
+        if (!isSchoolAdmin) {
+          this.songs = this.songs.filter(s => this.schoolAllowedSongIds.has(s.id));
+        }
+        // School admins see all songs so they can manage the allowed list
+      } else {
+        const { data } = await this.callSelectDirect('school_hidden_songs', 'song_id', { eq: { school_id: schoolId } });
+        this.schoolHiddenSongIds = new Set((data || []).map(r => r.song_id));
+        this.songs = this.songs.filter(s => !this.schoolHiddenSongIds.has(s.id));
+      }
+    } else if (user.role === 'student') {
+      const { data } = await this.callRpcDirect('get_student_school_filter', {});
+      if (!data || !data.school_id) return;
+      const ids = new Set(data.song_ids || []);
+      if (data.curated_mode) {
+        this.songs = this.songs.filter(s => ids.has(s.id));
+      } else {
+        this.songs = this.songs.filter(s => !ids.has(s.id));
+      }
     }
   }
 
@@ -2833,10 +2872,23 @@ class CadenceApp {
       }
     } else {
       // Teachers/admins get delete and edit buttons
+      const isSchoolAdmin = this.currentSchool?.school_role === 'admin';
+      let schoolFilterBtn = '';
+      if (isSchoolAdmin) {
+        if (this.currentSchool.curated_mode) {
+          const isReleased = this.schoolAllowedSongIds.has(song.id);
+          schoolFilterBtn = isReleased
+            ? `<button class="btn btn-secondary" onclick="event.stopPropagation(); app.disallowSchoolSong('${song.id}')" title="Remove from school library">Remove from School</button>`
+            : `<button class="btn btn-primary" onclick="event.stopPropagation(); app.releaseSchoolSong('${song.id}')" title="Make visible to school">Release to School</button>`;
+        } else {
+          schoolFilterBtn = `<button class="btn btn-secondary" onclick="event.stopPropagation(); app.hideSchoolSong('${song.id}', '${song.title.replace(/'/g, "\\'")}')" title="Hide this song from your school">Hide from School</button>`;
+        }
+      }
       actionButton = `
         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
           <button class="btn btn-danger" onclick="event.stopPropagation(); app.deleteSongFromLibrary('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Delete this song from the library">Delete Song</button>
           <button class="btn btn-secondary" onclick="event.stopPropagation(); app.editSongDetails('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', ${song.suggested_level || 'null'})" title="Edit song details">Edit Details</button>
+          ${schoolFilterBtn}
         </div>`;
     }
 
@@ -12685,6 +12737,9 @@ class CadenceApp {
     const isOn = this.currentSchool.shared_class_visibility === true;
     const toggleId = `${prefix}-shared-visibility-toggle`;
 
+    const curatedMode = this.currentSchool.curated_mode === true;
+    const curatedToggleId = `${prefix}-curated-mode-toggle`;
+
     container.innerHTML = `
       <div style="padding: 1rem 0;">
         <h3 class="school-section-title">School Settings</h3>
@@ -12699,8 +12754,65 @@ class CadenceApp {
             <span class="toggle-slider"></span>
           </label>
         </div>
+        <div class="school-setting-row">
+          <div class="school-setting-info">
+            <strong>Curated Song Library</strong>
+            <p>${curatedMode
+              ? 'Only songs you have released are visible to teachers and students. Use the <strong>Release to School</strong> button on each song card to add songs to your library.'
+              : 'All songs are visible by default. Use the <strong>Hide from School</strong> button on individual song cards to remove specific songs, or switch to Curated mode for full control.'
+            }</p>
+          </div>
+          <label class="toggle-switch" title="Toggle curated library mode">
+            <input type="checkbox" id="${curatedToggleId}" ${curatedMode ? 'checked' : ''}
+              onchange="app.toggleSchoolCuratedMode(this.checked, '${prefix}')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        ${!curatedMode ? `
+        <div id="${prefix}-hidden-songs-section">
+          <h4 style="margin: 1.5rem 0 0.75rem; font-size: 0.95rem;">Hidden Songs</h4>
+          <div id="${prefix}-hidden-songs-list" style="color: var(--text-secondary); font-size: 0.9rem;">Loading…</div>
+        </div>` : ''}
       </div>
     `;
+
+    if (!curatedMode) {
+      this.loadSchoolHiddenSongsPanel(prefix, schoolId);
+    }
+  }
+
+  async loadSchoolHiddenSongsPanel(prefix, schoolId) {
+    const listEl = document.getElementById(`${prefix}-hidden-songs-list`);
+    if (!listEl) return;
+
+    const { data, error } = await this.callSelectDirect(
+      'school_hidden_songs', 'song_id', { eq: { school_id: schoolId } }
+    );
+
+    if (error || !data || data.length === 0) {
+      listEl.textContent = 'No songs are currently hidden.';
+      return;
+    }
+
+    const hiddenIds = data.map(r => r.song_id);
+
+    // Fetch titles for hidden songs (they're filtered out of this.songs, so query directly)
+    const { data: songData } = await this.callSelectDirect(
+      'songs', 'id,title,artist', { in: { id: hiddenIds } }
+    );
+
+    const songs = songData || [];
+    if (songs.length === 0) {
+      listEl.textContent = 'No songs are currently hidden.';
+      return;
+    }
+
+    listEl.innerHTML = songs.map(s => `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);">
+        <span>${s.title} <span style="color: var(--text-secondary);">— ${s.artist}</span></span>
+        <button class="btn btn-secondary btn-sm" onclick="app.unhideSchoolSong('${s.id}', '${prefix}', '${schoolId}')">Unhide</button>
+      </div>
+    `).join('');
   }
 
   async toggleSharedClassVisibility(enabled, prefix) {
@@ -12729,6 +12841,108 @@ class CadenceApp {
 
     // Reload classes so the list reflects the new visibility immediately
     await this.loadClasses();
+  }
+
+  async toggleSchoolCuratedMode(enabled, prefix) {
+    if (!this.currentSchool) return;
+
+    const { data, error } = await supabase.rpc('set_school_curated_mode', {
+      p_school_id: this.currentSchool.id,
+      p_enabled: enabled
+    });
+
+    if (error || !data?.success) {
+      this.showToast(data?.message || 'Failed to update setting', 'error');
+      const toggle = document.getElementById(`${prefix}-curated-mode-toggle`);
+      if (toggle) toggle.checked = !enabled;
+      return;
+    }
+
+    this.currentSchool.curated_mode = enabled;
+    const schoolInList = this.teacherSchools?.find(s => s.id === this.currentSchool.id);
+    if (schoolInList) schoolInList.curated_mode = enabled;
+
+    this.showToast(data.message, 'success');
+    // Re-render settings panel and reload songs to apply new filter
+    this.renderSchoolSettings(prefix);
+    await this.loadSongs();
+    this.renderSongs();
+  }
+
+  async hideSchoolSong(songId, songTitle) {
+    if (!this.currentSchool) return;
+    const user = auth.getCurrentUser();
+
+    const { error } = await supabase.from('school_hidden_songs').insert([{
+      school_id: this.currentSchool.id,
+      song_id: songId,
+      hidden_by: user.id
+    }]);
+
+    if (error) {
+      this.showToast('Failed to hide song', 'error');
+      return;
+    }
+
+    this.schoolHiddenSongIds.add(songId);
+    this.songs = this.songs.filter(s => s.id !== songId);
+    this.showToast(`"${songTitle}" hidden from your school`, 'success');
+    this.renderSongs();
+  }
+
+  async unhideSchoolSong(songId, prefix, schoolId) {
+    const { error } = await this.callDeleteDirect('school_hidden_songs', {
+      eq: { school_id: schoolId, song_id: songId }
+    });
+
+    if (error) {
+      this.showToast('Failed to unhide song', 'error');
+      return;
+    }
+
+    this.schoolHiddenSongIds.delete(songId);
+    this.showToast('Song unhidden', 'success');
+    // Reload songs to bring the song back, then refresh the panel
+    await this.loadSongs();
+    this.renderSongs();
+    this.loadSchoolHiddenSongsPanel(prefix, schoolId);
+  }
+
+  async releaseSchoolSong(songId) {
+    if (!this.currentSchool) return;
+    const user = auth.getCurrentUser();
+
+    const { error } = await supabase.from('school_allowed_songs').insert([{
+      school_id: this.currentSchool.id,
+      song_id: songId,
+      allowed_by: user.id
+    }]);
+
+    if (error) {
+      this.showToast('Failed to release song', 'error');
+      return;
+    }
+
+    this.schoolAllowedSongIds.add(songId);
+    this.showToast('Song released to school library', 'success');
+    this.renderSongs();
+  }
+
+  async disallowSchoolSong(songId) {
+    if (!this.currentSchool) return;
+
+    const { error } = await this.callDeleteDirect('school_allowed_songs', {
+      eq: { school_id: this.currentSchool.id, song_id: songId }
+    });
+
+    if (error) {
+      this.showToast('Failed to remove song', 'error');
+      return;
+    }
+
+    this.schoolAllowedSongIds.delete(songId);
+    this.showToast('Song removed from school library', 'success');
+    this.renderSongs();
   }
 
   renderAssignList(items, checkboxClass, metaFn) {
