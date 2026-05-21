@@ -132,7 +132,6 @@ Opened via the **"Learning Resources"** button on any song card.
 
 ### Song Cards (Teacher View)
 - **"Your Students"** section on song cards shows which of your students are learning or have mastered each song
-- A **⋯** (kebab) button in the top-right of each card reveals teacher actions: **Delete Song**, **Edit Details**, and (for admins) **Hide from School** / **Release to School** / **Remove from School**
 
 ### Scan for Duplicates
 - **"Scan for Duplicates"** button in Song Library — identifies similar songs and allows merging them
@@ -140,14 +139,8 @@ Opened via the **"Learning Resources"** button on any song card.
 ### School Dashboard (School plan)
 Available under the **School** tab:
 - **Teachers** tab — list of teachers in the school
-- **Classes** tab — all classes at the school, sorted by teacher; click a class card to view its full detail (roster, heatmap, timeline, songs)
-- **All Students** tab — all students across all classes; each row shows instrument chips (with level) and class badges; click a student to view their detail
-- **Settings** tab — school-wide settings including song filtering mode (admins only)
+- **All Students** tab — all students across all classes
 - School-wide statistics, instrument distribution, export options
-
-Song filtering is configured in **School → Settings**:
-- **Blocklist mode** (default): all songs visible; admins can hide individual songs via the ⋯ menu on a song card (**"Hide from School"**). Hidden songs are invisible to all teachers and students at the school.
-- **Curated mode**: only explicitly released songs are visible. Admins use **"Release to School"** / **"Remove from School"** (⋯ menu) to control the approved list. Students are filtered via their class's school relationship.
 
 ### Subscriptions
 - **Individual plan**: 1 teacher, up to 25 students (A$49/year)
