@@ -145,6 +145,9 @@ class CadenceApp {
       }
     }, KEEPALIVE_INTERVAL);
 
+    // Close any open song card kebab menus when clicking outside
+    document.addEventListener('click', () => this.closeSongCardMenus());
+
     // Also reconnect when page becomes visible after being hidden
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'visible') {
@@ -2866,23 +2869,26 @@ class CadenceApp {
         actionButton = `<button class="btn btn-primary" onclick="event.stopPropagation(); app.addSongToLearning('${song.id}', '${cardInstrumentId}')">Start Learning</button>`;
       }
     } else {
-      // Teachers/admins get delete and edit buttons
-      let schoolFilterBtn = '';
+      // Teachers/admins: kebab menu with all actions
+      let schoolFilterItem = '';
       if (this.currentSchool) {
         if (this.currentSchool.curated_mode) {
           const isReleased = this.schoolAllowedSongIds.has(song.id);
-          schoolFilterBtn = isReleased
-            ? `<button class="btn btn-secondary" onclick="event.stopPropagation(); app.disallowSchoolSong('${song.id}')" title="Remove from school library">Remove from School</button>`
-            : `<button class="btn btn-primary" onclick="event.stopPropagation(); app.releaseSchoolSong('${song.id}')" title="Make visible to school">Release to School</button>`;
+          schoolFilterItem = isReleased
+            ? `<button class="song-card-menu-item" onclick="event.stopPropagation(); app.closeSongCardMenus(); app.disallowSchoolSong('${song.id}')">Remove from School</button>`
+            : `<button class="song-card-menu-item" onclick="event.stopPropagation(); app.closeSongCardMenus(); app.releaseSchoolSong('${song.id}')">Release to School</button>`;
         } else {
-          schoolFilterBtn = `<button class="btn btn-secondary" onclick="event.stopPropagation(); app.hideSchoolSong('${song.id}', '${song.title.replace(/'/g, "\\'")}')" title="Hide this song from your school">Hide from School</button>`;
+          schoolFilterItem = `<button class="song-card-menu-item" onclick="event.stopPropagation(); app.closeSongCardMenus(); app.hideSchoolSong('${song.id}', '${song.title.replace(/'/g, "\\'")}')">Hide from School</button>`;
         }
       }
       actionButton = `
-        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-          <button class="btn btn-danger" onclick="event.stopPropagation(); app.deleteSongFromLibrary('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')" title="Delete this song from the library">Delete Song</button>
-          <button class="btn btn-secondary" onclick="event.stopPropagation(); app.editSongDetails('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', ${song.suggested_level || 'null'})" title="Edit song details">Edit Details</button>
-          ${schoolFilterBtn}
+        <div class="song-card-menu-wrap">
+          <button class="song-card-menu-btn" onclick="event.stopPropagation(); app.toggleSongCardMenu('${song.id}')" title="More options">&#x22EF;</button>
+          <div class="song-card-menu-dropdown" id="song-menu-${song.id}">
+            <button class="song-card-menu-item" onclick="event.stopPropagation(); app.closeSongCardMenus(); app.editSongDetails('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', ${song.suggested_level || 'null'})">Edit Details</button>
+            ${schoolFilterItem}
+            <button class="song-card-menu-item danger" onclick="event.stopPropagation(); app.closeSongCardMenus(); app.deleteSongFromLibrary('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')")>Delete Song</button>
+          </div>
         </div>`;
     }
 
@@ -2984,6 +2990,18 @@ class CadenceApp {
         </div>
       </div>
     `;
+  }
+
+  toggleSongCardMenu(songId) {
+    const menu = document.getElementById(`song-menu-${songId}`);
+    if (!menu) return;
+    const isOpen = menu.classList.contains('open');
+    this.closeSongCardMenus();
+    if (!isOpen) menu.classList.add('open');
+  }
+
+  closeSongCardMenus() {
+    document.querySelectorAll('.song-card-menu-dropdown.open').forEach(m => m.classList.remove('open'));
   }
 
   // Handle instrument change on song card dropdown
