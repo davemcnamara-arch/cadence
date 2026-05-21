@@ -1239,15 +1239,12 @@ class CadenceApp {
     if ((user.role === 'teacher' || user.role === 'admin') && this.currentSchool) {
       const schoolId = this.currentSchool.id;
       const curatedMode = this.currentSchool.curated_mode;
-      const isSchoolAdmin = this.currentSchool.school_role === 'admin';
 
       if (curatedMode) {
         const { data } = await this.callSelectDirect('school_allowed_songs', 'song_id', { eq: { school_id: schoolId } });
         this.schoolAllowedSongIds = new Set((data || []).map(r => r.song_id));
-        if (!isSchoolAdmin) {
-          this.songs = this.songs.filter(s => this.schoolAllowedSongIds.has(s.id));
-        }
-        // School admins see all songs so they can manage the allowed list
+        // Teachers see all songs in curated mode so they can manage the allowed list;
+        // students are filtered separately via get_student_school_filter()
       } else {
         const { data } = await this.callSelectDirect('school_hidden_songs', 'song_id', { eq: { school_id: schoolId } });
         this.schoolHiddenSongIds = new Set((data || []).map(r => r.song_id));
@@ -2872,9 +2869,8 @@ class CadenceApp {
       }
     } else {
       // Teachers/admins get delete and edit buttons
-      const isSchoolAdmin = this.currentSchool?.school_role === 'admin';
       let schoolFilterBtn = '';
-      if (isSchoolAdmin) {
+      if (this.currentSchool) {
         if (this.currentSchool.curated_mode) {
           const isReleased = this.schoolAllowedSongIds.has(song.id);
           schoolFilterBtn = isReleased
