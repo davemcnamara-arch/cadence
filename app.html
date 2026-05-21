@@ -283,9 +283,6 @@
             <option value="4">Level 4</option>
             <option value="5">Level 5</option>
           </select>
-          <label id="include-archived-filter" class="filter-checkbox hidden">
-            <input type="checkbox" id="filter-include-archived"> Include archived classes
-          </label>
         </div>
 
         <p id="songs-count" class="results-count"></p>
@@ -567,6 +564,7 @@
             <button class="school-tab active" data-tab="teachers" onclick="app.switchSchoolTab('teachers')">Teachers</button>
             <button class="school-tab" data-tab="classes" onclick="app.switchSchoolTab('classes')">Classes</button>
             <button class="school-tab" data-tab="students" onclick="app.switchSchoolTab('students')">All Students</button>
+            <button class="school-tab" data-tab="settings" onclick="app.switchSchoolTab('settings')">Settings</button>
           </div>
 
           <!-- Teachers tab -->
@@ -596,6 +594,11 @@
             <div id="school-students-list" class="school-students-list">
               <!-- Populated by JS -->
             </div>
+          </div>
+
+          <!-- Settings tab -->
+          <div id="school-settings-tab" class="school-tab-pane hidden">
+            <div id="school-settings-panel"></div>
           </div>
 
         </div>
