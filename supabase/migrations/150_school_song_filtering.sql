@@ -74,27 +74,25 @@ CREATE POLICY "School members can view hidden songs list"
     )
   );
 
--- school_hidden_songs: only school admins can insert
-CREATE POLICY "School admins can hide songs"
+-- school_hidden_songs: any school member can insert
+CREATE POLICY "School members can hide songs"
   ON school_hidden_songs FOR INSERT
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM school_members
       WHERE school_members.school_id = school_hidden_songs.school_id
         AND school_members.user_id = auth.uid()
-        AND school_members.school_role = 'admin'
     )
   );
 
--- school_hidden_songs: only school admins can delete
-CREATE POLICY "School admins can unhide songs"
+-- school_hidden_songs: any school member can delete
+CREATE POLICY "School members can unhide songs"
   ON school_hidden_songs FOR DELETE
   USING (
     EXISTS (
       SELECT 1 FROM school_members
       WHERE school_members.school_id = school_hidden_songs.school_id
         AND school_members.user_id = auth.uid()
-        AND school_members.school_role = 'admin'
     )
   );
 
@@ -109,27 +107,25 @@ CREATE POLICY "School members can view allowed songs list"
     )
   );
 
--- school_allowed_songs: only school admins can insert
-CREATE POLICY "School admins can release songs"
+-- school_allowed_songs: any school member can insert
+CREATE POLICY "School members can release songs"
   ON school_allowed_songs FOR INSERT
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM school_members
       WHERE school_members.school_id = school_allowed_songs.school_id
         AND school_members.user_id = auth.uid()
-        AND school_members.school_role = 'admin'
     )
   );
 
--- school_allowed_songs: only school admins can delete
-CREATE POLICY "School admins can remove released songs"
+-- school_allowed_songs: any school member can delete
+CREATE POLICY "School members can remove released songs"
   ON school_allowed_songs FOR DELETE
   USING (
     EXISTS (
       SELECT 1 FROM school_members
       WHERE school_members.school_id = school_allowed_songs.school_id
         AND school_members.user_id = auth.uid()
-        AND school_members.school_role = 'admin'
     )
   );
 
@@ -196,8 +192,8 @@ BEGIN
   FROM school_members
   WHERE school_id = p_school_id AND user_id = v_user_id;
 
-  IF v_caller_role IS DISTINCT FROM 'admin' THEN
-    RETURN json_build_object('success', false, 'message', 'Only school admins can change this setting');
+  IF v_caller_role IS NULL THEN
+    RETURN json_build_object('success', false, 'message', 'Only school members can change this setting');
   END IF;
 
   UPDATE schools SET curated_mode = p_enabled WHERE id = p_school_id;
