@@ -12728,6 +12728,7 @@ class CadenceApp {
     if (!container || !this.currentSchool) return;
 
     const schoolId = this.currentSchool.id;
+    const isAdminPanel = prefix === 'admin-school';
     const isOn = this.currentSchool.shared_class_visibility === true;
     const toggleId = `${prefix}-shared-visibility-toggle`;
 
@@ -12735,8 +12736,9 @@ class CadenceApp {
     const curatedToggleId = `${prefix}-curated-mode-toggle`;
 
     container.innerHTML = `
-      <div style="padding: 1rem 0;">
+      <div style="padding: 1rem 0; padding-bottom: 5rem;">
         <h3 class="school-section-title">School Settings</h3>
+        ${isAdminPanel ? `
         <div class="school-setting-row">
           <div class="school-setting-info">
             <strong>Shared Class Visibility</strong>
@@ -12747,7 +12749,7 @@ class CadenceApp {
               onchange="app.toggleSharedClassVisibility(this.checked, '${prefix}')">
             <span class="toggle-slider"></span>
           </label>
-        </div>
+        </div>` : ''}
         <div class="school-setting-row">
           <div class="school-setting-info">
             <strong>Curated Song Library</strong>
