@@ -3365,7 +3365,7 @@ class CadenceApp {
         const title = document.getElementById('song-title').value;
         const artist = document.getElementById('song-artist').value;
         if (title && artist) {
-          const searchQuery = `${title} ${artist} lyric video youtube`;
+          const searchQuery = `${title} ${artist} lyrics video youtube`;
           const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
           window.open(searchUrl, '_blank');
         } else {
