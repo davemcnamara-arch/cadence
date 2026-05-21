@@ -2965,7 +2965,7 @@ class CadenceApp {
           ${song.youtube_url ? `
             <div class="resource-link-group">
               <a href="${song.youtube_url}" target="_blank" class="song-resource-link song-resource-link--youtube" onclick="event.stopPropagation()">▶ YouTube</a>
-              <button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'youtube_url', '${song.youtube_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit YouTube link">✎</button>
+              ${!isStudent ? `<button class="btn-icon" onclick="event.stopPropagation(); app.editSongResource('${song.id}', 'youtube_url', '${song.youtube_url.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', '${instrumentName.replace(/'/g, "\\'")}')" title="Edit YouTube link">✎</button>` : ''}
             </div>
           ` : this.getMyPendingLink(song.id, 'youtube_url') ? `
             <span class="btn btn-secondary btn-pending" onclick="event.stopPropagation()" title="Your YouTube link is awaiting teacher approval" style="opacity: 0.7; cursor: default; font-style: italic;">⏳ YouTube Pending</span>
