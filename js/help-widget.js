@@ -287,13 +287,16 @@
     return text.trim().split(/\n{2,}/).map(block => {
       const lines = block.split('\n').filter(l => l.trim());
       if (!lines.length) return '';
+      if (lines.length === 1 && /^#{1,3}\s/.test(lines[0])) {
+        return '<p><strong>' + inline(lines[0].replace(/^#{1,3}\s+/, '')) + '</strong></p>';
+      }
       if (lines.every(l => /^\s*[-*]\s/.test(l))) {
         return '<ul>' + lines.map(l => '<li>' + inline(l.replace(/^\s*[-*]\s+/, '')) + '</li>').join('') + '</ul>';
       }
       if (lines.every(l => /^\s*\d+\.\s/.test(l))) {
         return '<ol>' + lines.map(l => '<li>' + inline(l.replace(/^\s*\d+\.\s+/, '')) + '</li>').join('') + '</ol>';
       }
-      return '<p>' + lines.map(inline).join('<br>') + '</p>';
+      return '<p>' + lines.map(l => /^#{1,3}\s/.test(l) ? '<strong>' + inline(l.replace(/^#{1,3}\s+/, '')) + '</strong>' : inline(l)).join('<br>') + '</p>';
     }).join('');
   }
 
