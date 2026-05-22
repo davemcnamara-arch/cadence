@@ -2891,7 +2891,7 @@ class CadenceApp {
         <div class="song-card-menu-wrap">
           <button class="song-card-menu-btn" onclick="event.stopPropagation(); app.toggleSongCardMenu('${song.id}')" title="More options">&#x22EF;</button>
           <div class="song-card-menu-dropdown" id="song-menu-${song.id}">
-            <button class="song-card-menu-item" onclick="event.stopPropagation(); app.closeSongCardMenus(); app.showSongGradingModalForSong('${song.id}')">Grade for New Instrument</button>
+            <button class="song-card-menu-item" onclick="event.stopPropagation(); app.closeSongCardMenus(); app.showSongGradingModalForSong('${song.id}')">Add for New Instrument</button>
             <button class="song-card-menu-item" onclick="event.stopPropagation(); app.closeSongCardMenus(); app.editSongDetails('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', ${song.suggested_level || 'null'})">Edit Details</button>
             ${schoolFilterItem}
             <button class="song-card-menu-item danger" onclick="event.stopPropagation(); app.closeSongCardMenus(); app.deleteSongFromLibrary('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')")>Delete Song</button>
@@ -2993,7 +2993,7 @@ class CadenceApp {
             Learning Resources${song.resource_count > 0 ? ` <span class="resource-count">${song.resource_count}</span>` : ''}
           </button>
           ${isStudent && canGradeForNewInstrument ? `
-            <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.showSongGradingModalForSong('${song.id}')" title="Grade this song for an instrument it hasn't been rated for yet">+ Grade for New Instrument</button>
+            <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.showSongGradingModalForSong('${song.id}')" title="Grade this song for an instrument it hasn't been rated for yet">+ Add for New Instrument</button>
           ` : ''}
         </div>
       </div>
