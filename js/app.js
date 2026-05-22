@@ -2851,6 +2851,12 @@ class CadenceApp {
     const user = auth.getCurrentUser();
     const isStudent = user.role === 'student' || this.previewMode.active;
 
+    // Check whether there is at least one instrument not yet rated for this song
+    const studentInstrumentIds = (this.studentProgress || []).map(p => p.instrument_id);
+    const canGradeForNewInstrument = isStudent
+      ? studentInstrumentIds.some(id => !ratedInstrumentIds.includes(id))
+      : true;
+
     // Check if student is already tracking this song for the displayed instrument
     const cardInstrumentId = instrument?.id || this.currentInstrument;
     const studentSong = this.studentSongs.find(ss =>
@@ -2885,6 +2891,7 @@ class CadenceApp {
         <div class="song-card-menu-wrap">
           <button class="song-card-menu-btn" onclick="event.stopPropagation(); app.toggleSongCardMenu('${song.id}')" title="More options">&#x22EF;</button>
           <div class="song-card-menu-dropdown" id="song-menu-${song.id}">
+            <button class="song-card-menu-item" onclick="event.stopPropagation(); app.closeSongCardMenus(); app.showSongGradingModalForSong('${song.id}')">Grade for New Instrument</button>
             <button class="song-card-menu-item" onclick="event.stopPropagation(); app.closeSongCardMenus(); app.editSongDetails('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', ${song.suggested_level || 'null'})">Edit Details</button>
             ${schoolFilterItem}
             <button class="song-card-menu-item danger" onclick="event.stopPropagation(); app.closeSongCardMenus(); app.deleteSongFromLibrary('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')")>Delete Song</button>
@@ -2985,6 +2992,9 @@ class CadenceApp {
           <button class="btn btn-secondary btn-resources ${song.resource_count > 0 ? 'has-resources' : ''}" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}', '${instrument?.id || ''}')" title="View learning resources">
             Learning Resources${song.resource_count > 0 ? ` <span class="resource-count">${song.resource_count}</span>` : ''}
           </button>
+          ${isStudent && canGradeForNewInstrument ? `
+            <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.showSongGradingModalForSong('${song.id}')" title="Grade this song for an instrument it hasn't been rated for yet">+ Grade for New Instrument</button>
+          ` : ''}
         </div>
       </div>
     `;
@@ -3911,11 +3921,53 @@ class CadenceApp {
     this.selectedSimilarSongTutorials = [];
     this.similarSongsDismissed = false; // Reset dismissal state
     document.getElementById('song-grading-form').reset(); // Reset form first, before populating dropdowns
+    document.getElementById('song-title').readOnly = false;
+    document.getElementById('song-artist').readOnly = false;
     this.updateInstrumentDropdown(); // Populate instrument dropdown (sets current instrument)
     document.getElementById('song-grading-modal').classList.remove('hidden');
     document.getElementById('similar-songs-container').classList.add('hidden'); // Hide suggestions
     this.updateChordsLabel(); // Update label based on selected instrument
     this.updateGradingStep();
+  }
+
+  async showSongGradingModalForSong(songId) {
+    const song = this.songs?.find(s => s.id === songId);
+    if (!song) return;
+
+    this.showSongGradingModal();
+
+    // Pre-fill and lock song identity so the user can't accidentally change which song they're grading
+    const titleEl = document.getElementById('song-title');
+    const artistEl = document.getElementById('song-artist');
+    titleEl.value = song.title;
+    artistEl.value = song.artist;
+    titleEl.readOnly = true;
+    artistEl.readOnly = true;
+
+    // Treat this as a pre-selected similar song so submitSongGrading's URL
+    // dedup logic applies (it nulls out URLs that match the existing song's values,
+    // avoiding redundant DB writes) and the similar-songs debounce never fires.
+    this.selectedSimilarSong = {
+      id: song.id,
+      youtube_url: song.youtube_url || '',
+      chords_url: song.chords_url || '',
+      bass_tab_url: song.bass_tab_url || '',
+      drum_notation_url: song.drum_notation_url || '',
+      tutorial_url: song.tutorial_url || ''
+    };
+    this.similarSongsDismissed = true;
+
+    // Fetch approved tutorial resources so populateSimilarSongLinks can pick the right one
+    try {
+      const { data: tutorials } = await this.rawSelect('student_resources',
+        `select=file_url,instrument_id&song_id=eq.${songId}&status=eq.approved&file_type=eq.tutorial&order=created_at.asc`
+      );
+      this.selectedSimilarSongTutorials = tutorials || [];
+    } catch (err) {
+      this.selectedSimilarSongTutorials = [];
+    }
+
+    this.populateSimilarSongLinks();
   }
 
   async findSimilarSongs() {
