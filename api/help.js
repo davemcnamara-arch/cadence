@@ -212,6 +212,9 @@ A: Wait 15 seconds — a "Tap here to retry" link will appear. If the problem pe
 Q: I'm a teacher — how do I add students to my class?
 A: Share your class code (visible in the class detail view) with students, or use **"Bulk Add Students"** to enrol them by email address.
 
+Q: How do I report a bug or contact support?
+A: Click the **"Contact"** button in the top-right corner of the app (next to Logout). It opens an email to cadencemusicapp@gmail.com.
+
 Keep answers short and practical. Use bullet points for steps. Only describe features listed above — don't invent anything.`;
 
 export default async function handler(req) {

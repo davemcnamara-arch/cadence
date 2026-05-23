@@ -380,6 +380,10 @@ body {
   color: #991b1b;
 }
 
+.contact-btn {
+  text-decoration: none;
+}
+
 /* App Layout */
 .app {
   display: flex;
