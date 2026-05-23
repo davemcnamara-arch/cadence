@@ -2455,6 +2455,8 @@ class CadenceApp {
   }
 
   async renderSongs() {
+    const songSpinner = document.getElementById('songs-loading');
+    songSpinner?.classList.remove('hidden');
     await this.loadSongs();
 
     // Load student songs if not in preview mode
@@ -2511,6 +2513,7 @@ class CadenceApp {
     }
 
     this.filterSongs();
+    songSpinner?.classList.add('hidden');
   }
 
   filterSongs() {
@@ -5002,6 +5005,8 @@ class CadenceApp {
   // ============================================
 
   async renderProgress(useLocalData = false) {
+    const progressSpinner = document.getElementById('progress-loading');
+    progressSpinner?.classList.remove('hidden');
     const user = auth.getCurrentUser();
     let studentSongsWithRatings;
 
@@ -5122,6 +5127,7 @@ class CadenceApp {
     document.getElementById('mastered-songs').innerHTML = masteredGroups.length > 0
       ? masteredGroups.map(g => this.renderGroupedSongItem(g)).join('')
       : '<p style="color: var(--text-secondary);">No mastered songs yet</p>';
+    progressSpinner?.classList.add('hidden');
   }
 
   renderGroupedSongItem(group) {
@@ -8479,6 +8485,8 @@ class CadenceApp {
   // ============================================
 
   async loadFlaggedRatings() {
+    const flaggedSpinner = document.getElementById('flagged-loading');
+    flaggedSpinner?.classList.remove('hidden');
     // Get all students from all the teacher's classes first, so we can filter everything
     let allStudents;
     let studentsError;
@@ -8666,6 +8674,7 @@ class CadenceApp {
     this.newRatings = newRatings;
     this.populateFlaggedFilters();
     this.filterFlaggedRatings();
+    flaggedSpinner?.classList.add('hidden');
   }
 
   populateFlaggedFilters() {
@@ -10638,10 +10647,13 @@ class CadenceApp {
   // ============================================
 
   async loadAccountsData() {
+    const accountsSpinner = document.getElementById('accounts-loading');
+    accountsSpinner?.classList.remove('hidden');
     await Promise.all([
       this.loadManageableUsers(),
       this.loadPendingTeacherAccounts()
     ]);
+    accountsSpinner?.classList.add('hidden');
   }
 
   async loadManageableUsers() {
@@ -11941,9 +11953,12 @@ class CadenceApp {
   // ============================================
 
   async loadSchoolView() {
+    const schoolSpinner = document.getElementById('school-loading');
+    schoolSpinner?.classList.remove('hidden');
     const { data, error } = await supabase.rpc('get_my_schools');
     if (error) {
       console.error('Error loading schools:', error);
+      schoolSpinner?.classList.add('hidden');
       this.showSchoolSetup();
       return;
     }
@@ -11952,6 +11967,7 @@ class CadenceApp {
 
     if (schools.length === 0) {
       this.currentSchool = null;
+      schoolSpinner?.classList.add('hidden');
       this.showSchoolSetup();
       return;
     }
@@ -11963,6 +11979,7 @@ class CadenceApp {
     }
 
     await this.loadSchoolDashboard();
+    schoolSpinner?.classList.add('hidden');
   }
 
   showSchoolSetup() {

@@ -87,6 +87,12 @@ body {
   to { transform: rotate(360deg); }
 }
 
+.view-loading {
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
 /* Login Screen */
 .login-screen {
   position: fixed;

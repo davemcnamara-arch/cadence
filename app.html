@@ -286,6 +286,10 @@
           </select>
         </div>
 
+        <div id="songs-loading" class="view-loading hidden">
+          <div class="loading-spinner"></div>
+        </div>
+
         <p id="songs-count" class="results-count"></p>
 
         <div id="trending-strip-container" class="trending-strip-container hidden">
@@ -318,6 +322,10 @@
             <button id="join-class-toggle-btn" class="btn btn-secondary">Join Class</button>
             <button id="export-progress-btn" class="btn btn-secondary">Export Data</button>
           </div>
+        </div>
+
+        <div id="progress-loading" class="view-loading hidden">
+          <div class="loading-spinner"></div>
         </div>
 
         <div class="progress-summary">
@@ -495,6 +503,10 @@
           </div>
         </div>
 
+        <div id="flagged-loading" class="view-loading hidden">
+          <div class="loading-spinner"></div>
+        </div>
+
         <div id="flagged-ratings-list" class="flagged-ratings-list">
           <!-- Populated by JS -->
         </div>
@@ -504,6 +516,10 @@
       <div id="accounts-view" class="view hidden">
         <div class="view-header">
           <h2>Account Management</h2>
+        </div>
+
+        <div id="accounts-loading" class="view-loading hidden">
+          <div class="loading-spinner"></div>
         </div>
 
         <!-- Existing user accounts -->
@@ -526,6 +542,10 @@
 
       <!-- Teacher: School View -->
       <div id="school-view" class="view teacher-view hidden">
+        <div id="school-loading" class="view-loading hidden">
+          <div class="loading-spinner"></div>
+        </div>
+
         <!-- Pending state: shown when no school has been set up -->
         <div id="school-pending" class="school-setup hidden">
           <div class="school-setup-container">
