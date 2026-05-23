@@ -7101,7 +7101,7 @@ class CadenceApp {
     let legacyRows = [];
 
     try {
-      const { data, error } = await supabase.rpc('get_teacher_students_with_progress', { p_school_id: null });
+      const { data, error } = await supabase.rpc('get_teacher_students_with_progress', { p_school_id: this.currentSchool?.id ?? null });
       if (!error && data?.success) {
         enrichedStudents = data.students || [];
       }
@@ -7109,7 +7109,7 @@ class CadenceApp {
 
     if (!enrichedStudents) {
       try {
-        const result = await this.callRpcDirect('search_teacher_students', { p_school_id: null });
+        const result = await this.callRpcDirect('search_teacher_students', { p_school_id: this.currentSchool?.id ?? null });
         legacyRows = result.data || [];
       } catch (err) {
         try {
