@@ -1055,10 +1055,15 @@ class CadenceApp {
     this.schoolStudents = null;
     this.teacherStudentSongs = null;
     this._schoolTabClasses = null;
-    // Navigate to classes view and reload — switching schools should always
-    // show the new school's classes, regardless of which view is currently active
-    this.switchView('classes');
-    this.loadClasses();
+    const activeTab = document.querySelector('.classes-view-tab.active')?.dataset.classesTab;
+    if (activeTab === 'all-students') {
+      this.loadAllStudents();
+    } else if (activeTab === 'student-songs') {
+      this.loadStudentSongs();
+    } else {
+      this.switchView('classes');
+      this.loadClasses();
+    }
   }
 
   // ============================================
