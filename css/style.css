@@ -3429,6 +3429,12 @@ body {
   .user-menu {
     width: 100%;
     justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .user-name {
+    display: none;
   }
 
   .view-header {
