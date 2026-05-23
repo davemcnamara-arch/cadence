@@ -7098,7 +7098,7 @@ class CadenceApp {
       myClassesContent?.classList.remove('hidden');
       this.currentClass = null;
       this.classStudents = [];
-      this.renderClassesList();
+      this.loadClasses();
     }
   }
 
