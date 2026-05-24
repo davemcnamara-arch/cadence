@@ -1,5 +1,15 @@
 # Cadence — Claude Code Notes
 
+## Auto-commit after every change
+
+After making any code change, automatically run:
+```
+git add . && git commit -m "<brief description of changes>" && git push
+```
+Do this without being asked. Use a concise, descriptive commit message.
+
+---
+
 ## Chatbot system prompt (`api/help.js`)
 
 Whenever a feature is added, renamed, or removed from the app, update the chatbot system prompt in `api/help.js` to match.
