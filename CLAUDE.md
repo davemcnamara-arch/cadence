@@ -1,5 +1,5 @@
 # Cadence — Claude Code Notes
-<!-- vercel deploy test -->
+<!-- vercel deploy test 2 -->
 
 ## Auto-commit after every change
 
