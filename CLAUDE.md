@@ -1,6 +1,16 @@
 # Cadence — Claude Code Notes
 <!-- vercel deploy test 2 -->
 
+## Start of session: sync from GitHub
+
+At the start of every session, before doing anything else, run:
+```
+git pull
+```
+This ensures you are working with the latest changes from GitHub.
+
+---
+
 ## Auto-commit after every change
 
 After making any code change, automatically run:
