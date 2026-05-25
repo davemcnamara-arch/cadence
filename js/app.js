@@ -5430,8 +5430,8 @@ class CadenceApp {
     // Clear pending data
     this.pendingMasteredSong = null;
 
-    // Return to pathway so the student can choose their next song
-    this.switchView('pathway');
+    // Stay on My Progress so the student can generate their reflection
+    this.switchView('progress');
   }
 
   async checkLevelAdvancement(instrumentId) {
