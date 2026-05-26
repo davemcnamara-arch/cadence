@@ -2358,6 +2358,7 @@ class CadenceApp {
       }
       // Always show a Learning Resources button so students can access the full modal
       links.push(`<button class="btn btn-secondary btn-resources" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}', '${studentSong.instrument_id}')">Learning Resources</button>`);
+      links.push(`<button class="btn-text btn-sm btn-danger" onclick="event.stopPropagation(); app.removeSong('${studentSong.id}')">Remove</button>`);
 
       return `
         <div class="trending-card" data-song-id="${song.id}" role="button" tabindex="0">
@@ -5539,6 +5540,9 @@ class CadenceApp {
 
     this.showToast('Song removed successfully', 'success');
     this.renderProgress(true);
+    // Also refresh the learning strip on the pathway page
+    const learningSongs = await this.loadLearningSongsForStrip();
+    this.renderLearningSongsStrip(learningSongs);
   }
 
   // ============================================
@@ -5642,39 +5646,53 @@ class CadenceApp {
   }
 
   async generateReflection() {
-    const user = auth.getCurrentUser();
+    let studentSongs;
 
-    const { data: studentSongs, error: songsError } = await supabase
-      .from('student_songs')
-      .select(`
-        *,
-        songs (*)
-      `)
-      .eq('user_id', user.id)
-      .is('deleted_at', null);
+    if (this.previewMode.active) {
+      // In preview mode, use the already-loaded student data so we reflect on the
+      // previewed student rather than the logged-in teacher
+      studentSongs = this.studentSongs || [];
+    } else {
+      const user = auth.getCurrentUser();
+      const { data, error: songsError } = await supabase
+        .from('student_songs')
+        .select(`
+          *,
+          songs (*)
+        `)
+        .eq('user_id', user.id)
+        .is('deleted_at', null);
 
-    if (songsError) {
-      console.error('Error fetching student songs for reflection:', songsError);
-      throw new Error('Failed to fetch songs');
+      if (songsError) {
+        console.error('Error fetching student songs for reflection:', songsError);
+        throw new Error('Failed to fetch songs');
+      }
+      studentSongs = data || [];
     }
 
-    const learning = studentSongs?.filter(s => s.status === 'learning') || [];
-    const mastered = studentSongs?.filter(s => s.status === 'mastered') || [];
+    const learning = studentSongs.filter(s => s.status === 'learning');
+    const mastered = studentSongs.filter(s => s.status === 'mastered');
 
-    // Get instrument names
-    const instrumentIds = [...new Set((studentSongs || []).map(ss => ss.instrument_id))];
-    const { data: instruments, error: instrumentsError } = await supabase
-      .from('instruments')
-      .select('id, name')
-      .in('id', instrumentIds);
+    // Get instrument names — use cached instruments when available
+    const instrumentIds = [...new Set(studentSongs.map(ss => ss.instrument_id))];
+    let instruments;
+    if (this.instruments && this.instruments.length > 0) {
+      instruments = this.instruments;
+    } else {
+      const { data: fetchedInstruments, error: instrumentsError } = await supabase
+        .from('instruments')
+        .select('id, name')
+        .in('id', instrumentIds);
 
-    if (instrumentsError) {
-      console.error('Error fetching instruments for reflection:', instrumentsError);
-      throw new Error('Failed to fetch instruments');
+      if (instrumentsError) {
+        console.error('Error fetching instruments for reflection:', instrumentsError);
+        throw new Error('Failed to fetch instruments');
+      }
+      instruments = fetchedInstruments || [];
     }
 
     const instrumentMap = {};
-    instruments?.forEach(i => instrumentMap[i.id] = i.name);
+    instruments.forEach(i => instrumentMap[i.id] = i.name);
 
     const instrumentNames = [...new Set(this.studentProgress.map(p => {
       const inst = this.instruments.find(i => i.id === p.instrument_id);
