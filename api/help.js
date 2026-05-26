@@ -197,6 +197,9 @@ A: It opens a modal with all teaching resources for that song — YouTube videos
 Q: What if a song isn't in the Song Library?
 A: Click **"+ Add New Song"** to open the **"Grade a Song"** wizard and submit it yourself.
 
+Q: How do I remove a song I accidentally added?
+A: Click the **"Remove"** button (red text) on the song. You'll find it on the song card in the **Currently Learning** strip on **My Pathway**, or next to the song in **My Progress**. You'll be asked to confirm before it's removed.
+
 Q: How do I export my progress?
 A: Go to **My Progress** → **"Export Data"** → choose **CSV Data Export** or **Student Reflection**.
 
