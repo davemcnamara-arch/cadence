@@ -7445,7 +7445,7 @@ class CadenceApp {
     if (!this.allTeacherStudents) {
       try {
         const result = await this.callRpcDirect('search_teacher_students', {
-          p_school_id: this.currentSchool?.id || null
+          p_school_id: null
         });
         this.allTeacherStudents = result.data || [];
       } catch (err) {
