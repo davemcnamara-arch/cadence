@@ -19,7 +19,8 @@
       color: #fff;
       border: none;
       cursor: pointer;
-      font-size: 1.4rem;
+      font-size: 1.6rem;
+      font-weight: 700;
       box-shadow: 0 4px 14px rgba(0,0,0,0.22);
       z-index: 9998;
       display: flex;
@@ -207,7 +208,7 @@
     btn.id = 'cadence-help-btn';
     btn.title = 'Help';
     btn.setAttribute('aria-label', 'Open help chat');
-    btn.textContent = '💬';
+    btn.textContent = '?';
     btn.addEventListener('click', togglePanel);
 
     // Chat panel
