@@ -1,69 +1,251 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy - Cadence</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 40px 20px;
-            color: #333;
-        }
-        h1 { color: #2c5282; }
-        h2 { color: #4a5568; margin-top: 30px; }
-        p { margin: 15px 0; }
-        ul { margin: 15px 0; padding-left: 30px; }
-        .last-updated { color: #718096; font-size: 14px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - Cadence</title>
+  <meta name="description" content="Privacy policy for Cadence, the classroom music progress tracker. Covers data collected, how it's used, third-party services, and your rights under the Australian Privacy Act 1988.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --purple: #6366c1;
+      --purple-light: #ede9fe;
+      --purple-dark: #4f46e5;
+      --purple-text: #5b21b6;
+      --text: #111827;
+      --text-muted: #6b7280;
+      --border: #e5e7eb;
+      --bg: #ffffff;
+      --bg-soft: #f9fafb;
+      --radius: 8px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.6;
+    }
+
+    a { color: var(--purple); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* NAV */
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      padding: 0.875rem 2rem;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 100;
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--purple);
+      margin-right: auto;
+      text-decoration: none;
+    }
+    .nav-logo svg { width: 22px; height: 22px; }
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 9px 18px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    .btn-secondary:hover { border-color: #9ca3af; }
+
+    /* LEGAL PAGE */
+    .legal-wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 3rem 2rem 4rem;
+    }
+
+    .legal-header {
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .legal-header h1 {
+      font-size: clamp(22px, 3vw, 30px);
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+    }
+    .legal-meta {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .legal-body h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 2rem 0 0.6rem;
+      color: var(--text);
+    }
+    .legal-body h2:first-child { margin-top: 0; }
+
+    .legal-body p {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.75;
+      margin-bottom: 0.75rem;
+    }
+
+    .legal-body ul, .legal-body ol {
+      margin: 0.5rem 0 0.75rem 1.25rem;
+    }
+    .legal-body li {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.75;
+      margin-bottom: 0.25rem;
+    }
+
+    .legal-body strong { color: var(--text); font-weight: 600; }
+
+    .info-box {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin: 1.25rem 0;
+    }
+    .info-box p { margin-bottom: 0; }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1.5rem 2rem;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    footer a { color: var(--purple); }
+  </style>
 </head>
 <body>
-    <h1>Privacy Policy</h1>
-    <p class="last-updated">Last updated: January 31, 2025</p>
 
-    <h2>Introduction</h2>
-    <p>Cadence ("we", "our", or "us") is a music learning platform: student choice, teacher insight. designed for educational use. This privacy policy explains how we collect, use, and protect your information.</p>
+<nav>
+  <a href="/" class="nav-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+    </svg>
+    Cadence
+  </a>
+  <a href="/login.html"><button class="btn-secondary">Sign in</button></a>
+</nav>
+
+<div class="legal-wrap">
+  <div class="legal-header">
+    <h1>Privacy Policy</h1>
+    <p class="legal-meta">Last updated: 29 May 2026</p>
+  </div>
+
+  <div class="legal-body">
+
+    <h2>Who We Are</h2>
+    <p>Cadence ("we", "us", or "our") is a music learning platform operated as a sole trader business based in Tasmania, Australia. Our platform is available at <a href="https://cadencemusic.app">cadencemusic.app</a>.</p>
+    <p>This Privacy Policy explains how we collect, use, disclose, and safeguard your personal information. We are committed to handling personal information in accordance with the <strong>Privacy Act 1988 (Cth)</strong> and the Australian Privacy Principles (APPs).</p>
 
     <h2>Information We Collect</h2>
-    <p>When you use Cadence, we collect:</p>
+    <p>We collect the following personal information when you use Cadence:</p>
     <ul>
-        <li><strong>Account information:</strong> Your name and email address from Google Sign-In</li>
-        <li><strong>Usage data:</strong> Songs you add, your learning progress, and skill assessments</li>
+      <li><strong>Account information:</strong> Your name and email address, obtained via Google Sign-In (Google OAuth 2.0).</li>
+      <li><strong>Role information:</strong> Whether you are a student or teacher, and (for teachers) your school affiliation.</li>
+      <li><strong>Usage data:</strong> Songs you add or suggest, your instrument choices, learning progress, skill assessments and self-graded song ratings, and class membership.</li>
+      <li><strong>Payment information:</strong> For subscribing teachers, billing details are collected and processed directly by Stripe. We do not store your full payment card details.</li>
+      <li><strong>Communications:</strong> Messages submitted through the in-app AI chat assistant.</li>
     </ul>
+    <p>We collect only the minimum information necessary to provide the Cadence service.</p>
 
     <h2>How We Use Your Information</h2>
-    <p>We use your information to:</p>
+    <p>We use your personal information to:</p>
     <ul>
-        <li>Provide and maintain the Cadence service</li>
-        <li>Track your music learning progress</li>
-        <li>Allow teachers to view student progress (in classroom settings)</li>
+      <li>Create and manage your Cadence account.</li>
+      <li>Deliver the core service — including tracking music learning progress, maintaining a shared song library, and enabling teacher–student interaction within classes.</li>
+      <li>Allow teachers to view the learning progress and song choices of students enrolled in their classes.</li>
+      <li>Process subscription payments for teacher and school plans.</li>
+      <li>Improve the product by understanding how the platform is used in aggregate.</li>
+      <li>Respond to support queries submitted through the in-app help assistant.</li>
+      <li>Comply with legal obligations.</li>
     </ul>
+    <p>We do not use your personal information for advertising or marketing profiling, and we do not sell your data to any third party.</p>
 
-    <h2>Data Storage</h2>
-    <p>Your data is stored securely using Supabase, a trusted cloud database provider. We implement appropriate security measures to protect your personal information.</p>
-
-    <h2>Data Sharing</h2>
-    <p>We do not sell or share your personal information with third parties, except:</p>
+    <h2>Third-Party Services</h2>
+    <p>We rely on the following trusted third-party service providers to operate Cadence. Each acts as a data processor on our behalf and is subject to their own privacy and security obligations:</p>
     <ul>
-        <li>With your teacher (if you are part of a class)</li>
-        <li>When required by law</li>
+      <li><strong>Supabase</strong> — Database hosting, user authentication infrastructure, and cloud storage. Data is stored on servers in the United States. See <a href="https://supabase.com/privacy" target="_blank" rel="noopener">supabase.com/privacy</a>.</li>
+      <li><strong>Google</strong> — OAuth 2.0 sign-in. Google provides your name and email address to Cadence at sign-in. See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a>.</li>
+      <li><strong>Stripe</strong> — Payment processing for teacher subscriptions. Stripe collects and handles payment card data directly. See <a href="https://stripe.com/privacy" target="_blank" rel="noopener">stripe.com/privacy</a>.</li>
+      <li><strong>Vercel</strong> — Website hosting and serverless function execution. See <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener">vercel.com/legal/privacy-policy</a>.</li>
+      <li><strong>Anthropic (Claude)</strong> — AI model powering the in-app help assistant. Messages sent to the chat are processed by Anthropic's API. See <a href="https://www.anthropic.com/privacy" target="_blank" rel="noopener">anthropic.com/privacy</a>.</li>
     </ul>
+    <p>By using Cadence, you acknowledge that your data may be processed by these third-party providers in accordance with their respective privacy policies.</p>
 
-    <h2>Your Rights</h2>
-    <p>You have the right to:</p>
+    <h2>Data Sharing and Disclosure</h2>
+    <p>We share your personal information only in the following circumstances:</p>
     <ul>
-        <li>Access your personal data</li>
-        <li>Request deletion of your account and data</li>
-        <li>Export your learning progress data</li>
+      <li><strong>With your teacher:</strong> If you are a student enrolled in a Cadence class, your teacher can see your name, the instruments you are learning, your level progress, and the songs in your library.</li>
+      <li><strong>With other students in the platform:</strong> Aggregated, anonymised usage data (e.g. "2 students are learning this song") is visible to other users. Your name is not attached.</li>
+      <li><strong>With service providers:</strong> As listed above, solely to deliver the Cadence service.</li>
+      <li><strong>When required by law:</strong> If we are required to disclose information under Australian law or a court order.</li>
+    </ul>
+    <p>We never sell personal information to third parties.</p>
+
+    <h2>Data Retention</h2>
+    <p>We retain your personal information for as long as your account is active or as needed to provide the service.</p>
+    <ul>
+      <li>If a teacher's subscription lapses, student and class data is preserved — students retain full access to their learning history.</li>
+      <li>If you request deletion of your account and data (see Your Rights below), we will action the request within 30 days.</li>
     </ul>
 
     <h2>Children's Privacy</h2>
-    <p>Cadence is designed for educational use and may be used by students under 13 with parental or school consent. We collect only the minimum information necessary to provide the service.</p>
+    <p>Cadence is designed for use in school music programs and may be used by students under 18, including those under 13. We collect only the minimum personal information necessary — name and email — to operate the service. We expect that schools deploy Cadence in accordance with their own student data policies and with appropriate parental or guardian consent where required.</p>
+    <p>If you believe a child's data has been collected without appropriate consent, please contact us immediately using the details below.</p>
+
+    <h2>Your Rights Under the Privacy Act 1988</h2>
+    <p>As an Australian resident, you have rights under the Privacy Act 1988 (Cth) and the Australian Privacy Principles, including the right to:</p>
+    <ul>
+      <li><strong>Access</strong> the personal information we hold about you.</li>
+      <li><strong>Request correction</strong> of personal information that is inaccurate, out of date, or incomplete.</li>
+      <li><strong>Request deletion</strong> of your account and associated personal data.</li>
+      <li><strong>Export</strong> your learning progress data (available via the in-app export feature).</li>
+      <li><strong>Lodge a complaint</strong> with the Office of the Australian Information Commissioner (OAIC) at <a href="https://www.oaic.gov.au" target="_blank" rel="noopener">oaic.gov.au</a> if you believe your privacy rights have been breached.</li>
+    </ul>
+    <p>To exercise any of these rights, please contact us using the details below. We will respond within 30 days.</p>
+
+    <h2>Security</h2>
+    <p>We implement industry-standard security measures to protect your personal information, including HTTPS encryption for all data in transit, row-level security policies on our database to enforce access controls, and access controls limiting which users can see which data. While we take reasonable steps to protect your information, no online service is completely secure. We encourage you to use a strong Google account password and to report any suspected security issues to us promptly.</p>
+
+    <h2>Changes to This Policy</h2>
+    <p>We may update this Privacy Policy from time to time. When we do, we will update the "Last updated" date at the top of this page. Continued use of Cadence after a policy change constitutes acceptance of the updated policy. We recommend reviewing this page periodically.</p>
 
     <h2>Contact Us</h2>
-    <p>If you have questions about this privacy policy or your data, please contact your school administrator or teacher.</p>
+    <div class="info-box">
+      <p>For privacy enquiries, data access or deletion requests, or complaints, please contact us via the in-app help chat or by email at <a href="mailto:privacy@cadencemusic.app">privacy@cadencemusic.app</a>. We are based in Tasmania, Australia.</p>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <p>© 2026 Cadence · <a href="/privacy.html">Privacy policy</a> · <a href="/terms.html">Terms of service</a> · <a href="/login.html">Log in</a></p>
+</footer>
+
 </body>
 </html>

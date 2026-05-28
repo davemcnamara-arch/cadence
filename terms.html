@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms of Service - Cadence</title>
+  <meta name="description" content="Terms of service for Cadence, the classroom music progress tracker. Covers acceptable use, subscription pricing, cancellation, data retention, and limitation of liability.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --purple: #6366c1;
+      --purple-light: #ede9fe;
+      --purple-dark: #4f46e5;
+      --purple-text: #5b21b6;
+      --text: #111827;
+      --text-muted: #6b7280;
+      --border: #e5e7eb;
+      --bg: #ffffff;
+      --bg-soft: #f9fafb;
+      --radius: 8px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.6;
+    }
+
+    a { color: var(--purple); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* NAV */
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      padding: 0.875rem 2rem;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 100;
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--purple);
+      margin-right: auto;
+      text-decoration: none;
+    }
+    .nav-logo svg { width: 22px; height: 22px; }
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 9px 18px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    .btn-secondary:hover { border-color: #9ca3af; }
+
+    /* LEGAL PAGE */
+    .legal-wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 3rem 2rem 4rem;
+    }
+
+    .legal-header {
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .legal-header h1 {
+      font-size: clamp(22px, 3vw, 30px);
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+    }
+    .legal-meta {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .legal-body h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 2rem 0 0.6rem;
+      color: var(--text);
+    }
+    .legal-body h2:first-child { margin-top: 0; }
+
+    .legal-body p {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.75;
+      margin-bottom: 0.75rem;
+    }
+
+    .legal-body ul, .legal-body ol {
+      margin: 0.5rem 0 0.75rem 1.25rem;
+    }
+    .legal-body li {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.75;
+      margin-bottom: 0.25rem;
+    }
+
+    .legal-body strong { color: var(--text); font-weight: 600; }
+
+    .pricing-summary {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin: 1.25rem 0;
+    }
+    .pricing-summary table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .pricing-summary th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--purple);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0 0 0.5rem;
+    }
+    .pricing-summary td {
+      padding: 0.3rem 1rem 0.3rem 0;
+      color: var(--text-muted);
+      vertical-align: top;
+    }
+    .pricing-summary td:first-child { color: var(--text); font-weight: 500; }
+
+    .info-box {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin: 1.25rem 0;
+    }
+    .info-box p { margin-bottom: 0; }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1.5rem 2rem;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    footer a { color: var(--purple); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+    </svg>
+    Cadence
+  </a>
+  <a href="/login.html"><button class="btn-secondary">Sign in</button></a>
+</nav>
+
+<div class="legal-wrap">
+  <div class="legal-header">
+    <h1>Terms of Service</h1>
+    <p class="legal-meta">Last updated: 29 May 2026</p>
+  </div>
+
+  <div class="legal-body">
+
+    <h2>Acceptance of Terms</h2>
+    <p>By accessing or using Cadence ("the Service") at <a href="https://cadencemusic.app">cadencemusic.app</a>, you agree to be bound by these Terms of Service. If you do not agree, please do not use the Service. These terms apply to all users, including students, teachers, and school administrators.</p>
+    <p>Cadence is operated as a sole trader business based in Tasmania, Australia. These terms are governed by the laws of Tasmania and the Commonwealth of Australia.</p>
+
+    <h2>Description of Service</h2>
+    <p>Cadence is a music learning platform for classroom instrumental music programs. It provides:</p>
+    <ul>
+      <li>A student-driven, teacher-moderated shared song library.</li>
+      <li>Individual student progress tracking across instruments and skill levels.</li>
+      <li>Class management tools for teachers, including progress heatmaps and class rosters.</li>
+      <li>School-level management for music departments (School plan).</li>
+    </ul>
+
+    <h2>User Accounts</h2>
+    <p>Cadence uses Google Sign-In for authentication. By signing in, you authorise Cadence to receive your name and email address from Google. You are responsible for maintaining the security of your Google account. You must not share your account credentials or allow others to access your account.</p>
+    <p>Students are required to be enrolled in a Cadence class by their teacher, or to join using a class code provided by their teacher. Students under 18 should use the Service in accordance with their school's acceptable use policies.</p>
+
+    <h2>Acceptable Use</h2>
+    <p>You agree to use Cadence for its intended educational purpose and in accordance with all applicable laws. You must not:</p>
+    <ul>
+      <li>Submit false, misleading, or inappropriate content, including song titles, artist names, or tutorial links.</li>
+      <li>Attempt to access another user's account or data without authorisation.</li>
+      <li>Interfere with or disrupt the operation of the Service or its underlying infrastructure.</li>
+      <li>Use the Service to harass, bully, or harm other users.</li>
+      <li>Attempt to reverse-engineer, scrape, or copy the Service for commercial purposes.</li>
+      <li>Use the AI chat assistant to generate harmful, abusive, or off-topic content.</li>
+    </ul>
+    <p>We reserve the right to suspend or terminate accounts that violate these terms.</p>
+
+    <h2>Subscription Plans and Pricing</h2>
+    <p>Access to Cadence's teacher and school features requires a paid subscription. All prices are in Australian Dollars (AUD) and include GST where applicable.</p>
+
+    <div class="pricing-summary">
+      <table>
+        <thead>
+          <tr>
+            <th>Plan</th>
+            <th>Who it's for</th>
+            <th>Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Student</td>
+            <td>Individual students</td>
+            <td>Free, always</td>
+          </tr>
+          <tr>
+            <td>Individual Teacher</td>
+            <td>Solo teacher, up to 25 students</td>
+            <td>A$49 / year</td>
+          </tr>
+          <tr>
+            <td>School</td>
+            <td>Whole music department — unlimited teachers and students</td>
+            <td>A$199 / year</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Students are always free.</strong> There is no charge for students to use Cadence, regardless of their teacher's subscription status.</p>
+    <p>A <strong>30-day free trial</strong> is available to new teacher accounts via a promo code. Promo codes are single-use and non-transferable.</p>
+
+    <h2>Payment and Billing</h2>
+    <p>Subscriptions are billed annually via Stripe, a third-party payment processor. By subscribing, you authorise us to charge the applicable annual fee to your payment method through Stripe.</p>
+    <p>Subscriptions auto-renew at the end of each billing period. You will receive a receipt from Stripe when payment is processed. We do not store your payment card details.</p>
+    <p>If a payment fails, your subscription will be marked as expired and teacher access features will be suspended until payment is resolved.</p>
+
+    <h2>Cancellation</h2>
+    <p>You may cancel your subscription at any time. Cancellation takes effect at the end of the current billing period — you retain full access until then. We do not offer pro-rata refunds for unused time within a billing period.</p>
+    <p>To request a cancellation or discuss your subscription, contact us using the details at the bottom of this page.</p>
+
+    <h2>Data on Subscription Lapse or Cancellation</h2>
+    <p>If your subscription expires or is cancelled:</p>
+    <ul>
+      <li><strong>Student data is always preserved.</strong> Students retain access to their personal learning history regardless of their teacher's subscription status.</li>
+      <li><strong>Teacher and class data is preserved</strong> for the account holder. Class configurations, student rosters, and song libraries are not deleted when a subscription lapses — they are restored if you renew.</li>
+      <li><strong>On request:</strong> If you wish to delete your account and all associated data, contact us and we will complete the deletion within 30 days.</li>
+    </ul>
+
+    <h2>User Content</h2>
+    <p>You retain ownership of any content you submit to Cadence, including song suggestions, resource links, and skill assessments. By submitting content, you grant us a non-exclusive, royalty-free licence to store, display, and share that content within the Cadence platform for the purpose of providing the Service.</p>
+    <p>Song entries and resources are shared across the Cadence platform and are visible to all users. You are responsible for ensuring that any content you submit does not infringe third-party rights or violate applicable law.</p>
+
+    <h2>Student Privacy</h2>
+    <p>Where Cadence is used in a school context, the school or teacher is responsible for ensuring appropriate student data handling policies are in place, including any required parental consent for students under the applicable age threshold. Our handling of personal data is described in our <a href="/privacy.html">Privacy Policy</a>.</p>
+
+    <h2>Intellectual Property</h2>
+    <p>The Cadence platform, its design, code, and content (excluding user-submitted content) are owned by Cadence and protected by applicable intellectual property laws. You may not reproduce, distribute, or create derivative works from the platform without our written permission.</p>
+
+    <h2>Disclaimers</h2>
+    <p>The Service is provided "as is" and "as available" without warranties of any kind, express or implied. We do not guarantee that the Service will be uninterrupted, error-free, or free from harmful components. We reserve the right to modify, suspend, or discontinue the Service at any time with reasonable notice.</p>
+
+    <h2>Limitation of Liability</h2>
+    <p>To the maximum extent permitted by Australian law, Cadence and its operator shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of, or inability to use, the Service — including but not limited to loss of data, loss of revenue, or loss of educational records.</p>
+    <p>Our total liability for any claim arising from these terms or your use of the Service shall not exceed the total fees paid by you in the 12 months preceding the claim, or A$100, whichever is greater.</p>
+    <p>Nothing in these terms excludes or limits any rights you have under the Australian Consumer Law that cannot lawfully be excluded.</p>
+
+    <h2>Changes to These Terms</h2>
+    <p>We may update these Terms of Service from time to time. When we do, we will update the "Last updated" date at the top of this page. Continued use of the Service after changes are posted constitutes acceptance of the updated terms.</p>
+
+    <h2>Governing Law</h2>
+    <p>These terms are governed by and construed in accordance with the laws of Tasmania, Australia. Any disputes arising under these terms shall be subject to the exclusive jurisdiction of the courts of Tasmania.</p>
+
+    <h2>Contact Us</h2>
+    <div class="info-box">
+      <p>For questions about these terms, subscription enquiries, or account deletion requests, please contact us via the in-app help chat or by email at <a href="mailto:hello@cadencemusic.app">hello@cadencemusic.app</a>. We are based in Tasmania, Australia.</p>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <p>© 2026 Cadence · <a href="/privacy.html">Privacy policy</a> · <a href="/terms.html">Terms of service</a> · <a href="/login.html">Log in</a></p>
+</footer>
+
+</body>
+</html>
