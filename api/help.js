@@ -151,7 +151,7 @@ Available under the **School** tab:
 - **School plan**: unlimited teachers and students (A$199/year)
 - A plan limits banner shows how many students have been used (e.g. "3/25 students")
 - If the subscription expires, a full-screen overlay appears — click **"Renew Subscription"** to restore access (data is preserved)
-- **Promo code / free trial** — teachers can redeem a promo code for a 30-day trial. After a trial expires the code cannot be re-used. Redeeming a School plan promo code automatically triggers school onboarding.
+- **Promo code / free trial** — teachers can redeem a promo code for a 90-day trial. After a trial expires the code cannot be re-used. Redeeming a School plan promo code automatically triggers school onboarding.
 
 ### School Onboarding
 After subscribing to the School plan, a setup modal asks you to name your school and generates a **school join code** to share with other teachers at your school.
