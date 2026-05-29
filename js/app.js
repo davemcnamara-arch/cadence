@@ -8203,20 +8203,34 @@ class CadenceApp {
 
     container.innerHTML = '<div class="loading-state">Loading songs...</div>';
 
-    // Fetch student songs data if not already loaded
-    if (!this.teacherStudentSongs) {
+    const classId = this.currentClass.id;
+    let songs;
+
+    // When viewing a school peer's class, fetch songs scoped to that class directly
+    // (get_teacher_student_songs only returns the caller's own classes)
+    if (this._classEnteredFromSchool) {
       try {
-        const result = await this.callRpcDirect('get_teacher_student_songs', { p_school_id: this.currentSchool?.id || null });
-        this.teacherStudentSongs = result.data || [];
+        const result = await this.callRpcDirect('get_class_student_songs', { p_class_id: classId });
+        songs = result.data || [];
       } catch (err) {
         console.error('Error loading student songs for class:', err);
         container.innerHTML = '<div class="empty-state">Failed to load songs. Please try again.</div>';
         return;
       }
+    } else {
+      // Fetch student songs data if not already loaded
+      if (!this.teacherStudentSongs) {
+        try {
+          const result = await this.callRpcDirect('get_teacher_student_songs', { p_school_id: this.currentSchool?.id || null });
+          this.teacherStudentSongs = result.data || [];
+        } catch (err) {
+          console.error('Error loading student songs for class:', err);
+          container.innerHTML = '<div class="empty-state">Failed to load songs. Please try again.</div>';
+          return;
+        }
+      }
+      songs = (this.teacherStudentSongs || []).filter(s => s.class_id === classId);
     }
-
-    const classId = this.currentClass.id;
-    const songs = (this.teacherStudentSongs || []).filter(s => s.class_id === classId);
 
     if (songs.length === 0) {
       container.innerHTML = `
