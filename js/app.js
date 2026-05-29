@@ -9813,9 +9813,7 @@ class CadenceApp {
       } else if (sectionName === 'school') {
         this.loadAdminSchoolSection();
       } else if (sectionName === 'unassigned') {
-        // Already populated by background load on login; only re-fetch if empty
-        const listEl = document.getElementById('unassigned-students-list');
-        if (!listEl?.dataset.loaded) this.loadUnassignedStudents();
+        this.loadUnassignedStudents();
       }
     }
   }
@@ -11938,7 +11936,6 @@ class CadenceApp {
     const container = document.getElementById('unassigned-students-list');
     if (!container) return;
 
-    delete container.dataset.loaded;
     container.innerHTML = '<p style="color:var(--text-secondary);padding:1rem 0;">Loading…</p>';
 
     let data;
@@ -11988,7 +11985,6 @@ class CadenceApp {
       </tr>
     `).join('');
 
-    container.dataset.loaded = 'true';
     container.innerHTML = `
       <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:0.75rem;">${students.length} student${students.length !== 1 ? 's' : ''} not enrolled in any active class</p>
       <table class="unassigned-table">
