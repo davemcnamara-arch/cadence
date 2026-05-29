@@ -11935,11 +11935,12 @@ class CadenceApp {
 
     container.innerHTML = '<p style="color:var(--text-secondary);padding:1rem 0;">Loading…</p>';
 
-    const { data, error } = await this.callRpcDirect('admin_get_unassigned_students', {});
-
-    if (error) {
-      console.error('Error loading unassigned students:', error);
-      container.innerHTML = '<p style="color:var(--error-color);">Failed to load unassigned students.</p>';
+    let data;
+    try {
+      ({ data } = await this.callRpcDirect('admin_get_unassigned_students', {}));
+    } catch (err) {
+      console.error('Error loading unassigned students:', err);
+      container.innerHTML = `<p style="color:var(--error-color);">Failed to load unassigned students: ${this.escapeHtml(err?.message || String(err))}</p>`;
       return;
     }
 
