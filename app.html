@@ -915,6 +915,30 @@
     </div>
   </div>
 
+  <!-- Modal: Admin Add Student to Class -->
+  <div id="admin-add-to-class-modal" class="modal hidden">
+    <div class="modal-content" style="max-width:480px;">
+      <div class="modal-header">
+        <h2>Add Student to Class</h2>
+        <button class="modal-close" onclick="document.getElementById('admin-add-to-class-modal').classList.add('hidden')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="admin-add-to-class-student-name" style="font-weight:600;margin-bottom:1rem;"></p>
+        <input type="hidden" id="admin-add-to-class-student-id">
+        <div class="form-group">
+          <label for="admin-add-to-class-select">Select Class</label>
+          <select id="admin-add-to-class-select" class="filter-select" style="width:100%;">
+            <option value="">Loading classes…</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;gap:0.5rem;justify-content:flex-end;padding:1rem 1.5rem;">
+        <button class="btn btn-secondary" onclick="document.getElementById('admin-add-to-class-modal').classList.add('hidden')">Cancel</button>
+        <button class="btn btn-primary" onclick="app.adminAddStudentToClass()">Add to Class</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal for Song Grading -->
   <div id="song-grading-modal" class="modal hidden">
     <div class="modal-content">

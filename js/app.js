@@ -11961,11 +11961,12 @@ class CadenceApp {
         <td style="color:var(--text-secondary);">${this.escapeHtml(s.email)}</td>
         <td style="color:var(--text-secondary);font-size:0.82rem;">${formatDate(s.created_at)}</td>
         <td style="color:var(--text-secondary);font-size:0.82rem;">${formatDate(s.last_sign_in)}</td>
+        <td><button class="btn btn-secondary btn-sm" onclick="app.showAddToClassModal('${s.id}', ${JSON.stringify(s.name || s.email)})">Add to Class</button></td>
       </tr>
     `).join('');
 
     container.innerHTML = `
-      <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:0.75rem;">${students.length} student${students.length !== 1 ? 's' : ''} not enrolled in any class</p>
+      <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:0.75rem;">${students.length} student${students.length !== 1 ? 's' : ''} not enrolled in any active class</p>
       <table class="unassigned-table">
         <thead>
           <tr>
@@ -11973,11 +11974,73 @@ class CadenceApp {
             <th>Email</th>
             <th>Joined</th>
             <th>Last Sign-in</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>
     `;
+  }
+
+  async showAddToClassModal(studentId, studentName) {
+    document.getElementById('admin-add-to-class-student-id').value = studentId;
+    document.getElementById('admin-add-to-class-student-name').textContent = studentName;
+
+    const select = document.getElementById('admin-add-to-class-select');
+    select.innerHTML = '<option value="">Loading classes…</option>';
+    document.getElementById('admin-add-to-class-modal').classList.remove('hidden');
+
+    const { data, error } = await this.callRpcDirect('admin_get_all_classes', {});
+    if (error || !Array.isArray(data)) {
+      select.innerHTML = '<option value="">Failed to load classes</option>';
+      return;
+    }
+
+    if (!data.length) {
+      select.innerHTML = '<option value="">No active classes found</option>';
+      return;
+    }
+
+    // Group by school name (null → "No School")
+    const groups = {};
+    for (const cls of data) {
+      const group = cls.school_name || 'No School';
+      if (!groups[group]) groups[group] = [];
+      groups[group].push(cls);
+    }
+
+    const options = Object.entries(groups).sort(([a], [b]) => a.localeCompare(b)).map(([groupName, classes]) => {
+      const opts = classes.map(cls => {
+        const label = `${cls.class_name}${cls.year_level ? ' (Yr ' + cls.year_level + ')' : ''} — ${cls.teacher_name || cls.teacher_email}`;
+        return `<option value="${cls.class_id}">${this.escapeHtml(label)}</option>`;
+      }).join('');
+      return `<optgroup label="${this.escapeHtml(groupName)}">${opts}</optgroup>`;
+    }).join('');
+
+    select.innerHTML = `<option value="">Select a class…</option>${options}`;
+  }
+
+  async adminAddStudentToClass() {
+    const studentId = document.getElementById('admin-add-to-class-student-id').value;
+    const classId = document.getElementById('admin-add-to-class-select').value;
+    if (!classId) {
+      this.showToast('Please select a class', 'error');
+      return;
+    }
+
+    const { data, error } = await this.callRpcDirect('admin_add_student_to_class', {
+      p_student_id: studentId,
+      p_class_id: classId
+    });
+
+    if (error || (data && data.success === false)) {
+      this.showToast(data?.message || 'Failed to add student to class', 'error');
+      return;
+    }
+
+    document.getElementById('admin-add-to-class-modal').classList.add('hidden');
+    this.showToast('Student added to class', 'success');
+    this.loadUnassignedStudents();
   }
 
   // ============================================
