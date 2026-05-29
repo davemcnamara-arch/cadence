@@ -11933,7 +11933,9 @@ class CadenceApp {
   // ============================================
 
   async loadUnassignedStudents() {
+    console.log('[unassigned] loadUnassignedStudents called');
     const container = document.getElementById('unassigned-students-list');
+    console.log('[unassigned] container found:', !!container);
     if (!container) return;
 
     container.innerHTML = '<p style="color:var(--text-secondary);padding:1rem 0;">Loading…</p>';
@@ -11941,8 +11943,9 @@ class CadenceApp {
     let data;
     try {
       ({ data } = await this.callRpcDirect('admin_get_unassigned_students', {}));
+      console.log('[unassigned] data:', JSON.stringify(data));
     } catch (err) {
-      console.error('Error loading unassigned students:', err);
+      console.error('[unassigned] RPC error:', err);
       container.innerHTML = `<p style="color:var(--error-color);">Failed to load unassigned students: ${this.escapeHtml(err?.message || String(err))}</p>`;
       return;
     }
@@ -11950,6 +11953,7 @@ class CadenceApp {
     // Guard against the function returning an error object instead of an array
     // (happens when is_admin() check fails — PostgREST wraps it in a 1-element array)
     const students = Array.isArray(data) && data.every(d => d?.id && d?.email) ? data : [];
+    console.log('[unassigned] students.length:', students.length);
 
     // Update Admin nav badge
     const unassignedBadge = document.getElementById('unassigned-count-badge');
@@ -11985,6 +11989,7 @@ class CadenceApp {
       </tr>
     `).join('');
 
+    console.log('[unassigned] rendering table, container visible:', container.offsetParent !== null);
     container.innerHTML = `
       <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:0.75rem;">${students.length} student${students.length !== 1 ? 's' : ''} not enrolled in any active class</p>
       <table class="unassigned-table">
