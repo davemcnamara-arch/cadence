@@ -11950,7 +11950,6 @@ class CadenceApp {
       return;
     }
 
-    console.log('[unassigned] raw data:', JSON.stringify(data));
     // Guard against the function returning an error object instead of an array
     // (happens when is_admin() check fails — PostgREST wraps it in a 1-element array)
     const students = Array.isArray(data) && data.every(d => d?.id && d?.email) ? data : [];
@@ -11982,7 +11981,10 @@ class CadenceApp {
         <td style="color:var(--text-secondary);">${this.escapeHtml(s.email)}</td>
         <td style="color:var(--text-secondary);font-size:0.82rem;">${formatDate(s.created_at)}</td>
         <td style="color:var(--text-secondary);font-size:0.82rem;">${formatDate(s.last_sign_in)}</td>
-        <td><button class="btn btn-secondary btn-sm" onclick="app.showAddToClassModal('${s.id}', ${JSON.stringify(s.name || s.email)})">Add to Class</button></td>
+        <td><button class="btn btn-secondary btn-sm"
+          data-student-id="${s.id}"
+          data-student-name="${this.escapeHtml(s.name || s.email)}"
+          onclick="app.showAddToClassModal(this.dataset.studentId, this.dataset.studentName)">Add to Class</button></td>
       </tr>
     `).join('');
 
