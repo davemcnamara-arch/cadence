@@ -11989,7 +11989,9 @@ class CadenceApp {
       </tr>
     `).join('');
 
-    console.log('[unassigned] rendering table, container visible:', container.offsetParent !== null);
+    let _el = container; const _hidden = [];
+    while (_el) { if (window.getComputedStyle(_el).display === 'none') _hidden.push(_el.id || _el.className || _el.tagName); _el = _el.parentElement; }
+    console.log('[unassigned] hidden ancestors:', _hidden.join(' > ') || 'none');
     container.innerHTML = `
       <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:0.75rem;">${students.length} student${students.length !== 1 ? 's' : ''} not enrolled in any active class</p>
       <table class="unassigned-table">
