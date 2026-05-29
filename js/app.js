@@ -11950,7 +11950,9 @@ class CadenceApp {
       return;
     }
 
-    const students = Array.isArray(data) ? data : [];
+    // Guard against the function returning an error object instead of an array
+    // (happens when is_admin() check fails — PostgREST wraps it in a 1-element array)
+    const students = Array.isArray(data) && data.every(d => d?.id && d?.email) ? data : [];
 
     // Update Admin nav badge
     const unassignedBadge = document.getElementById('unassigned-count-badge');
