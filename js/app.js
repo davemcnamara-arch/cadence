@@ -803,6 +803,9 @@ class CadenceApp {
       await this.loadAdminData();
       await this.loadClasses();
 
+      // Pre-load unassigned students in background to populate the Admin badge
+      this.loadUnassignedStudents();
+
       // Switch to saved view or admin view as default for admins
       this.switchView(restoredView || 'admin');
     }
@@ -11945,6 +11948,17 @@ class CadenceApp {
     }
 
     const students = Array.isArray(data) ? data : [];
+
+    // Update Admin nav badge
+    const unassignedBadge = document.getElementById('unassigned-count-badge');
+    if (unassignedBadge) {
+      if (students.length > 0) {
+        unassignedBadge.textContent = students.length;
+        unassignedBadge.classList.remove('hidden');
+      } else {
+        unassignedBadge.classList.add('hidden');
+      }
+    }
 
     if (!students.length) {
       container.innerHTML = '<p style="color:var(--text-secondary);padding:1rem 0;">No unassigned students found.</p>';
