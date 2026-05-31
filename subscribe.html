@@ -234,6 +234,16 @@
       cursor: not-allowed;
     }
 
+    .plan-warning {
+      font-size: 0.8rem;
+      color: #b45309;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 4px;
+      padding: 0.5rem 0.625rem;
+      margin-top: 0.75rem;
+    }
+
   </style>
 </head>
 <body>
@@ -261,6 +271,7 @@
             </div>
             <div class="plan-price">A$49 <span>/ year</span></div>
             <div class="plan-description">One teacher, up to 25 students.</div>
+            <p id="individual-student-warning" class="plan-warning hidden"></p>
           </div>
 
           <div class="plan-card" data-plan="school">
@@ -312,13 +323,23 @@
 
     // Track which plan is selected
     let selectedPlan = 'school';
+    let overStudentLimit = false;
 
     const planCards = document.querySelectorAll('.plan-card');
+    const warning = document.getElementById('individual-student-warning');
 
     function selectCard(card) {
       planCards.forEach(c => c.classList.remove('selected'));
       card.classList.add('selected');
       selectedPlan = card.dataset.plan;
+      // Show warning if selecting individual while over the 25-student limit
+      if (warning) {
+        if (selectedPlan === 'individual' && overStudentLimit) {
+          warning.classList.remove('hidden');
+        } else {
+          warning.classList.add('hidden');
+        }
+      }
     }
 
     planCards.forEach(card => {
@@ -327,6 +348,24 @@
 
     // Pre-select the school card
     selectCard(document.querySelector('.plan-card[data-plan="school"]'));
+
+    // If signed in, check whether the teacher has more than 25 students across
+    // their classes. If so, warn them before they choose the individual plan.
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const { data: classes } = await supabase.rpc('get_teacher_classes');
+        if (!classes || !classes.length) return;
+        const totalStudents = classes.reduce((sum, c) => sum + (c.student_count || 0), 0);
+        if (totalStudents > 25) {
+          overStudentLimit = true;
+          if (warning) {
+            warning.textContent = `You currently have ${totalStudents} students — this plan supports up to 25. You'd need to remove students before adding more, or choose the School plan.`;
+          }
+        }
+      } catch (e) { /* non-fatal */ }
+    })();
 
     document.getElementById('subscribe-btn').addEventListener('click', async () => {
       const btn = document.getElementById('subscribe-btn');
