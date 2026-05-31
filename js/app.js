@@ -689,6 +689,9 @@ class CadenceApp {
     const freshSubscription = new URLSearchParams(window.location.search).get('subscribed') === '1';
     let freshPlanType;
     if (user.role === 'teacher') {
+      // Auto-create a 90-day individual trial for teachers with no subscription (idempotent).
+      try { await auth.rpcDirect('create_teacher_auto_trial', {}); } catch (e) { /* non-fatal */ }
+
       let subResult;
       // After a successful checkout Stripe's webhook may take a moment to process;
       // retry a few times before giving up so we don't bounce the user back to /subscribe.
@@ -701,7 +704,7 @@ class CadenceApp {
       }
 
       if (!subResult.hasSubscription) {
-        // Teacher has never subscribed — send them to the pricing page.
+        // Should not happen after auto-trial, but keep as a fallback.
         window.location.href = 'subscribe.html';
         return;
       }
@@ -711,7 +714,7 @@ class CadenceApp {
         // Show the locked-dashboard overlay instead of redirecting, so the teacher
         // can see the UI and understand what they're renewing.
         // Their role is NOT changed in the DB; this is a pure UI gate.
-        this.showSubscriptionExpiredOverlay();
+        this.showSubscriptionExpiredOverlay(subResult.status);
         // Fall through so the app shell (header, etc.) still renders correctly.
       } else if (subResult.status === 'trialing' && subResult.currentPeriodEnd) {
         // Active promo trial — show a countdown banner so the teacher knows when it ends.
@@ -887,7 +890,7 @@ class CadenceApp {
         this.subscription.status === 'active' || this.subscription.status === 'trialing';
       const periodValid = periodEnd ? periodEnd > new Date() : true;
       if (!statusActive || !periodValid) {
-        this.showSubscriptionExpiredOverlay();
+        this.showSubscriptionExpiredOverlay(this.subscription.status);
       }
     }
   }
@@ -904,9 +907,25 @@ class CadenceApp {
    * NOTE: This method is only ever called for teachers.  Students are
    * intentionally not gated by subscription status.
    */
-  showSubscriptionExpiredOverlay() {
+  showSubscriptionExpiredOverlay(status) {
     const overlay = document.getElementById('subscription-expired-overlay');
     if (!overlay) return;
+
+    const trialEnded = status === 'trialing';
+    const titleEl = overlay.querySelector('#sub-expired-title');
+    const bodyEl  = overlay.querySelector('#sub-expired-body');
+    const ctaEl   = overlay.querySelector('.sub-expired-cta');
+
+    if (trialEnded) {
+      if (titleEl) titleEl.textContent = 'Your free trial has ended';
+      if (bodyEl)  bodyEl.textContent  = 'Your 90-day free trial has expired. Subscribe now to keep access to your classes and student progress.';
+      if (ctaEl)   ctaEl.href = 'subscribe.html?trial_ended=1';
+    } else {
+      if (titleEl) titleEl.textContent = 'Your subscription has expired';
+      if (bodyEl)  bodyEl.textContent  = 'Your Cadence subscription is no longer active. Renew now to restore full access to your classes, students, and school dashboard.';
+      if (ctaEl)   ctaEl.href = 'subscribe.html?expired=1';
+    }
+
     overlay.classList.remove('hidden');
 
     // Wire up the sign-out button inside the overlay (if not already wired)

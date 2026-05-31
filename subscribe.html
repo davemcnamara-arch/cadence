@@ -301,10 +301,10 @@
         <p class="tagline">Music learning platform: <span style="white-space: nowrap">student choice, teacher insight.</span></p>
       </div>
 
-      <!-- Shown when redirected from login with a lapsed/cancelled subscription -->
+      <!-- Shown when redirected from the app with a lapsed or ended trial -->
       <div id="expired-banner" class="expired-banner hidden">
         <span class="expired-banner-icon">⚠️</span>
-        <span>Your subscription has expired &mdash; renew below to continue.</span>
+        <span id="expired-banner-text">Your subscription has expired &mdash; renew below to continue.</span>
       </div>
 
       <div class="subscribe-card">
@@ -368,9 +368,13 @@
   <script type="module">
     import { supabase } from './js/config.js';
 
-    // Show expired banner if redirected from login with lapsed subscription
+    // Show banner if redirected from the app after trial ended or subscription lapsed
     const params = new URLSearchParams(window.location.search);
-    if (params.get('expired') === '1') {
+    if (params.get('trial_ended') === '1') {
+      document.getElementById('expired-banner-text').textContent =
+        'Your 90-day free trial has ended — subscribe below to keep access.';
+      document.getElementById('expired-banner').classList.remove('hidden');
+    } else if (params.get('expired') === '1') {
       document.getElementById('expired-banner').classList.remove('hidden');
     }
 
