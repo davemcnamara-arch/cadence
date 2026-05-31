@@ -724,8 +724,9 @@ class CadenceApp {
         // Their role is NOT changed in the DB; this is a pure UI gate.
         this.showSubscriptionExpiredOverlay(subResult.status);
         // Fall through so the app shell (header, etc.) still renders correctly.
-      } else if (subResult.status === 'trialing' && subResult.currentPeriodEnd) {
-        // Active promo trial — show a countdown banner so the teacher knows when it ends.
+      } else if (subResult.status === 'trialing' && subResult.currentPeriodEnd && subResult.sub?.plan_type !== 'school') {
+        // Show countdown only for individual plan trials — school plan teachers
+        // don't manage their own subscription, so the banner is just noise.
         const msLeft = subResult.currentPeriodEnd - new Date();
         const daysRemaining = Math.max(0, Math.floor(msLeft / (1000 * 60 * 60 * 24)));
         this.showTrialBanner(daysRemaining);
