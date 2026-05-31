@@ -719,7 +719,7 @@ class CadenceApp {
       } else if (subResult.status === 'trialing' && subResult.currentPeriodEnd) {
         // Active promo trial — show a countdown banner so the teacher knows when it ends.
         const msLeft = subResult.currentPeriodEnd - new Date();
-        const daysRemaining = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
+        const daysRemaining = Math.max(0, Math.floor(msLeft / (1000 * 60 * 60 * 24)));
         this.showTrialBanner(daysRemaining);
       }
 
