@@ -697,11 +697,10 @@ class CadenceApp {
     // ungated from subscription status (see task spec §3: Student passthrough).
     const freshSubscription = new URLSearchParams(window.location.search).get('subscribed') === '1';
     let freshPlanType;
+    let subResult;
     if (user.role === 'teacher') {
       // Auto-create a 90-day individual trial for teachers with no subscription (idempotent).
       try { await auth.rpcDirect('create_teacher_auto_trial', {}); } catch (e) { /* non-fatal */ }
-
-      let subResult;
       // After a successful checkout Stripe's webhook may take a moment to process;
       // retry a few times before giving up so we don't bounce the user back to /subscribe.
       const maxAttempts = freshSubscription ? 6 : 1;
