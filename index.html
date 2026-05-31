@@ -28,22 +28,7 @@
       // Forward OAuth callback to app.html before anything renders
       if (window.location.hash && window.location.hash.includes('access_token')) {
         window.location.replace('app.html' + window.location.hash);
-        return;
       }
-      // Redirect already-signed-in users
-      try {
-        var key = Object.keys(localStorage).find(function (k) {
-          return k.startsWith('sb-') && k.endsWith('-auth-token');
-        });
-        if (key) {
-          var s = JSON.parse(localStorage.getItem(key));
-          // Redirect if a refresh token exists — the access token may be expired
-          // but app.html's Supabase SDK will refresh it automatically
-          if (s && s.refresh_token) {
-            window.location.replace('app.html');
-          }
-        }
-      } catch (e) {}
     })();
   </script>
   <style>
