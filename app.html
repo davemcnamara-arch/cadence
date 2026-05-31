@@ -1860,8 +1860,33 @@
   <div id="school-onboarding-modal" class="modal hidden">
     <div class="modal-content modal-small">
       <div class="modal-body" style="text-align: center; padding: 2rem 1.5rem;">
-        <!-- Step 1: Name input -->
-        <div id="school-onboarding-setup">
+
+        <!-- Step 0: Choice -->
+        <div id="school-onboarding-choice">
+          <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🏫</div>
+          <h2 style="margin-bottom: 0.5rem;">Set up school access</h2>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
+            Your 90-day trial includes the School plan. How would you like to use it?
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 0.625rem; text-align: left;">
+            <button type="button" id="school-onboarding-create-btn" class="btn btn-primary" style="display:flex;flex-direction:column;align-items:flex-start;padding:0.875rem 1rem;">
+              <span style="font-weight:600;">🏫 Create my school</span>
+              <span style="font-size:0.78rem;font-weight:400;opacity:0.85;margin-top:0.1rem;">Name it and invite other teachers</span>
+            </button>
+            <button type="button" id="school-onboarding-join-btn" class="btn btn-secondary" style="display:flex;flex-direction:column;align-items:flex-start;padding:0.875rem 1rem;">
+              <span style="font-weight:600;">🔗 Join an existing school</span>
+              <span style="font-size:0.78rem;font-weight:400;opacity:0.75;margin-top:0.1rem;">Your school is already on Cadence</span>
+            </button>
+            <button type="button" id="school-onboarding-individual-btn" class="btn btn-secondary" style="display:flex;flex-direction:column;align-items:flex-start;padding:0.875rem 1rem;">
+              <span style="font-weight:600;">👤 Use as individual teacher</span>
+              <span style="font-size:0.78rem;font-weight:400;opacity:0.75;margin-top:0.1rem;">Just for me, up to 25 students</span>
+            </button>
+          </div>
+          <button type="button" id="school-onboarding-later-btn" class="btn btn-ghost" style="font-size:0.8rem;margin-top:0.875rem;width:100%;">Decide later</button>
+        </div>
+
+        <!-- Step 1: Name your school -->
+        <div id="school-onboarding-setup" class="hidden">
           <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🏫</div>
           <h2 style="margin-bottom: 0.5rem;">Name your school</h2>
           <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
@@ -1873,10 +1898,28 @@
           </div>
           <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1.25rem;">
             <button type="button" id="school-onboarding-save-btn" class="btn btn-primary">Save &amp; Continue</button>
-            <button type="button" id="school-onboarding-skip-btn" class="btn btn-ghost" style="font-size: 0.85rem;">Skip for now</button>
+            <button type="button" id="school-onboarding-setup-back-btn" class="btn btn-ghost" style="font-size: 0.85rem;">← Back</button>
           </div>
         </div>
-        <!-- Step 2: Success + join code -->
+
+        <!-- Step 1b: Join an existing school -->
+        <div id="school-onboarding-join" class="hidden">
+          <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🔗</div>
+          <h2 style="margin-bottom: 0.5rem;">Join a school</h2>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
+            Enter the join code your school admin shared with you.
+          </p>
+          <div class="form-group" style="text-align: left;">
+            <label for="school-onboarding-join-input">Join Code</label>
+            <input type="text" id="school-onboarding-join-input" placeholder="e.g., ABC123" maxlength="10" style="text-transform:uppercase;letter-spacing:0.1em;">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1.25rem;">
+            <button type="button" id="school-onboarding-join-submit-btn" class="btn btn-primary">Join School</button>
+            <button type="button" id="school-onboarding-join-back-btn" class="btn btn-ghost" style="font-size: 0.85rem;">← Back</button>
+          </div>
+        </div>
+
+        <!-- Step 2: Success + join code (after creating a school) -->
         <div id="school-onboarding-success" class="hidden">
           <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">✅</div>
           <h2 style="margin-bottom: 0.5rem;">School created!</h2>
@@ -1889,6 +1932,7 @@
           </div>
           <button type="button" id="school-onboarding-done-btn" class="btn btn-primary" style="width: 100%;">Go to app</button>
         </div>
+
       </div>
     </div>
   </div>

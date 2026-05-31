@@ -644,8 +644,14 @@ class CadenceApp {
     }
 
     // School Onboarding modal
+    document.getElementById('school-onboarding-create-btn')?.addEventListener('click', () => this.showSchoolOnboardingModal('setup'));
+    document.getElementById('school-onboarding-join-btn')?.addEventListener('click', () => this.showSchoolOnboardingModal('join'));
+    document.getElementById('school-onboarding-individual-btn')?.addEventListener('click', () => this.switchTrialToIndividual());
+    document.getElementById('school-onboarding-later-btn')?.addEventListener('click', () => this.hideSchoolOnboardingModal());
+    document.getElementById('school-onboarding-setup-back-btn')?.addEventListener('click', () => this.showSchoolOnboardingModal('choice'));
+    document.getElementById('school-onboarding-join-back-btn')?.addEventListener('click', () => this.showSchoolOnboardingModal('choice'));
     document.getElementById('school-onboarding-save-btn')?.addEventListener('click', () => this.saveSchoolOnboarding());
-    document.getElementById('school-onboarding-skip-btn')?.addEventListener('click', () => this.hideSchoolOnboardingModal());
+    document.getElementById('school-onboarding-join-submit-btn')?.addEventListener('click', () => this.joinSchoolOnboarding());
     document.getElementById('school-onboarding-done-btn')?.addEventListener('click', () => this.hideSchoolOnboardingModal());
     document.getElementById('school-onboarding-copy-btn')?.addEventListener('click', () => {
       const code = document.getElementById('school-onboarding-join-code')?.textContent;
@@ -653,6 +659,9 @@ class CadenceApp {
     });
     document.getElementById('school-onboarding-name')?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') this.saveSchoolOnboarding();
+    });
+    document.getElementById('school-onboarding-join-input')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') this.joinSchoolOnboarding();
     });
   }
 
@@ -785,8 +794,12 @@ class CadenceApp {
       // Switch to saved view or teacher's default view
       this.switchView(restoredView || 'classes');
 
-      // After a fresh school plan subscription, prompt to name the school
-      if (freshSubscription && freshPlanType === 'school') {
+      // Show school setup modal after a fresh Stripe school checkout, or whenever
+      // a school-plan trial teacher hasn't set up or joined a school yet.
+      const isSchoolTrial = subResult.sub?.plan_type === 'school'
+        && subResult.status === 'trialing'
+        && !subResult.sub?.stripe_subscription_id;
+      if ((freshSubscription && freshPlanType === 'school') || isSchoolTrial) {
         await this.maybeShowSchoolOnboarding();
       }
     } else if (user.role === 'admin') {
@@ -12134,25 +12147,38 @@ class CadenceApp {
     const { data: schools } = await supabase.rpc('get_my_schools');
     const schoolList = Array.isArray(schools) ? schools : [];
 
-    // No school yet (webhook school creation failed) OR default-named placeholder
-    const needsSetup = schoolList.length === 0 ||
-      (schoolList.length === 1 && schoolList[0].name === 'My School');
-
-    if (!needsSetup) return;
-
-    this._onboardingSchool = schoolList[0] || null;
-    this.showSchoolOnboardingModal();
+    if (schoolList.length === 0) {
+      // No school at all — show the full choice screen
+      this._onboardingSchool = null;
+      this.showSchoolOnboardingModal('choice');
+    } else if (schoolList.length === 1 && schoolList[0].name === 'My School') {
+      // Default-named placeholder (old webhook behaviour) — skip straight to naming
+      this._onboardingSchool = schoolList[0];
+      this.showSchoolOnboardingModal('setup');
+    }
+    // else: already set up, nothing to do
   }
 
-  showSchoolOnboardingModal() {
+  showSchoolOnboardingModal(step = 'choice') {
     const modal = document.getElementById('school-onboarding-modal');
     if (!modal) return;
-    // Reset to setup step
-    document.getElementById('school-onboarding-setup')?.classList.remove('hidden');
-    document.getElementById('school-onboarding-success')?.classList.add('hidden');
-    document.getElementById('school-onboarding-name').value = '';
+    // Hide all steps
+    ['choice', 'setup', 'join', 'success'].forEach(s =>
+      document.getElementById(`school-onboarding-${s}`)?.classList.add('hidden')
+    );
+    // Reset inputs
+    const nameInput = document.getElementById('school-onboarding-name');
+    const joinInput = document.getElementById('school-onboarding-join-input');
+    if (step === 'choice') {
+      if (nameInput) nameInput.value = '';
+      if (joinInput) joinInput.value = '';
+    }
+    // Show target step
+    document.getElementById(`school-onboarding-${step}`)?.classList.remove('hidden');
     modal.classList.remove('hidden');
-    setTimeout(() => document.getElementById('school-onboarding-name')?.focus(), 50);
+    // Focus the relevant input
+    if (step === 'setup') setTimeout(() => nameInput?.focus(), 50);
+    if (step === 'join')  setTimeout(() => joinInput?.focus(), 50);
   }
 
   hideSchoolOnboardingModal() {
@@ -12160,6 +12186,46 @@ class CadenceApp {
     this._onboardingSchool = null;
     // Refresh school view in case one was created
     if (this.currentView === 'school') this.loadSchoolView();
+  }
+
+  async switchTrialToIndividual() {
+    const btn = document.getElementById('school-onboarding-individual-btn');
+    if (btn) btn.disabled = true;
+    try {
+      const { data, error } = await supabase.rpc('switch_trial_to_individual');
+      if (error) throw error;
+      if (this.subscription) this.subscription.plan_type = 'individual';
+      this.hideSchoolOnboardingModal();
+      this.showToast('Switched to individual plan — you can upgrade to School plan any time.', 'success');
+      this.renderPlanBanner();
+    } catch (e) {
+      this.showToast('Could not switch plan — please try again', 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async joinSchoolOnboarding() {
+    const input = document.getElementById('school-onboarding-join-input');
+    const code  = input?.value?.trim()?.toUpperCase();
+    if (!code) {
+      this.showToast('Please enter a join code', 'error');
+      input?.focus();
+      return;
+    }
+    const btn = document.getElementById('school-onboarding-join-submit-btn');
+    if (btn) btn.disabled = true;
+    try {
+      const { data, error } = await supabase.rpc('join_school', { p_join_code: code });
+      if (error || !data?.success) throw new Error(data?.message || 'Invalid join code — check with your school admin');
+      this.hideSchoolOnboardingModal();
+      this.showToast("You've joined the school!", 'success');
+      await this.initHeaderSchoolContext();
+    } catch (e) {
+      this.showToast(e.message || 'Could not join school', 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   }
 
   async saveSchoolOnboarding() {

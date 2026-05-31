@@ -155,7 +155,11 @@ Available under the **School** tab:
 - **Promo codes** — school plan promo codes can be redeemed via the Subscribe page to upgrade an existing individual trial to a School plan trial. Individual promo codes cannot be redeemed if a trial already exists.
 
 ### School Onboarding
-After subscribing to the School plan, a setup modal asks you to name your school and generates a **school join code** to share with other teachers at your school.
+On first login, teachers on a School plan trial see a setup modal with three options:
+- **Create my school** — name the school and receive a join code to share with other teachers
+- **Join an existing school** — enter a join code from a school admin
+- **Use as individual teacher** — switches the trial to the Individual plan (up to 25 students)
+- **Decide later** — dismisses the modal; it will reappear on next login until a choice is made
 
 ---
 
