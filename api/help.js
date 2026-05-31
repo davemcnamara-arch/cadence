@@ -32,7 +32,7 @@ Cadence is a music learning platform: student choice, teacher insight. for stude
 - **Teaching** dropdown → **Classes** (class management) and **Student Songs** (what your students are learning)
 - **Review** — flagged ratings review with pending resource and tutorial approvals
 - **School** — school-wide dashboard (School plan only)
-- **Management** dropdown → **Accounts** (user management) and **Admin** (content and school management)
+- **Management** dropdown → **Accounts** (user management) and **Admin** (content and school management) — the **Admin** tab shows a red badge with the count of unassigned students
 - **Song Library** — shared with students
 
 ---
@@ -171,7 +171,7 @@ On first login, teachers on a School plan trial see a setup modal with three opt
 3. **Content Moderation** — approve, unapprove, or delete submitted songs; filter by approval status
 4. **User Management** — view all users, filter by role, change roles, create pre-registered teacher accounts
 5. **School** — create/manage schools, set subscription status/plan/expiry, assign teachers and students, view school dashboards
-6. **Unassigned Students** — view students not enrolled in any class
+6. **Unassigned Students** — view students not enrolled in any class; each row has an **"Add to Class"** button that opens a modal listing all active classes grouped by school (with teacher attribution) so the admin can enrol the student directly
 
 ### Subscription Override
 Teachers can manually set a subscription status, plan type, and expiry date using the **"Override Subscription"** modal.
