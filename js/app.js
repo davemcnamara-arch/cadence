@@ -12005,7 +12005,14 @@ class CadenceApp {
 
     const rows = students.map(s => `
       <tr>
-        <td>${this.escapeHtml(s.name || '—')}</td>
+        <td>
+          <span style="cursor:pointer;color:var(--primary);font-weight:500;"
+                data-student-id="${s.id}"
+                data-student-name="${this.escapeHtml(s.name || s.email)}"
+                onclick="app.viewStudentDetail(this.dataset.studentId, this.dataset.studentName)">
+            ${this.escapeHtml(s.name || '—')}
+          </span>
+        </td>
         <td style="color:var(--text-secondary);">${this.escapeHtml(s.email)}</td>
         <td style="color:var(--text-secondary);font-size:0.82rem;">${formatDate(s.created_at)}</td>
         <td style="color:var(--text-secondary);font-size:0.82rem;">${formatDate(s.last_sign_in)}</td>
