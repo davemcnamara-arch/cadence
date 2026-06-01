@@ -9772,7 +9772,7 @@ class CadenceApp {
 
     const users = usersRes.data || [];
     const students = users.filter(u => u.role === 'student').length;
-    const teachers = users.filter(u => u.role === 'teacher' || u.role === 'admin').length;
+    const teachers = users.filter(u => u.role === 'teacher').length;
 
     this.adminStats = {
       students,
