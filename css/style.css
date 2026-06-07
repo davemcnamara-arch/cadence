@@ -2335,6 +2335,23 @@ body {
   vertical-align: middle;
 }
 
+.admin-class-roster {
+  border-top: 1px solid var(--border-color);
+  padding-top: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.admin-class-roster-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.admin-class-roster .roster-item {
+  cursor: default;
+  padding: 0.75rem;
+}
+
 /* Progress Heatmap */
 .progress-heatmap {
   overflow-x: auto;

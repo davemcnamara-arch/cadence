@@ -170,7 +170,7 @@ On first login, teachers on a School plan trial see a setup modal with three opt
 2. **Instruments** — create, edit (name, emoji icon, description, display order), or delete instruments
 3. **Content Moderation** — approve, unapprove, or delete submitted songs; filter by approval status
 4. **User Management** — view all users, filter by role, change roles, create pre-registered teacher accounts
-5. **School** — create/manage schools, set subscription status/plan/expiry, assign teachers and students, view school dashboards
+5. **School** — create/manage schools, set subscription status/plan/expiry, assign teachers and students, view school dashboards; in the school's **Classes** tab, click a class (or its "View Students" button) to expand and see its enrolled students and any pending (not-yet-joined) students inline
 6. **Unassigned Students** — view students not enrolled in any class; each row has an **"Add to Class"** button that opens a modal listing all active classes grouped by school (with teacher attribution) so the admin can enrol the student directly
 
 ### Subscription Override

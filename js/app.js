@@ -12936,27 +12936,117 @@ class CadenceApp {
     container.innerHTML = classes.map(cls => {
       const archivedBadge = cls.archived ? '<span class="class-archived-badge">ARCHIVED</span>' : '';
       const yearLabel = cls.year_level ? `<span class="class-row-meta-label">${cls.year_level}</span>` : '';
+      const pendingLabel = cls.pending_count > 0 ? ` (${cls.pending_count} pending)` : '';
       return `
-        <div class="school-teacher-card" style="align-items:center;">
-          <div class="school-teacher-info" style="flex:1;">
-            <div class="school-teacher-name">${cls.name} ${archivedBadge}</div>
-            <div class="school-teacher-meta">
-              ${yearLabel}
-              Teacher: ${cls.teacher_name || '—'} &nbsp;·&nbsp;
-              Code: <strong>${cls.class_code}</strong> &nbsp;·&nbsp;
-              ${cls.student_count} student${cls.student_count !== 1 ? 's' : ''}
+        <div class="school-teacher-card" style="flex-direction:column;align-items:stretch;gap:0.5rem;">
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <div class="school-teacher-info" style="flex:1;cursor:pointer;" onclick="app.toggleAdminClassRoster('${cls.id}')">
+              <div class="school-teacher-name">${cls.name} ${archivedBadge}</div>
+              <div class="school-teacher-meta">
+                ${yearLabel}
+                Teacher: ${cls.teacher_name || '—'} &nbsp;·&nbsp;
+                Code: <strong>${cls.class_code}</strong> &nbsp;·&nbsp;
+                ${cls.student_count} student${cls.student_count !== 1 ? 's' : ''}${pendingLabel}
+              </div>
+            </div>
+            <div style="display:flex;gap:0.5rem;flex-shrink:0;">
+              <button class="btn btn-secondary btn-sm" onclick="app.toggleAdminClassRoster('${cls.id}')">View Students</button>
+              ${cls.archived
+                ? `<button class="btn btn-secondary btn-sm" onclick="app.adminUnarchiveSchoolClass('${cls.id}')">Unarchive</button>`
+                : `<button class="btn btn-secondary btn-sm" onclick="app.adminArchiveSchoolClass('${cls.id}', '${cls.name.replace(/'/g, "\\'")}')">Archive</button>`
+              }
+              <button class="btn btn-danger btn-sm" onclick="app.adminDeleteSchoolClass('${cls.id}', '${cls.name.replace(/'/g, "\\'")}')">Delete</button>
             </div>
           </div>
-          <div style="display:flex;gap:0.5rem;flex-shrink:0;">
-            ${cls.archived
-              ? `<button class="btn btn-secondary btn-sm" onclick="app.adminUnarchiveSchoolClass('${cls.id}')">Unarchive</button>`
-              : `<button class="btn btn-secondary btn-sm" onclick="app.adminArchiveSchoolClass('${cls.id}', '${cls.name.replace(/'/g, "\\'")}')">Archive</button>`
-            }
-            <button class="btn btn-danger btn-sm" onclick="app.adminDeleteSchoolClass('${cls.id}', '${cls.name.replace(/'/g, "\\'")}')">Delete</button>
-          </div>
+          <div id="admin-class-roster-${cls.id}" class="admin-class-roster hidden"></div>
         </div>
       `;
     }).join('');
+  }
+
+  async toggleAdminClassRoster(classId) {
+    const container = document.getElementById(`admin-class-roster-${classId}`);
+    if (!container) return;
+
+    if (!container.classList.contains('hidden')) {
+      container.classList.add('hidden');
+      return;
+    }
+
+    container.classList.remove('hidden');
+
+    if (container.dataset.loaded === 'true') return;
+
+    container.innerHTML = '<p style="color:var(--text-secondary);padding:0.75rem;">Loading students...</p>';
+
+    try {
+      const [studentsResult, pendingResult] = await Promise.all([
+        this.callRpcDirect('get_class_students', { p_class_id: classId })
+          .catch(err => ({ data: null, error: err })),
+        this.callRpcDirect('get_pending_enrollments', { p_class_id: classId })
+          .catch(err => ({ data: null, error: err }))
+      ]);
+
+      const students = studentsResult.error ? [] : (studentsResult.data || []);
+      const pending = pendingResult.error ? [] : (pendingResult.data || []);
+
+      this.renderAdminClassRoster(container, students, pending);
+      container.dataset.loaded = 'true';
+    } catch (err) {
+      console.error('Error loading admin class roster:', err);
+      container.innerHTML = '<p style="color:var(--error-color);padding:0.75rem;">Failed to load students</p>';
+    }
+  }
+
+  renderAdminClassRoster(container, students, pending) {
+    if (!students.length && !pending.length) {
+      container.innerHTML = '<p style="color:var(--text-secondary);padding:0.75rem;">No students enrolled yet.</p>';
+      return;
+    }
+
+    const activeHtml = students.map(member => {
+      const student = member.users;
+      const progress = member.student_progress || [];
+      const instruments = progress.map(p => {
+        const inst = this.instruments.find(i => i.id === p.instrument_id);
+        return inst ? inst.icon : '';
+      }).join(' ');
+      const escapedName = (student.name || '').replace(/'/g, "\\'");
+
+      return `
+        <div class="roster-item" data-student-id="${student.id}">
+          <div class="roster-student-info" onclick="app.viewStudentDetail('${student.id}', '${escapedName}')" style="cursor:pointer;flex:1;">
+            <div class="roster-student-name">${this.escapeHtml(student.name)}</div>
+            <div class="roster-student-meta">
+              ${this.escapeHtml(student.email || '')} &nbsp;·&nbsp;
+              ${progress.length} instrument${progress.length !== 1 ? 's' : ''}
+              • Joined ${new Date(member.joined_at).toLocaleDateString()}
+            </div>
+          </div>
+          <div class="roster-student-instruments">${instruments}</div>
+        </div>
+      `;
+    }).join('');
+
+    const pendingHtml = pending.map(enrollment => {
+      const displayName = enrollment.email.split('@')[0];
+      return `
+        <div class="roster-item roster-item-pending">
+          <div class="roster-student-info" style="flex:1;">
+            <div class="roster-student-name">
+              ${this.escapeHtml(displayName)}
+              <span class="roster-pending-badge">Pending</span>
+            </div>
+            <div class="roster-student-meta">
+              ${this.escapeHtml(enrollment.email)} • Added ${new Date(enrollment.created_at).toLocaleDateString()}
+            </div>
+          </div>
+          <div class="roster-student-instruments" style="color:var(--text-secondary);font-size:0.875rem;">Awaiting login</div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = `<div class="admin-class-roster-list">${activeHtml}${pendingHtml}</div>`;
   }
 
   async adminArchiveSchoolClass(classId, className) {
