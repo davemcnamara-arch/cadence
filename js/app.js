@@ -2894,11 +2894,7 @@ class CadenceApp {
     const user = auth.getCurrentUser();
     const isStudent = user.role === 'student' || this.previewMode.active;
 
-    // Check whether there is at least one instrument not yet rated for this song
     const studentInstrumentIds = (this.studentProgress || []).map(p => p.instrument_id);
-    const canGradeForNewInstrument = isStudent
-      ? studentInstrumentIds.some(id => !ratedInstrumentIds.includes(id))
-      : true;
 
     // Check if student is already tracking this song for the displayed instrument
     const cardInstrumentId = instrument?.id || this.currentInstrument;
@@ -2942,9 +2938,16 @@ class CadenceApp {
         </div>`;
     }
 
-    // Build instrument display - dropdown if multiple, static tag if single
+    // For students, surface instruments they're learning that this song hasn't been
+    // graded for yet, as "Grade for X" shortcuts in the instrument dropdown
+    const ungradedStudentInstrumentIds = isStudent
+      ? studentInstrumentIds.filter(id => !ratedInstrumentIds.includes(id))
+      : [];
+
+    // Build instrument display - dropdown when there's more than one option to pick
+    // from (multiple rated instruments and/or "Grade for X" shortcuts), static tag otherwise
     let instrumentDisplay = '';
-    if (hasMultipleInstruments) {
+    if (hasMultipleInstruments || ungradedStudentInstrumentIds.length > 0) {
       // Build dropdown with all rated instruments
       const instrumentOptions = ratedInstrumentIds.map(instId => {
         const inst = this.instruments.find(i => i.id === instId);
@@ -2968,6 +2971,16 @@ class CadenceApp {
         return `<option value="${inst.id}" ${isSelected ? 'selected' : ''}>${inst.icon} ${instName}</option>`;
       }).join('');
 
+      // Append "Grade for X" shortcuts for instruments the student plays but
+      // hasn't graded this song for yet
+      const gradeOptions = ungradedStudentInstrumentIds.map(instId => {
+        const inst = this.instruments.find(i => i.id === instId);
+        if (!inst) return '';
+        const progress = this.studentProgress.find(p => p.instrument_id === instId);
+        const instName = this.getProgressDisplayName(progress) || inst.name;
+        return `<option value="grade-new:${inst.id}">${inst.icon} Grade for ${instName} →</option>`;
+      }).join('');
+
       // Store ratings data as JSON for the change handler
       const ratingsData = JSON.stringify(song.song_ratings || []).replace(/"/g, '&quot;');
 
@@ -2977,6 +2990,7 @@ class CadenceApp {
                 onclick="event.stopPropagation()"
                 data-ratings="${ratingsData}">
           ${instrumentOptions}
+          ${gradeOptions}
         </select>
       `;
     } else if (instrument) {
@@ -3035,9 +3049,6 @@ class CadenceApp {
           <button class="btn btn-secondary btn-resources ${song.resource_count > 0 ? 'has-resources' : ''}" onclick="event.stopPropagation(); app.showSongResourcesModal('${song.id}', '${instrument?.id || ''}')" title="View learning resources">
             Learning Resources${song.resource_count > 0 ? ` <span class="resource-count">${song.resource_count}</span>` : ''}
           </button>
-          ${isStudent && canGradeForNewInstrument ? `
-            <button class="btn btn-secondary btn-add" onclick="event.stopPropagation(); app.showSongGradingModalForSong('${song.id}')" title="Grade this song for an instrument it hasn't been rated for yet">+ Add for New Instrument</button>
-          ` : ''}
         </div>
       </div>
     `;
@@ -3057,6 +3068,16 @@ class CadenceApp {
 
   // Handle instrument change on song card dropdown
   onSongCardInstrumentChange(songId, instrumentId, selectElement) {
+    // "Grade for X" shortcut: open the grading modal pre-filled for this song/instrument,
+    // then revert the dropdown to its previous selection (we didn't actually switch instrument)
+    if (instrumentId.startsWith('grade-new:')) {
+      const gradeInstrumentId = instrumentId.slice('grade-new:'.length);
+      const previousOption = [...selectElement.options].find(o => !o.value.startsWith('grade-new:') && o.defaultSelected);
+      selectElement.value = previousOption ? previousOption.value : selectElement.options[0]?.value;
+      this.showSongGradingModalForSong(songId, gradeInstrumentId);
+      return;
+    }
+
     // Get ratings data from the select element
     const ratingsData = selectElement.dataset.ratings;
     let allRatings = [];
@@ -3973,11 +3994,19 @@ class CadenceApp {
     this.updateGradingStep();
   }
 
-  async showSongGradingModalForSong(songId) {
+  async showSongGradingModalForSong(songId, instrumentId) {
     const song = this.songs?.find(s => s.id === songId);
     if (!song) return;
 
     this.showSongGradingModal();
+
+    // Pre-select the instrument when one was specified (e.g. from the "Grade for X"
+    // option in the song card / resources modal instrument dropdown)
+    const gradingInstrumentSelect = document.getElementById('grading-instrument');
+    if (instrumentId && gradingInstrumentSelect?.querySelector(`option[value="${instrumentId}"]`)) {
+      gradingInstrumentSelect.value = instrumentId;
+      this.updateChordsLabel();
+    }
 
     // Pre-fill and lock song identity so the user can't accidentally change which song they're grading
     const titleEl = document.getElementById('song-title');
@@ -11098,13 +11127,29 @@ class CadenceApp {
       const gradedInstruments = this.instruments.filter(i => ratedInstrumentIds.includes(i.id));
       const instrumentsToShow = gradedInstruments.length > 0 ? gradedInstruments : this.instruments;
 
-      filterSelect.innerHTML = instrumentsToShow.map(i =>
+      const optionsHtml = instrumentsToShow.map(i =>
         `<option value="${i.id}">${i.icon} ${i.name}</option>`
       ).join('');
 
+      // Append "Grade for X" shortcuts for instruments the student plays but
+      // hasn't graded this song for yet
+      const isStudentView = (auth.getCurrentUser()?.role === 'student') || this.previewMode.active;
+      const studentInstrumentIds = (this.studentProgress || []).map(p => p.instrument_id);
+      const gradeOptionsHtml = isStudentView
+        ? studentInstrumentIds.filter(id => !ratedInstrumentIds.includes(id)).map(instId => {
+            const inst = this.instruments.find(i => i.id === instId);
+            if (!inst) return '';
+            const progress = this.studentProgress.find(p => p.instrument_id === instId);
+            const instName = this.getProgressDisplayName(progress) || inst.name;
+            return `<option value="grade-new:${inst.id}">${inst.icon} Grade for ${instName} →</option>`;
+          }).join('')
+        : '';
+
+      filterSelect.innerHTML = optionsHtml + gradeOptionsHtml;
+
       // Default to passed instrument first, then current instrument, then first option
-      const preferredInstrumentId = instrumentId || this.currentInstrument;
-      if (preferredInstrumentId) {
+      const preferredInstrumentId = (instrumentId && !instrumentId.startsWith('grade-new:')) ? instrumentId : this.currentInstrument;
+      if (preferredInstrumentId && filterSelect.querySelector(`option[value="${preferredInstrumentId}"]`)) {
         filterSelect.value = preferredInstrumentId;
       }
       // else: leave the select at its first option (first graded instrument)
@@ -11136,6 +11181,21 @@ class CadenceApp {
   // Handle instrument filter change in resources modal
   async onResourcesInstrumentChange() {
     if (!this.currentResourceSong) return;
+
+    const filterSelect = document.getElementById('resources-instrument-filter');
+    const selectedValue = filterSelect?.value || '';
+
+    // "Grade for X" shortcut: open the grading modal pre-filled for this song/instrument,
+    // then revert the filter to its previous (non-shortcut) selection
+    if (selectedValue.startsWith('grade-new:')) {
+      const gradeInstrumentId = selectedValue.slice('grade-new:'.length);
+      const songId = this.currentResourceSong.id;
+      const previousOption = [...filterSelect.options].find(o => !o.value.startsWith('grade-new:'));
+      if (previousOption) filterSelect.value = previousOption.value;
+      document.getElementById('song-resources-modal').classList.add('hidden');
+      this.showSongGradingModalForSong(songId, gradeInstrumentId);
+      return;
+    }
 
     // Reload resources with new instrument filter
     await this.loadStudentResources(this.currentResourceSong.id);

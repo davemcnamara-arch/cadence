@@ -63,7 +63,7 @@ Cadence is a music learning platform: student choice, teacher insight. for stude
 - Each song card shows average level ratings from all students; the badge shows how many students are currently learning it (hover to see the full learning + mastered breakdown)
 - **"Start Learning"** — adds a song to your Currently Learning list
 - **"Learning Resources"** — opens a modal with all teaching resources for that song (YouTube links, chords, tabs, tutorials, student-submitted resources). You can also submit your own resource links here for teacher approval.
-- **"Add for New Instrument"** — appears on a song card when you track an instrument that the song hasn't been rated for yet. Opens the **"Grade a Song"** wizard with the song's title, artist, and URLs pre-filled so you can grade it for your other instrument.
+- **Instrument dropdown on a song card** (or in the **"Learning Resources"** modal's instrument filter) — besides switching between instruments the song has been rated for, it also lists a **"Grade for [instrument] →"** option for any instrument you track that the song hasn't been rated for yet. Selecting it opens the **"Grade a Song"** wizard with the song's title, artist, and URLs pre-filled (and that instrument pre-selected) so you can grade it for your other instrument.
 - **"+ Add New Song"** — opens the **"Grade a Song"** wizard to submit a new song
 
 ### Grading a Song ("Grade a Song" — 3-step wizard)
