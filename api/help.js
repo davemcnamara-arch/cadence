@@ -131,7 +131,8 @@ Opened via the **"Learning Resources"** button on any song card.
 
 ### Song Cards (Teacher View)
 - **"Your Students"** section on song cards shows which of your students are learning or have mastered each song
-- A **⋯** button in the top-right of each card opens a menu with: **Add for New Instrument** (grade the song for an instrument not yet rated), **Delete Song**, **Edit Details**, and (School plan) **Hide from School** / **Release to School** / **Remove from School**
+- A **⋯** button in the top-right of each card opens a menu with: **Delete Song**, **Edit Details**, and (School plan) **Hide from School** / **Release to School** / **Remove from School**
+- The instrument dropdown on a song card (or in the **"Learning Resources"** modal's instrument filter) lists a **"Grade for [instrument] →"** shortcut for any instrument the song hasn't been rated for yet — teachers can pick any instrument (not just ones they teach), and selecting it opens the **"Grade a Song"** wizard pre-filled with that song and instrument
 
 ### Scan for Duplicates
 - **"Scan for Duplicates"** button in Song Library — identifies similar songs and allows merging them

@@ -2930,7 +2930,6 @@ class CadenceApp {
         <div class="song-card-menu-wrap">
           <button class="song-card-menu-btn" onclick="event.stopPropagation(); app.toggleSongCardMenu('${song.id}')" title="More options">&#x22EF;</button>
           <div class="song-card-menu-dropdown" id="song-menu-${song.id}">
-            <button class="song-card-menu-item" onclick="event.stopPropagation(); app.closeSongCardMenus(); app.showSongGradingModalForSong('${song.id}')">Add for New Instrument</button>
             <button class="song-card-menu-item" onclick="event.stopPropagation(); app.closeSongCardMenus(); app.editSongDetails('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}', ${song.suggested_level || 'null'})">Edit Details</button>
             ${schoolFilterItem}
             <button class="song-card-menu-item danger" onclick="event.stopPropagation(); app.closeSongCardMenus(); app.deleteSongFromLibrary('${song.id}', '${song.title.replace(/'/g, "\\'")}', '${song.artist.replace(/'/g, "\\'")}')")>Delete Song</button>
@@ -2938,16 +2937,20 @@ class CadenceApp {
         </div>`;
     }
 
-    // For students, surface instruments they're learning that this song hasn't been
-    // graded for yet, as "Grade for X" shortcuts in the instrument dropdown
-    const ungradedStudentInstrumentIds = isStudent
+    // Surface instruments this song hasn't been graded for yet as "Grade for X"
+    // shortcuts in the instrument dropdown. Students only see their own instruments
+    // (they can only grade what they play); teachers/admins can grade for any instrument.
+    const isTeacherOrAdmin = user.role === 'teacher' || user.role === 'admin';
+    const ungradedShortcutInstrumentIds = isStudent
       ? studentInstrumentIds.filter(id => !ratedInstrumentIds.includes(id))
-      : [];
+      : isTeacherOrAdmin
+        ? this.instruments.map(i => i.id).filter(id => !ratedInstrumentIds.includes(id))
+        : [];
 
     // Build instrument display - dropdown when there's more than one option to pick
     // from (multiple rated instruments and/or "Grade for X" shortcuts), static tag otherwise
     let instrumentDisplay = '';
-    if (hasMultipleInstruments || ungradedStudentInstrumentIds.length > 0) {
+    if (hasMultipleInstruments || ungradedShortcutInstrumentIds.length > 0) {
       // Build dropdown with all rated instruments
       const instrumentOptions = ratedInstrumentIds.map(instId => {
         const inst = this.instruments.find(i => i.id === instId);
@@ -2971,13 +2974,12 @@ class CadenceApp {
         return `<option value="${inst.id}" ${isSelected ? 'selected' : ''}>${inst.icon} ${instName}</option>`;
       }).join('');
 
-      // Append "Grade for X" shortcuts for instruments the student plays but
-      // hasn't graded this song for yet
-      const gradeOptions = ungradedStudentInstrumentIds.map(instId => {
+      // Append "Grade for X" shortcuts for instruments this song hasn't been graded for yet
+      const gradeOptions = ungradedShortcutInstrumentIds.map(instId => {
         const inst = this.instruments.find(i => i.id === instId);
         if (!inst) return '';
         const progress = this.studentProgress.find(p => p.instrument_id === instId);
-        const instName = this.getProgressDisplayName(progress) || inst.name;
+        const instName = (progress && this.getProgressDisplayName(progress)) || inst.name;
         return `<option value="grade-new:${inst.id}">${inst.icon} Grade for ${instName} →</option>`;
       }).join('');
 
@@ -11131,19 +11133,25 @@ class CadenceApp {
         `<option value="${i.id}">${i.icon} ${i.name}</option>`
       ).join('');
 
-      // Append "Grade for X" shortcuts for instruments the student plays but
-      // hasn't graded this song for yet
-      const isStudentView = (auth.getCurrentUser()?.role === 'student') || this.previewMode.active;
+      // Append "Grade for X" shortcuts for instruments this song hasn't been graded for yet.
+      // Students only see their own instruments (they can only grade what they play);
+      // teachers/admins can grade for any instrument.
+      const role = auth.getCurrentUser()?.role;
+      const isStudentView = role === 'student' || this.previewMode.active;
+      const isTeacherOrAdminView = (role === 'teacher' || role === 'admin') && !this.previewMode.active;
       const studentInstrumentIds = (this.studentProgress || []).map(p => p.instrument_id);
-      const gradeOptionsHtml = isStudentView
-        ? studentInstrumentIds.filter(id => !ratedInstrumentIds.includes(id)).map(instId => {
-            const inst = this.instruments.find(i => i.id === instId);
-            if (!inst) return '';
-            const progress = this.studentProgress.find(p => p.instrument_id === instId);
-            const instName = this.getProgressDisplayName(progress) || inst.name;
-            return `<option value="grade-new:${inst.id}">${inst.icon} Grade for ${instName} →</option>`;
-          }).join('')
-        : '';
+      const ungradedShortcutInstrumentIds = isStudentView
+        ? studentInstrumentIds.filter(id => !ratedInstrumentIds.includes(id))
+        : isTeacherOrAdminView
+          ? this.instruments.map(i => i.id).filter(id => !ratedInstrumentIds.includes(id))
+          : [];
+      const gradeOptionsHtml = ungradedShortcutInstrumentIds.map(instId => {
+        const inst = this.instruments.find(i => i.id === instId);
+        if (!inst) return '';
+        const progress = this.studentProgress.find(p => p.instrument_id === instId);
+        const instName = (progress && this.getProgressDisplayName(progress)) || inst.name;
+        return `<option value="grade-new:${inst.id}">${inst.icon} Grade for ${instName} →</option>`;
+      }).join('');
 
       filterSelect.innerHTML = optionsHtml + gradeOptionsHtml;
 
