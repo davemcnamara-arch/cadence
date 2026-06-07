@@ -68,6 +68,7 @@ Cadence is a music learning platform: student choice, teacher insight. for stude
 
 ### Grading a Song ("Grade a Song" — 3-step wizard)
 1. **Song Details**: title, artist, instrument, YouTube/Spotify URL, chords/tab URL, tutorial URL
+   - Teachers grading for **"Other Instrument"** (which covers many different student-named instruments like Violin, Cello, Ukulele) see an extra **"Which instrument?"** picker listing the custom names their students have created, so the wizard's labels (chords/tab heading, tutorial search, etc.) reflect the right instrument rather than a generic "Other Instrument"
 2. **Grade the Song**: answer a level-specific criteria checklist
 3. **Level Suggestion**: the app recommends a level based on your answers; you can accept or adjust
 

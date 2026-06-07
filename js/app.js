@@ -3577,6 +3577,7 @@ class CadenceApp {
     if (gradingInstrumentSelect) {
       gradingInstrumentSelect.addEventListener('change', () => {
         this.updateChordsLabel();
+        this.updateOtherInstrumentNameGroup();
         this.populateSimilarSongLinks();
       });
     }
@@ -3625,15 +3626,54 @@ class CadenceApp {
   }
 
   // Returns the display name for the instrument currently selected in the grading dropdown,
-  // using the student's custom_instrument_name when the instrument is "Other Instrument".
+  // using the student's custom_instrument_name when the instrument is "Other Instrument"
+  // (or the teacher's chosen name from the "Which instrument?" picker, when shown).
   getGradingInstrumentDisplayName() {
     const instrumentId = document.getElementById('grading-instrument').value;
     const instrument = this.instruments.find(i => i.id === instrumentId);
     if (instrument?.name === 'Other Instrument') {
+      const chosenName = document.getElementById('grading-other-instrument-name')?.value;
+      if (chosenName) return chosenName;
       const progress = this.studentProgress.find(p => p.instrument_id === instrumentId && p.custom_instrument_name);
       return progress?.custom_instrument_name || instrument.name;
     }
     return instrument?.name || '';
+  }
+
+  // Shows/hides and populates the "Which instrument?" picker in the grading modal
+  // when "Other Instrument" is selected — letting teachers (who can grade for any
+  // instrument, and so would otherwise just see a generic "Other Instrument") pick
+  // a specific custom name (e.g. "Violin") for display purposes (chords label,
+  // tutorial search terms, etc.). The rating itself is still recorded against the
+  // generic "Other Instrument" instrument_id, as it always has been.
+  updateOtherInstrumentNameGroup() {
+    const group = document.getElementById('grading-other-instrument-name-group');
+    const select = document.getElementById('grading-other-instrument-name');
+    if (!group || !select) return;
+
+    const instrumentId = document.getElementById('grading-instrument').value;
+    const instrument = this.instruments.find(i => i.id === instrumentId);
+
+    // Gather distinct custom "Other Instrument" names visible to this user
+    // (their own progress records, plus any class students' names a teacher can see)
+    const names = new Set();
+    (this.studentProgress || []).forEach(p => {
+      if (p.instrument_id === instrumentId && p.custom_instrument_name) names.add(p.custom_instrument_name);
+    });
+    if (this.otherInstrumentCustomNames) {
+      Object.values(this.otherInstrumentCustomNames).forEach(name => { if (name) names.add(name); });
+    }
+
+    if (instrument?.name !== 'Other Instrument' || names.size === 0) {
+      group.classList.add('hidden');
+      select.innerHTML = '';
+      return;
+    }
+
+    const sortedNames = [...names].sort((a, b) => a.localeCompare(b));
+    select.innerHTML = '<option value="">Other Instrument (generic)</option>' +
+      sortedNames.map(name => `<option value="${this.escapeHtml(name)}">${this.escapeHtml(name)}</option>`).join('');
+    group.classList.remove('hidden');
   }
 
   getChordsSearchTerm() {
@@ -3993,6 +4033,7 @@ class CadenceApp {
     document.getElementById('song-grading-modal').classList.remove('hidden');
     document.getElementById('similar-songs-container').classList.add('hidden'); // Hide suggestions
     this.updateChordsLabel(); // Update label based on selected instrument
+    this.updateOtherInstrumentNameGroup(); // Show "Which instrument?" picker if "Other Instrument" is selected
     this.updateGradingStep();
   }
 
@@ -4008,6 +4049,7 @@ class CadenceApp {
     if (instrumentId && gradingInstrumentSelect?.querySelector(`option[value="${instrumentId}"]`)) {
       gradingInstrumentSelect.value = instrumentId;
       this.updateChordsLabel();
+      this.updateOtherInstrumentNameGroup();
     }
 
     // Pre-fill and lock song identity so the user can't accidentally change which song they're grading
