@@ -2849,10 +2849,11 @@ class CadenceApp {
         || this.studentProgress.find(p => p.instrument_id === instrument.id && p.custom_instrument_name);
       if (instrumentProgress?.custom_instrument_name) {
         instrumentName = instrumentProgress.custom_instrument_name;
-      } else {
+      } else if (instrument.name === 'Other Instrument') {
         // Teacher mode: look up custom name via rating user_id (most accurate),
-        // then fall back to any class student's custom name for this instrument
+        // then fall back to any visible student's custom name for this instrument
         // (covers teacher-graded songs where no student user_id is on the rating).
+        // Gated to "Other Instrument" only — must never relabel Guitar/Keyboard/etc cards.
         const ratingUserIds = (song.song_ratings || [])
           .filter(r => r.instrument_id === instrument.id)
           .map(r => r.user_id);
@@ -2942,17 +2943,19 @@ class CadenceApp {
         if (!inst) return '';
         const instProgress = this.studentProgress.find(p => p.instrument_id === instId && p.custom_instrument_name);
         let instName = instProgress?.custom_instrument_name;
-        if (!instName) {
+        // Custom-name lookups only make sense for "Other Instrument" — never relabel
+        // Guitar/Keyboard/etc with an arbitrary visible student's custom instrument name.
+        if (!instName && inst.name === 'Other Instrument') {
           // Teacher mode: look up custom name via rating user_id first
           const ratingUserForInst = (song.song_ratings || [])
             .find(r => r.instrument_id === instId && this.otherInstrumentCustomNames?.[r.user_id]?.length);
           if (ratingUserForInst) {
             instName = this.otherInstrumentCustomNames[ratingUserForInst.user_id][0];
           }
-        }
-        if (!instName && this.otherInstrumentCustomNames) {
-          // Fallback: any class student's custom name for this instrument
-          instName = Object.values(this.otherInstrumentCustomNames).find(names => names.length)?.[0] || null;
+          if (!instName && this.otherInstrumentCustomNames) {
+            // Fallback: any visible student's custom name for this instrument
+            instName = Object.values(this.otherInstrumentCustomNames).find(names => names.length)?.[0] || null;
+          }
         }
         instName = instName || inst.name;
         const isSelected = inst.id === instrument?.id;
@@ -4104,6 +4107,20 @@ class CadenceApp {
   async showSongGradingModalForSong(songId, instrumentId, customInstrumentName = null) {
     const song = this.songs?.find(s => s.id === songId);
     if (!song) return;
+
+    // Students with multiple "Other Instrument" entries (e.g. Violin + Clarinet) share
+    // one generic instrument_id — switch the active progress record to the one matching
+    // the shortcut's custom name so the resulting rating displays under the right name
+    // afterwards (renderSongCardWithData resolves student-owned names via currentProgress).
+    if (customInstrumentName && instrumentId) {
+      const matchingProgress = this.studentProgress?.find(p =>
+        p.instrument_id === instrumentId && p.custom_instrument_name === customInstrumentName);
+      if (matchingProgress && this.currentProgressId !== matchingProgress.id) {
+        this.currentProgressId = matchingProgress.id;
+        this.currentInstrument = matchingProgress.instrument_id;
+        sessionStorage.setItem('cadence_currentProgressId', this.currentProgressId);
+      }
+    }
 
     this.showSongGradingModal();
 
