@@ -3677,12 +3677,13 @@ class CadenceApp {
     const instrumentId = document.getElementById('grading-instrument').value;
     const instrument = this.instruments.find(i => i.id === instrumentId);
     const user = auth.getCurrentUser();
-    const isTeacherOrAdminView = (user.role === 'teacher' || user.role === 'admin') && !this.previewMode.active;
+    const isTeacherOrAdmin = user.role === 'teacher' || user.role === 'admin';
 
     // Students already see their own custom name as the main instrument dropdown's
     // label, so this picker is only useful for teachers/admins choosing among their
-    // students' various "Other Instrument" entries (e.g. Violin vs Cello).
-    if (instrument?.name !== 'Other Instrument' || !isTeacherOrAdminView) {
+    // students' various "Other Instrument" entries (e.g. Violin vs Cello) — including
+    // while previewing a specific student's view.
+    if (instrument?.name !== 'Other Instrument' || !isTeacherOrAdmin) {
       group.classList.add('hidden');
       select.innerHTML = '';
       return;
