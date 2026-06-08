@@ -3638,28 +3638,43 @@ class CadenceApp {
     return instrument?.name || '';
   }
 
-  // Fetches a user_id → custom_instrument_name lookup for "Other Instrument" records
-  // visible to the current teacher/admin (RLS scopes results to their own class
-  // students). Cached on this.otherInstrumentCustomNames — normally pre-loaded by the
-  // Song Library, but the grading modal can also be opened from the pathway view
-  // before that happens, so callers should lazily invoke this when it's still empty.
+  // Fetches a user_id → [custom names] lookup for "Other Instrument" records visible
+  // to the current teacher/admin. Cached on this.otherInstrumentCustomNames — normally
+  // pre-loaded by the Song Library, but the grading modal can also be opened from the
+  // pathway view before that happens, so callers should lazily invoke this when it's
+  // still empty. A single student can have multiple "Other Instrument" entries (e.g.
+  // Violin + Clarinet), hence an array rather than a single name per user.
   async loadOtherInstrumentCustomNames() {
     const otherInstrument = this.instruments?.find(i => i.name === 'Other Instrument');
     if (!otherInstrument) return;
-    const { data: customNameRecords } = await this.callSelectDirect(
-      'student_progress',
-      'user_id,custom_instrument_name',
-      { eq: { instrument_id: otherInstrument.id } }
-    );
-    // Map user_id → array of distinct custom names. A single student can have
-    // multiple "Other Instrument" entries (e.g. Violin + Clarinet), so this can't
-    // be a single name per user.
+
     this.otherInstrumentCustomNames = {};
-    (customNameRecords || []).forEach(p => {
-      if (!p.custom_instrument_name) return;
-      const names = (this.otherInstrumentCustomNames[p.user_id] = this.otherInstrumentCustomNames[p.user_id] || []);
-      if (!names.includes(p.custom_instrument_name)) names.push(p.custom_instrument_name);
-    });
+    const addName = (userId, name) => {
+      if (!name) return;
+      const names = (this.otherInstrumentCustomNames[userId] = this.otherInstrumentCustomNames[userId] || []);
+      if (!names.includes(name)) names.push(name);
+    };
+
+    try {
+      // Uses get_other_instrument_custom_names (migration 173) — a SECURITY DEFINER
+      // RPC scoped like get_class_students (owner, co-teacher, same-school peer, or
+      // all students for admins). A direct SELECT on student_progress would only
+      // return rows for classes the caller directly owns (RLS from migration 010),
+      // missing co-taught/peer/admin-visible students.
+      const { data, error } = await this.callRpcDirect('get_other_instrument_custom_names', {});
+      if (error) throw error;
+      (data || []).forEach(row => addName(row.user_id, row.custom_instrument_name));
+    } catch (err) {
+      // Fallback for environments where migration 173 hasn't been run yet
+      console.warn('get_other_instrument_custom_names unavailable, falling back to direct select:', err);
+      const { data: customNameRecords } = await this.callSelectDirect(
+        'student_progress',
+        'user_id,custom_instrument_name',
+        { eq: { instrument_id: otherInstrument.id } }
+      );
+      (customNameRecords || []).forEach(p => addName(p.user_id, p.custom_instrument_name));
+    }
+
     this.otherInstrumentCustomNamesLoaded = true;
   }
 
@@ -3699,8 +3714,14 @@ class CadenceApp {
     }
 
     // Gather distinct custom "Other Instrument" names visible to this teacher
-    // (each student may have several entries, e.g. Violin + Clarinet)
+    // (each student may have several entries, e.g. Violin + Clarinet). Combine the
+    // currently-loaded student_progress (authoritative for whoever's data is loaded
+    // right now — e.g. a previewed student — and never stale) with the broader
+    // otherInstrumentCustomNames lookup (covers other class students/songs).
     const names = new Set();
+    (this.studentProgress || []).forEach(p => {
+      if (p.instrument_id === instrumentId && p.custom_instrument_name) names.add(p.custom_instrument_name);
+    });
     if (this.otherInstrumentCustomNames) {
       Object.values(this.otherInstrumentCustomNames).forEach(studentNames => {
         (studentNames || []).forEach(name => { if (name) names.add(name); });
