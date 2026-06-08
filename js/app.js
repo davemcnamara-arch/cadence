@@ -32,6 +32,7 @@ class CadenceApp {
     this.teacherSongStudentCounts = null;
     this.flaggedRatings = [];
     this.otherInstrumentCustomNames = {};
+    this.otherInstrumentCustomNamesLoaded = false;
 
     // School properties
     this.currentSchool = null;
@@ -2508,25 +2509,9 @@ class CadenceApp {
         // Load student-song counts for teachers to show badges on song cards
         if (user.role === 'teacher' || user.role === 'admin') {
           // Build a user_id → custom_instrument_name lookup for "Other Instrument"
-          // so song cards can show the real name (e.g. "Violin") rather than
-          // "Other Instrument". Fetches all visible student_progress records for
-          // "Other Instrument" (RLS limits to the teacher's own class students).
-          // This covers both student-rated songs (exact match by user_id) and
-          // teacher-rated songs (fallback to any class student's custom name).
-          const otherInstrument = this.instruments?.find(i => i.name === 'Other Instrument');
-          if (otherInstrument) {
-            const { data: customNameRecords } = await this.callSelectDirect(
-              'student_progress',
-              'user_id,custom_instrument_name',
-              { eq: { instrument_id: otherInstrument.id } }
-            );
-            this.otherInstrumentCustomNames = {};
-            (customNameRecords || []).forEach(p => {
-              if (p.custom_instrument_name && !this.otherInstrumentCustomNames[p.user_id]) {
-                this.otherInstrumentCustomNames[p.user_id] = p.custom_instrument_name;
-              }
-            });
-          }
+          // so song cards (and the grading modal's "Which instrument?" picker) can
+          // show real names (e.g. "Violin") rather than "Other Instrument".
+          await this.loadOtherInstrumentCustomNames();
           try {
             const includeArchived = document.getElementById('filter-include-archived')?.checked || false;
             const result = await this.callRpcDirect('get_teacher_student_song_counts', { p_include_archived: includeArchived });
@@ -2974,13 +2959,25 @@ class CadenceApp {
         return `<option value="${inst.id}" ${isSelected ? 'selected' : ''}>${inst.icon} ${instName}</option>`;
       }).join('');
 
-      // Append "Grade for X" shortcuts for instruments this song hasn't been graded for yet
-      const gradeOptions = ungradedShortcutInstrumentIds.map(instId => {
+      // Append "Grade for X" shortcuts for instruments this song hasn't been graded
+      // for yet. A student may have multiple "Other Instrument" entries (e.g. Violin +
+      // Cello) sharing the same instrument_id but distinct custom names — surface one
+      // shortcut per distinct name so labels stay accurate and option values stay unique.
+      const uniqueUngradedShortcutIds = [...new Set(ungradedShortcutInstrumentIds)];
+      const gradeOptions = uniqueUngradedShortcutIds.map(instId => {
         const inst = this.instruments.find(i => i.id === instId);
         if (!inst) return '';
-        const progress = this.studentProgress.find(p => p.instrument_id === instId);
-        const instName = (progress && this.getProgressDisplayName(progress)) || inst.name;
-        return `<option value="grade-new:${inst.id}">${inst.icon} Grade for ${instName} →</option>`;
+        const distinctNames = [...new Set(
+          this.studentProgress
+            .filter(p => p.instrument_id === instId && p.custom_instrument_name)
+            .map(p => p.custom_instrument_name)
+        )];
+        if (distinctNames.length > 0) {
+          return distinctNames.map(name =>
+            `<option value="grade-new:${inst.id}::${encodeURIComponent(name)}">${inst.icon} Grade for ${name} →</option>`
+          ).join('');
+        }
+        return `<option value="grade-new:${inst.id}">${inst.icon} Grade for ${inst.name} →</option>`;
       }).join('');
 
       // Store ratings data as JSON for the change handler
@@ -3073,10 +3070,11 @@ class CadenceApp {
     // "Grade for X" shortcut: open the grading modal pre-filled for this song/instrument,
     // then revert the dropdown to its previous selection (we didn't actually switch instrument)
     if (instrumentId.startsWith('grade-new:')) {
-      const gradeInstrumentId = instrumentId.slice('grade-new:'.length);
+      const [gradeInstrumentId, encodedCustomName] = instrumentId.slice('grade-new:'.length).split('::');
+      const customName = encodedCustomName ? decodeURIComponent(encodedCustomName) : null;
       const previousOption = [...selectElement.options].find(o => !o.value.startsWith('grade-new:') && o.defaultSelected);
       selectElement.value = previousOption ? previousOption.value : selectElement.options[0]?.value;
-      this.showSongGradingModalForSong(songId, gradeInstrumentId);
+      this.showSongGradingModalForSong(songId, gradeInstrumentId, customName);
       return;
     }
 
@@ -3640,31 +3638,69 @@ class CadenceApp {
     return instrument?.name || '';
   }
 
+  // Fetches a user_id → custom_instrument_name lookup for "Other Instrument" records
+  // visible to the current teacher/admin (RLS scopes results to their own class
+  // students). Cached on this.otherInstrumentCustomNames — normally pre-loaded by the
+  // Song Library, but the grading modal can also be opened from the pathway view
+  // before that happens, so callers should lazily invoke this when it's still empty.
+  async loadOtherInstrumentCustomNames() {
+    const otherInstrument = this.instruments?.find(i => i.name === 'Other Instrument');
+    if (!otherInstrument) return;
+    const { data: customNameRecords } = await this.callSelectDirect(
+      'student_progress',
+      'user_id,custom_instrument_name',
+      { eq: { instrument_id: otherInstrument.id } }
+    );
+    this.otherInstrumentCustomNames = {};
+    (customNameRecords || []).forEach(p => {
+      if (p.custom_instrument_name && !this.otherInstrumentCustomNames[p.user_id]) {
+        this.otherInstrumentCustomNames[p.user_id] = p.custom_instrument_name;
+      }
+    });
+    this.otherInstrumentCustomNamesLoaded = true;
+  }
+
   // Shows/hides and populates the "Which instrument?" picker in the grading modal
   // when "Other Instrument" is selected — letting teachers (who can grade for any
   // instrument, and so would otherwise just see a generic "Other Instrument") pick
   // a specific custom name (e.g. "Violin") for display purposes (chords label,
   // tutorial search terms, etc.). The rating itself is still recorded against the
   // generic "Other Instrument" instrument_id, as it always has been.
-  updateOtherInstrumentNameGroup() {
+  async updateOtherInstrumentNameGroup() {
     const group = document.getElementById('grading-other-instrument-name-group');
     const select = document.getElementById('grading-other-instrument-name');
     if (!group || !select) return;
 
     const instrumentId = document.getElementById('grading-instrument').value;
     const instrument = this.instruments.find(i => i.id === instrumentId);
+    const user = auth.getCurrentUser();
+    const isTeacherOrAdminView = (user.role === 'teacher' || user.role === 'admin') && !this.previewMode.active;
 
-    // Gather distinct custom "Other Instrument" names visible to this user
-    // (their own progress records, plus any class students' names a teacher can see)
+    // Students already see their own custom name as the main instrument dropdown's
+    // label, so this picker is only useful for teachers/admins choosing among their
+    // students' various "Other Instrument" entries (e.g. Violin vs Cello).
+    if (instrument?.name !== 'Other Instrument' || !isTeacherOrAdminView) {
+      group.classList.add('hidden');
+      select.innerHTML = '';
+      return;
+    }
+
+    // The Song Library normally pre-loads otherInstrumentCustomNames for teachers/
+    // admins, but the grading modal can be opened before that (e.g. from the pathway's
+    // "+ Add New Song"), so fetch it on demand the first time it's needed here.
+    if (!this.otherInstrumentCustomNamesLoaded) {
+      await this.loadOtherInstrumentCustomNames();
+      // Bail if the selection changed while the fetch was in flight
+      if (document.getElementById('grading-instrument')?.value !== instrumentId) return;
+    }
+
+    // Gather distinct custom "Other Instrument" names visible to this teacher
     const names = new Set();
-    (this.studentProgress || []).forEach(p => {
-      if (p.instrument_id === instrumentId && p.custom_instrument_name) names.add(p.custom_instrument_name);
-    });
     if (this.otherInstrumentCustomNames) {
       Object.values(this.otherInstrumentCustomNames).forEach(name => { if (name) names.add(name); });
     }
 
-    if (instrument?.name !== 'Other Instrument' || names.size === 0) {
+    if (names.size === 0) {
       group.classList.add('hidden');
       select.innerHTML = '';
       return;
@@ -4037,7 +4073,7 @@ class CadenceApp {
     this.updateGradingStep();
   }
 
-  async showSongGradingModalForSong(songId, instrumentId) {
+  async showSongGradingModalForSong(songId, instrumentId, customInstrumentName = null) {
     const song = this.songs?.find(s => s.id === songId);
     if (!song) return;
 
@@ -4049,7 +4085,17 @@ class CadenceApp {
     if (instrumentId && gradingInstrumentSelect?.querySelector(`option[value="${instrumentId}"]`)) {
       gradingInstrumentSelect.value = instrumentId;
       this.updateChordsLabel();
-      this.updateOtherInstrumentNameGroup();
+      await this.updateOtherInstrumentNameGroup();
+
+      // Pre-select the specific custom name in the "Which instrument?" picker when
+      // the shortcut identified one (e.g. "Grade for Violin" vs "Grade for Cello")
+      if (customInstrumentName) {
+        const nameSelect = document.getElementById('grading-other-instrument-name');
+        if (nameSelect && [...nameSelect.options].some(o => o.value === customInstrumentName)) {
+          nameSelect.value = customInstrumentName;
+          this.updateChordsLabel();
+        }
+      }
     }
 
     // Pre-fill and lock song identity so the user can't accidentally change which song they're grading
@@ -11187,12 +11233,24 @@ class CadenceApp {
         : isTeacherOrAdminView
           ? this.instruments.map(i => i.id).filter(id => !ratedInstrumentIds.includes(id))
           : [];
-      const gradeOptionsHtml = ungradedShortcutInstrumentIds.map(instId => {
+      // A student may have multiple "Other Instrument" entries (e.g. Violin + Cello)
+      // sharing the same instrument_id but distinct custom names — surface one
+      // shortcut per distinct name so labels stay accurate and option values stay unique.
+      const uniqueUngradedShortcutIds = [...new Set(ungradedShortcutInstrumentIds)];
+      const gradeOptionsHtml = uniqueUngradedShortcutIds.map(instId => {
         const inst = this.instruments.find(i => i.id === instId);
         if (!inst) return '';
-        const progress = this.studentProgress.find(p => p.instrument_id === instId);
-        const instName = (progress && this.getProgressDisplayName(progress)) || inst.name;
-        return `<option value="grade-new:${inst.id}">${inst.icon} Grade for ${instName} →</option>`;
+        const distinctNames = [...new Set(
+          this.studentProgress
+            .filter(p => p.instrument_id === instId && p.custom_instrument_name)
+            .map(p => p.custom_instrument_name)
+        )];
+        if (distinctNames.length > 0) {
+          return distinctNames.map(name =>
+            `<option value="grade-new:${inst.id}::${encodeURIComponent(name)}">${inst.icon} Grade for ${name} →</option>`
+          ).join('');
+        }
+        return `<option value="grade-new:${inst.id}">${inst.icon} Grade for ${inst.name} →</option>`;
       }).join('');
 
       filterSelect.innerHTML = optionsHtml + gradeOptionsHtml;
@@ -11238,12 +11296,13 @@ class CadenceApp {
     // "Grade for X" shortcut: open the grading modal pre-filled for this song/instrument,
     // then revert the filter to its previous (non-shortcut) selection
     if (selectedValue.startsWith('grade-new:')) {
-      const gradeInstrumentId = selectedValue.slice('grade-new:'.length);
+      const [gradeInstrumentId, encodedCustomName] = selectedValue.slice('grade-new:'.length).split('::');
+      const customName = encodedCustomName ? decodeURIComponent(encodedCustomName) : null;
       const songId = this.currentResourceSong.id;
       const previousOption = [...filterSelect.options].find(o => !o.value.startsWith('grade-new:'));
       if (previousOption) filterSelect.value = previousOption.value;
       document.getElementById('song-resources-modal').classList.add('hidden');
-      this.showSongGradingModalForSong(songId, gradeInstrumentId);
+      this.showSongGradingModalForSong(songId, gradeInstrumentId, customName);
       return;
     }
 
