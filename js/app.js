@@ -2857,13 +2857,13 @@ class CadenceApp {
           .filter(r => r.instrument_id === instrument.id)
           .map(r => r.user_id);
         for (const uid of ratingUserIds) {
-          if (this.otherInstrumentCustomNames?.[uid]) {
-            instrumentName = this.otherInstrumentCustomNames[uid];
+          if (this.otherInstrumentCustomNames?.[uid]?.length) {
+            instrumentName = this.otherInstrumentCustomNames[uid][0];
             break;
           }
         }
         if (instrumentName === (instrument?.name || '') && this.otherInstrumentCustomNames) {
-          const fallback = Object.values(this.otherInstrumentCustomNames)[0];
+          const fallback = Object.values(this.otherInstrumentCustomNames).find(names => names.length)?.[0];
           if (fallback) instrumentName = fallback;
         }
       }
@@ -2945,14 +2945,14 @@ class CadenceApp {
         if (!instName) {
           // Teacher mode: look up custom name via rating user_id first
           const ratingUserForInst = (song.song_ratings || [])
-            .find(r => r.instrument_id === instId && this.otherInstrumentCustomNames?.[r.user_id]);
+            .find(r => r.instrument_id === instId && this.otherInstrumentCustomNames?.[r.user_id]?.length);
           if (ratingUserForInst) {
-            instName = this.otherInstrumentCustomNames[ratingUserForInst.user_id];
+            instName = this.otherInstrumentCustomNames[ratingUserForInst.user_id][0];
           }
         }
         if (!instName && this.otherInstrumentCustomNames) {
           // Fallback: any class student's custom name for this instrument
-          instName = Object.values(this.otherInstrumentCustomNames)[0] || null;
+          instName = Object.values(this.otherInstrumentCustomNames).find(names => names.length)?.[0] || null;
         }
         instName = instName || inst.name;
         const isSelected = inst.id === instrument?.id;
@@ -3651,11 +3651,14 @@ class CadenceApp {
       'user_id,custom_instrument_name',
       { eq: { instrument_id: otherInstrument.id } }
     );
+    // Map user_id → array of distinct custom names. A single student can have
+    // multiple "Other Instrument" entries (e.g. Violin + Clarinet), so this can't
+    // be a single name per user.
     this.otherInstrumentCustomNames = {};
     (customNameRecords || []).forEach(p => {
-      if (p.custom_instrument_name && !this.otherInstrumentCustomNames[p.user_id]) {
-        this.otherInstrumentCustomNames[p.user_id] = p.custom_instrument_name;
-      }
+      if (!p.custom_instrument_name) return;
+      const names = (this.otherInstrumentCustomNames[p.user_id] = this.otherInstrumentCustomNames[p.user_id] || []);
+      if (!names.includes(p.custom_instrument_name)) names.push(p.custom_instrument_name);
     });
     this.otherInstrumentCustomNamesLoaded = true;
   }
@@ -3695,9 +3698,12 @@ class CadenceApp {
     }
 
     // Gather distinct custom "Other Instrument" names visible to this teacher
+    // (each student may have several entries, e.g. Violin + Clarinet)
     const names = new Set();
     if (this.otherInstrumentCustomNames) {
-      Object.values(this.otherInstrumentCustomNames).forEach(name => { if (name) names.add(name); });
+      Object.values(this.otherInstrumentCustomNames).forEach(studentNames => {
+        (studentNames || []).forEach(name => { if (name) names.add(name); });
+      });
     }
 
     if (names.size === 0) {
