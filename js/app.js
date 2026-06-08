@@ -1814,14 +1814,19 @@ class CadenceApp {
       }).join('');
     }
 
-    // Grading dropdown: value = instrument.id (required by grade_song RPC)
+    // Grading dropdown: value = instrument.id (required by grade_song RPC).
     // Show custom name for "Other" entries so the student sees the right label.
+    // Two "Other Instrument" rows (e.g. Violin + Clarinet) share the same instrument.id,
+    // so options end up with duplicate values — the browser always resolves `.value =`
+    // assignment to the FIRST matching option. Tag each option with its custom name
+    // (and progress id) via data attributes so callers can select the exact option.
     let gradingHtml = '';
     if (this.studentProgress && this.studentProgress.length > 0) {
       gradingHtml = this.studentProgress.map(progress => {
         const instrument = this.instruments.find(i => i.id === progress.instrument_id);
         const displayName = this.getProgressDisplayName(progress);
-        return `<option value="${instrument.id}">${instrument.icon} ${displayName}</option>`;
+        const customNameAttr = progress.custom_instrument_name ? ` data-custom-name="${this.escapeHtml(progress.custom_instrument_name)}"` : '';
+        return `<option value="${instrument.id}" data-progress-id="${progress.id}"${customNameAttr}>${instrument.icon} ${displayName}</option>`;
       }).join('');
     }
 
@@ -4125,10 +4130,19 @@ class CadenceApp {
     this.showSongGradingModal();
 
     // Pre-select the instrument when one was specified (e.g. from the "Grade for X"
-    // option in the song card / resources modal instrument dropdown)
+    // option in the song card / resources modal instrument dropdown).
+    // Two "Other Instrument" options can share the same value (instrument.id), so
+    // `select.value = instrumentId` would always land on the FIRST one (e.g. "Violin")
+    // even when "Grade for Clarinet" was chosen — match on the tagged custom name
+    // (data-custom-name) instead, falling back to a plain value match.
     const gradingInstrumentSelect = document.getElementById('grading-instrument');
-    if (instrumentId && gradingInstrumentSelect?.querySelector(`option[value="${instrumentId}"]`)) {
-      gradingInstrumentSelect.value = instrumentId;
+    const matchedOption = instrumentId
+      ? (customInstrumentName
+          && [...(gradingInstrumentSelect?.options || [])].find(o => o.value === instrumentId && o.dataset.customName === customInstrumentName))
+        || gradingInstrumentSelect?.querySelector(`option[value="${instrumentId}"]`)
+      : null;
+    if (matchedOption) {
+      matchedOption.selected = true;
       this.updateChordsLabel();
       await this.updateOtherInstrumentNameGroup();
 
