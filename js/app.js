@@ -1455,9 +1455,11 @@ class CadenceApp {
   showOtherInstrumentNameStep(instrumentId) {
     this._pendingOtherInstrumentId = instrumentId;
     this._similarInstrumentsDismissed = false;
+    this._standardInstrumentMatchDismissed = false;
     document.getElementById('instrument-grid-step').classList.add('hidden');
     document.getElementById('other-instrument-name-step').classList.remove('hidden');
     document.getElementById('similar-instruments-container').classList.add('hidden');
+    document.getElementById('standard-instrument-match-container').classList.add('hidden');
 
     const input = document.getElementById('other-instrument-name');
     input.focus();
@@ -1476,6 +1478,15 @@ class CadenceApp {
         dismissBtn.addEventListener('click', () => {
           document.getElementById('similar-instruments-container').classList.add('hidden');
           this._similarInstrumentsDismissed = true;
+        });
+      }
+
+      const dismissStandardMatchBtn = document.getElementById('dismiss-standard-instrument-match');
+      if (dismissStandardMatchBtn) {
+        dismissStandardMatchBtn.addEventListener('click', () => {
+          document.getElementById('standard-instrument-match-container').classList.add('hidden');
+          this._standardInstrumentMatchDismissed = true;
+          this.findSimilarInstruments();
         });
       }
 
@@ -1499,17 +1510,60 @@ class CadenceApp {
     this.addInstrument(this._pendingOtherInstrumentId, customName);
   }
 
+  // Detects when a typed "Other Instrument" name actually matches one of the five
+  // main tracked instruments (e.g. a student types "Guitar" or "Keyboard" instead of
+  // picking the real instrument card). Matches on the full name or any single word
+  // within it, tolerant of trailing "s" (Drum/Drums, Vocal/Vocals, Guitar/Guitars).
+  matchStandardInstrument(name) {
+    const normalize = (s) => s.toLowerCase().trim().replace(/s\b/g, '');
+    const typed = normalize(name);
+    if (!typed) return null;
+
+    const standards = (this.instruments || []).filter(i => i.name !== 'Other Instrument');
+
+    return standards.find(inst => normalize(inst.name) === typed)
+      || standards.find(inst => inst.name.split(/[^a-zA-Z]+/).filter(Boolean).some(word => normalize(word) === typed))
+      || null;
+  }
+
   async findSimilarInstruments() {
     if (this._similarInstrumentsDismissed) return;
 
     const name = document.getElementById('other-instrument-name').value.trim();
     const container = document.getElementById('similar-instruments-container');
     const list = document.getElementById('similar-instruments-list');
+    const standardMatchContainer = document.getElementById('standard-instrument-match-container');
+    const standardMatchItem = document.getElementById('standard-instrument-match-item');
 
     if (name.length < 2) {
       container.classList.add('hidden');
+      standardMatchContainer.classList.add('hidden');
       return;
     }
+
+    // Does the typed name actually describe one of the main instruments? Surface that
+    // first — it takes priority over "other students use this name" suggestions.
+    if (!this._standardInstrumentMatchDismissed) {
+      const standardMatch = this.matchStandardInstrument(name);
+      if (standardMatch) {
+        standardMatchItem.innerHTML = `
+          <div class="similar-song-item similar-instrument-standard-match" data-id="${standardMatch.id}">
+            <div class="similar-song-info">
+              <span class="similar-song-title">${standardMatch.icon} ${this.escapeHtml(standardMatch.name)}</span>
+            </div>
+            <span class="similar-song-match">Add as a tracked instrument</span>
+          </div>
+        `;
+        standardMatchItem.querySelector('.similar-instrument-standard-match').addEventListener('click', () => {
+          this.backToInstrumentGrid();
+          this.addInstrument(standardMatch.id);
+        });
+        standardMatchContainer.classList.remove('hidden');
+        container.classList.add('hidden');
+        return;
+      }
+    }
+    standardMatchContainer.classList.add('hidden');
 
     // Check own instruments first (client-side, no DB call needed)
     const alreadyHave = (this.studentProgress || []).find(
@@ -6799,13 +6853,41 @@ class CadenceApp {
       }
     }
 
+    const rpcParams = {
+      p_class_id: this.currentClass.id,
+      p_emails: emails,
+      ...(this.currentSchool?.id ? { p_school_id: this.currentSchool.id } : {})
+    };
+
+    const submitBtn = document.getElementById('submit-bulk-emails-btn');
+    const originalBtnText = submitBtn?.textContent;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Adding...';
+    }
+
     try {
-      // Use direct RPC call to bypass stale Supabase client connections
-      const { data } = await this.callRpcDirect('add_pending_enrollments', {
-        p_class_id: this.currentClass.id,
-        p_emails: emails,
-        ...(this.currentSchool?.id ? { p_school_id: this.currentSchool.id } : {})
-      });
+      // Use direct RPC call to bypass stale Supabase client connections.
+      // The call is idempotent (already-enrolled/pending emails are skipped server-side),
+      // so retrying with backoff is safe and absorbs transient session/network blips.
+      const retryDelaysMs = [0, 1500, 4000];
+      let data;
+      let lastError;
+      for (let attempt = 0; attempt < retryDelaysMs.length; attempt++) {
+        if (attempt > 0) {
+          await new Promise(resolve => setTimeout(resolve, retryDelaysMs[attempt]));
+        }
+        try {
+          ({ data } = await this.callRpcDirect('add_pending_enrollments', rpcParams));
+          lastError = null;
+          break;
+        } catch (err) {
+          lastError = err;
+          console.warn(`add_pending_enrollments attempt ${attempt + 1} failed:`, err);
+        }
+      }
+
+      if (lastError) throw lastError;
 
       if (data.success) {
         // Clear the textarea
@@ -6829,7 +6911,16 @@ class CadenceApp {
       }
     } catch (error) {
       console.error('Unexpected error adding pending enrollments:', error);
-      this.showToast('An unexpected error occurred. Please try again.', 'error');
+      const detail = error?.message ? `: ${error.message}` : '';
+      this.showToast(
+        `Couldn't add students after several attempts${detail}. Your list is still here - check your connection and click Add Students to try again.`,
+        'error'
+      );
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
+      }
     }
   }
 
