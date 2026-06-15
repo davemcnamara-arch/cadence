@@ -4934,38 +4934,51 @@ class CadenceApp {
 
   // Get auth session with timeout protection - getSession can hang if Supabase client is stale
   async getSessionWithTimeout() {
+    // Read the access token directly from localStorage as a last resort,
+    // for when the Supabase client's in-memory state is stale/empty even
+    // though a valid token is persisted.
+    const tokenFromStorage = () => {
+      const storageKey = Object.keys(localStorage).find(key =>
+        key.startsWith('sb-') && key.endsWith('-auth-token')
+      );
+      try {
+        const tokenData = storageKey ? JSON.parse(localStorage.getItem(storageKey)) : null;
+        return tokenData?.access_token ? { access_token: tokenData.access_token } : null;
+      } catch {
+        return null;
+      }
+    };
+
+    // 1. Try getSession() - may hang (timeout) or resolve with no session
+    // even when a valid token is persisted (stale in-memory client state).
+    let session = null;
     try {
       const result = await Promise.race([
         supabase.auth.getSession(),
         new Promise((_, reject) => setTimeout(() => reject(new Error('SESSION_TIMEOUT')), 5000))
       ]);
-      return result.data?.session;
-    } catch (e) {
-      if (e.message === 'SESSION_TIMEOUT') {
-        // getSession hung - try refreshSession as fallback
-        try {
-          const refreshResult = await Promise.race([
-            supabase.auth.refreshSession(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('REFRESH_TIMEOUT')), 5000))
-          ]);
-          return refreshResult.data?.session;
-        } catch (refreshErr) {
-          if (refreshErr.message === 'REFRESH_TIMEOUT') {
-            // Both Supabase client methods hung - read token directly from localStorage as last resort
-            console.warn('Supabase client stale, falling back to localStorage token');
-            const storageKey = Object.keys(localStorage).find(key =>
-              key.startsWith('sb-') && key.endsWith('-auth-token')
-            );
-            const tokenData = storageKey ? JSON.parse(localStorage.getItem(storageKey)) : null;
-            if (tokenData?.access_token) {
-              return { access_token: tokenData.access_token };
-            }
-          }
-          throw refreshErr;
-        }
-      }
-      throw e;
+      session = result.data?.session;
+    } catch {
+      // ignore - fall through to refresh/localStorage recovery below
     }
+    if (session?.access_token) return session;
+
+    // 2. getSession() returned nothing usable - try refreshSession()
+    try {
+      const refreshResult = await Promise.race([
+        supabase.auth.refreshSession(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('REFRESH_TIMEOUT')), 5000))
+      ]);
+      session = refreshResult.data?.session;
+    } catch {
+      session = null;
+    }
+    if (session?.access_token) return session;
+
+    // 3. Both Supabase client methods failed/returned nothing - read the
+    // token directly from localStorage.
+    console.warn('Supabase client stale, falling back to localStorage token');
+    return tokenFromStorage();
   }
 
   // Direct RPC call using fetch to bypass stale Supabase client connections
