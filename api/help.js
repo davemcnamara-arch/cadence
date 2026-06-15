@@ -182,6 +182,7 @@ Teachers can manually set a subscription status, plan type, and expiry date usin
 
 ## Authentication
 - Sign in with Google, or with an email address and password (click **"or use email"** on the sign-in page, then **"Create one"** if you don't have an account yet)
+- **"Forgot password?"** on the sign-in page sends a password reset link to your email if an account exists for that address
 - Sessions are persistent — you stay logged in until you sign out
 - New users choose a role (Student or Teacher) on first login
 
@@ -215,6 +216,9 @@ A: When a student's self-assessed level for a song differs by 2 or more levels f
 
 Q: Can I change my role?
 A: Contact your teacher — they can change your role from the **Management → Accounts** section.
+
+Q: I forgot my password.
+A: On the sign-in page, click **"or use email"** then **"Forgot password?"**, enter your email, and a reset link will be sent if an account exists for that address. (This only applies to accounts created with an email and password — if you sign in with Google, use the **"Sign in with Google"** button instead.)
 
 Q: The loading screen won't go away.
 A: Wait 15 seconds — a "Tap here to retry" link will appear. If the problem persists, try a hard refresh (Ctrl+Shift+R on Windows/Linux, Cmd+Shift+R on Mac).

@@ -169,6 +169,10 @@
           <button type="submit" id="email-auth-submit" class="btn btn-secondary btn-full">Sign in with email</button>
         </form>
 
+        <p class="auth-toggle" id="forgot-password-row">
+          <button type="button" id="forgot-password-btn" class="btn-link-add">Forgot password?</button>
+        </p>
+
         <p class="auth-toggle">
           <span id="auth-toggle-prompt">Don't have an account?</span>
           <button type="button" id="auth-toggle-btn" class="btn-link-add">Create one</button>
@@ -251,6 +255,8 @@
     const authToggleBtn = document.getElementById('auth-toggle-btn');
     const authPasswordInput = document.getElementById('auth-password');
     const authMessage = document.getElementById('auth-message');
+    const forgotPasswordRow = document.getElementById('forgot-password-row');
+    const forgotPasswordBtn = document.getElementById('forgot-password-btn');
 
     function setAuthMessage(text, isError) {
       authMessage.textContent = text;
@@ -267,6 +273,7 @@
         authToggleBtn.textContent = 'Sign in';
         authPasswordInput.autocomplete = 'new-password';
         authPasswordInput.placeholder = 'At least 6 characters';
+        forgotPasswordRow.classList.add('hidden');
       } else {
         authNameGroup.classList.add('hidden');
         authSubmitBtn.textContent = 'Sign in with email';
@@ -274,6 +281,7 @@
         authToggleBtn.textContent = 'Create one';
         authPasswordInput.autocomplete = 'current-password';
         authPasswordInput.placeholder = 'Password';
+        forgotPasswordRow.classList.remove('hidden');
       }
     }
 
@@ -366,6 +374,33 @@
         authSubmitBtn.disabled = false;
         authSubmitBtn.textContent = originalLabel;
       }
+    });
+
+    // Forgot password: send a reset link to the entered email
+    forgotPasswordBtn.addEventListener('click', async () => {
+      const email = document.getElementById('auth-email').value.trim();
+      if (!email) {
+        setAuthMessage('Enter your email address above, then click "Forgot password?".', true);
+        return;
+      }
+
+      const originalLabel = forgotPasswordBtn.textContent;
+      forgotPasswordBtn.disabled = true;
+      forgotPasswordBtn.textContent = 'Sending…';
+
+      try {
+        await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + '/reset-password.html'
+        });
+      } catch (err) {
+        // Ignore - always show the same message below regardless of outcome
+      }
+
+      // Always show a generic confirmation, regardless of whether the
+      // account exists, to avoid leaking which emails are registered.
+      setAuthMessage("If an account exists for that email, we've sent a password reset link.", false);
+      forgotPasswordBtn.disabled = false;
+      forgotPasswordBtn.textContent = originalLabel;
     });
   </script>
 </body>
