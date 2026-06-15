@@ -132,11 +132,11 @@
         </p>
       </div>
 
-      <!-- Step 2: Google OAuth -->
+      <!-- Step 2: Sign in -->
       <div class="login-card hidden" id="step-oauth">
         <button class="back-link" id="back-btn">&#8592; Back</button>
 
-        <h2>Sign in with Google</h2>
+        <h2>Sign in</h2>
         <p class="signin-context" id="signin-context"></p>
 
         <button id="google-oauth-btn" class="btn btn-primary btn-google btn-full">
@@ -149,6 +149,30 @@
           </svg>
           Sign in with Google
         </button>
+
+        <div class="auth-divider"><span>or use email</span></div>
+
+        <form id="email-auth-form" novalidate>
+          <div class="form-group hidden" id="auth-name-group">
+            <label for="auth-name">Name</label>
+            <input type="text" id="auth-name" autocomplete="name" placeholder="Your name">
+          </div>
+          <div class="form-group">
+            <label for="auth-email">Email</label>
+            <input type="email" id="auth-email" autocomplete="email" placeholder="you@example.com" required>
+          </div>
+          <div class="form-group">
+            <label for="auth-password">Password</label>
+            <input type="password" id="auth-password" autocomplete="current-password" placeholder="Password" minlength="6" required>
+          </div>
+          <p class="auth-message hidden" id="auth-message"></p>
+          <button type="submit" id="email-auth-submit" class="btn btn-secondary btn-full">Sign in with email</button>
+        </form>
+
+        <p class="auth-toggle">
+          <span id="auth-toggle-prompt">Don't have an account?</span>
+          <button type="button" id="auth-toggle-btn" class="btn-link-add">Create one</button>
+        </p>
 
         <p class="privacy-link" style="text-align:center; margin-top: 1.25rem;">
           <a href="privacy.html" target="_blank">Privacy Policy</a>
@@ -216,6 +240,132 @@
           queryParams: { prompt: 'select_account' }
         }
       });
+    });
+
+    // Email/password sign in vs. create account
+    let authMode = 'signin';
+
+    const authNameGroup = document.getElementById('auth-name-group');
+    const authSubmitBtn = document.getElementById('email-auth-submit');
+    const authTogglePrompt = document.getElementById('auth-toggle-prompt');
+    const authToggleBtn = document.getElementById('auth-toggle-btn');
+    const authPasswordInput = document.getElementById('auth-password');
+    const authMessage = document.getElementById('auth-message');
+
+    function setAuthMessage(text, isError) {
+      authMessage.textContent = text;
+      authMessage.classList.toggle('hidden', !text);
+      authMessage.classList.toggle('error', !!isError);
+    }
+
+    function updateAuthModeUI() {
+      setAuthMessage('', false);
+      if (authMode === 'signup') {
+        authNameGroup.classList.remove('hidden');
+        authSubmitBtn.textContent = 'Create account';
+        authTogglePrompt.textContent = 'Already have an account?';
+        authToggleBtn.textContent = 'Sign in';
+        authPasswordInput.autocomplete = 'new-password';
+        authPasswordInput.placeholder = 'At least 6 characters';
+      } else {
+        authNameGroup.classList.add('hidden');
+        authSubmitBtn.textContent = 'Sign in with email';
+        authTogglePrompt.textContent = "Don't have an account?";
+        authToggleBtn.textContent = 'Create one';
+        authPasswordInput.autocomplete = 'current-password';
+        authPasswordInput.placeholder = 'Password';
+      }
+    }
+
+    authToggleBtn.addEventListener('click', () => {
+      authMode = authMode === 'signin' ? 'signup' : 'signin';
+      updateAuthModeUI();
+    });
+
+    function friendlyAuthError(error) {
+      const msg = (error?.message || '').toLowerCase();
+      if (msg.includes('invalid login credentials')) {
+        return 'Incorrect email or password.';
+      }
+      if (msg.includes('already registered') || msg.includes('already exists')) {
+        return 'An account with this email already exists. Try signing in instead.';
+      }
+      if (msg.includes('password') && (msg.includes('least') || msg.includes('short'))) {
+        return 'Password must be at least 6 characters.';
+      }
+      if (msg.includes('email') && msg.includes('invalid')) {
+        return 'Please enter a valid email address.';
+      }
+      return error?.message || 'Something went wrong. Please try again.';
+    }
+
+    document.getElementById('email-auth-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setAuthMessage('', false);
+
+      const email = document.getElementById('auth-email').value.trim();
+      const password = authPasswordInput.value;
+      const name = document.getElementById('auth-name').value.trim();
+
+      if (!email || !password) {
+        setAuthMessage('Please enter your email and password.', true);
+        return;
+      }
+      if (password.length < 6) {
+        setAuthMessage('Password must be at least 6 characters.', true);
+        return;
+      }
+
+      const originalLabel = authSubmitBtn.textContent;
+      authSubmitBtn.disabled = true;
+      authSubmitBtn.textContent = authMode === 'signup' ? 'Creating account…' : 'Signing in…';
+
+      localStorage.setItem('cadence_signup_role', selectedRole);
+
+      try {
+        if (authMode === 'signup') {
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: { full_name: name || email.split('@')[0] },
+              emailRedirectTo: window.location.origin + '/app.html'
+            }
+          });
+
+          if (error) {
+            setAuthMessage(friendlyAuthError(error), true);
+            return;
+          }
+
+          if (data.session) {
+            window.location.href = 'app.html';
+            return;
+          }
+
+          // No session returned — email confirmation is still enabled in Supabase
+          authMode = 'signin';
+          updateAuthModeUI();
+          setAuthMessage('Account created! Check your email to confirm your account, then sign in.', false);
+        } else {
+          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+          if (error) {
+            setAuthMessage(friendlyAuthError(error), true);
+            return;
+          }
+
+          if (data.session) {
+            window.location.href = 'app.html';
+            return;
+          }
+        }
+      } catch (err) {
+        setAuthMessage('Something went wrong. Please try again.', true);
+      } finally {
+        authSubmitBtn.disabled = false;
+        authSubmitBtn.textContent = originalLabel;
+      }
     });
   </script>
 </body>

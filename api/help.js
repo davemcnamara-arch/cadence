@@ -15,7 +15,7 @@ Cadence is a music learning platform: student choice, teacher insight. for stude
 - Piano/Keyboard 🎹 (cyan)
 - Drums 🥁 (red)
 - Vocals 🎤 (magenta)
-- **Other Instrument** — students can add any instrument not in the list (e.g. Violin, Cello, Ukulele) and give it a custom name. The custom name appears on song cards and in the teacher's song library view.
+- **Other Instrument** — students can add any instrument not in the list (e.g. Violin, Cello, Ukulele) and give it a custom name. The custom name appears on song cards and in the teacher's song library view. If a student types a name that actually matches one of the five main instruments above (e.g. "Guitar" or "Keyboard"), the app suggests adding that real instrument directly instead of creating a custom "Other" entry.
 
 ## Level Structure
 - Levels 1–3: Linear progression
@@ -40,7 +40,7 @@ Cadence is a music learning platform: student choice, teacher insight. for stude
 ## Student Guide
 
 ### Getting Started
-1. Sign in with Google
+1. Sign in with Google, or with an email and password
 2. Choose your role: Student
 3. On **My Pathway**, click **"Choose Your Instrument"** (first time) or **"+ Add Another Instrument"** (additional instruments)
 4. Your pathway appears — current level is highlighted
@@ -181,7 +181,7 @@ Teachers can manually set a subscription status, plan type, and expiry date usin
 ---
 
 ## Authentication
-- Sign in with Google only (no username/password)
+- Sign in with Google, or with an email address and password (click **"or use email"** on the sign-in page, then **"Create one"** if you don't have an account yet)
 - Sessions are persistent — you stay logged in until you sign out
 - New users choose a role (Student or Teacher) on first login
 

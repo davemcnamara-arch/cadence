@@ -159,6 +159,44 @@ body {
   text-decoration: underline;
 }
 
+/* Email/password auth divider */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  margin: 1.25rem 0;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.auth-divider span {
+  padding: 0 0.75rem;
+}
+
+.auth-message {
+  font-size: 0.8125rem;
+  margin: -0.5rem 0 1rem;
+  color: var(--text-secondary);
+}
+
+.auth-message.error {
+  color: var(--danger-color);
+}
+
+.auth-toggle {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-top: 1rem;
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
@@ -1779,6 +1817,8 @@ body {
 
 .form-group input[type="text"],
 .form-group input[type="url"],
+.form-group input[type="email"],
+.form-group input[type="password"],
 .form-group select,
 .form-group textarea {
   width: 100%;

@@ -200,6 +200,16 @@
                 maxlength="60"
                 autocomplete="off"
               />
+              <!-- Detected match against one of the five main tracked instruments -->
+              <div id="standard-instrument-match-container" class="similar-songs-container hidden">
+                <div class="similar-songs-header">
+                  <span>This sounds like one of the main instruments — add it directly instead?</span>
+                </div>
+                <div id="standard-instrument-match-item" class="similar-songs-list">
+                  <!-- Populated dynamically -->
+                </div>
+                <button type="button" class="btn btn-link" id="dismiss-standard-instrument-match">No, this is a different instrument</button>
+              </div>
               <!-- Similar instrument names used by other students -->
               <div id="similar-instruments-container" class="similar-songs-container hidden">
                 <div class="similar-songs-header">
