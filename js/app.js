@@ -333,10 +333,14 @@ class CadenceApp {
       generateReflectionBtn.addEventListener('click', () => this.showReflectionModal());
     }
 
-    // Join Class toggle
+    // Join Class toggle (progress page + pathway page)
     const joinClassToggleBtn = document.getElementById('join-class-toggle-btn');
     if (joinClassToggleBtn) {
       joinClassToggleBtn.addEventListener('click', () => this.toggleJoinClassSection());
+    }
+    const pathwayJoinClassBtn = document.getElementById('pathway-join-class-btn');
+    if (pathwayJoinClassBtn) {
+      pathwayJoinClassBtn.addEventListener('click', () => this.toggleJoinClassSection());
     }
 
     // Modal close buttons
@@ -784,6 +788,7 @@ class CadenceApp {
       // Hide student-only features for teachers
       document.querySelectorAll('.student-tab').forEach(tab => tab.classList.add('hidden'));
       document.getElementById('join-class-toggle-btn')?.classList.add('hidden');
+      document.getElementById('pathway-join-class-btn')?.classList.add('hidden');
       document.getElementById('export-progress-btn')?.classList.add('hidden');
       document.getElementById('generate-reflection-btn')?.classList.add('hidden');
 
@@ -806,6 +811,7 @@ class CadenceApp {
       // Hide student-only features for admins
       document.querySelectorAll('.student-tab').forEach(tab => tab.classList.add('hidden'));
       document.getElementById('join-class-toggle-btn')?.classList.add('hidden');
+      document.getElementById('pathway-join-class-btn')?.classList.add('hidden');
       document.getElementById('export-progress-btn')?.classList.add('hidden');
       document.getElementById('generate-reflection-btn')?.classList.add('hidden');
 
@@ -8290,7 +8296,8 @@ class CadenceApp {
     // Keep instrument and song controls visible so teacher can make changes
     const actionButtons = [
       'export-progress-btn',
-      'join-class-toggle-btn'
+      'join-class-toggle-btn',
+      'pathway-join-class-btn'
     ];
     actionButtons.forEach(btnId => {
       const btn = document.getElementById(btnId);
