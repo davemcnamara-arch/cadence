@@ -6614,9 +6614,12 @@ class CadenceApp {
       }).join('');
     }
 
-    // Show/hide the add section (owner and admin only)
+    // Show/hide the add section (owner, admin, co-teachers, or any school peer)
+    const isCoTeacherOfClass = !isOwner && (coTeachers || []).some(ct => ct.teacher_id === currentUser?.id && !ct.is_pending);
+    const isSchoolPeer = !!(this.currentSchool?.id && this.currentClass?.school_id === this.currentSchool?.id);
+    const canAdd = isOwner || isAdmin || isCoTeacherOfClass || isSchoolPeer;
     const addSection = document.getElementById('add-co-teacher-section');
-    if (isOwner || isAdmin) {
+    if (canAdd) {
       addSection.classList.remove('hidden');
 
       // Track already-added emails and IDs so we can exclude them from the dropdown
