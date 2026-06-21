@@ -2683,7 +2683,15 @@ class CadenceApp {
     const count = filteredSongs ? filteredSongs.length : 0;
     if (countEl) countEl.textContent = `Showing ${count} song${count !== 1 ? 's' : ''}`;
     if (!filteredSongs || filteredSongs.length === 0) {
-      grid.innerHTML = '<p style="color: var(--text-secondary);">No songs found. Be the first to grade a song!</p>';
+      if (searchTerm) {
+        grid.innerHTML = `
+          <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+            <p style="margin-bottom: 1rem;">It looks like this song hasn't been added to the Song Library yet.</p>
+            <button class="btn btn-grade-song" onclick="app.showSongGradingModal()">+ Add New Song to the Song Library</button>
+          </div>`;
+      } else {
+        grid.innerHTML = '<p style="color: var(--text-secondary);">No songs found. Be the first to grade a song!</p>';
+      }
       return;
     }
 
