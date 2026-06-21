@@ -6688,7 +6688,7 @@ class CadenceApp {
 
     if (data?.success) {
       this.showToast(data.message || 'Co-teacher added', 'success');
-      await this.showCoTeachersModal();
+      await Promise.all([this.showCoTeachersModal(), this.loadClasses()]);
     } else {
       this.showToast(data?.message || 'Failed to add co-teacher', 'error');
     }
