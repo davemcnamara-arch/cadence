@@ -7334,6 +7334,10 @@ class CadenceApp {
     history.pushState({ cadenceView: backView }, '', window.location.pathname + window.location.search);
     document.getElementById('classes-list').classList.add('hidden');
     document.getElementById('class-detail-view').classList.remove('hidden');
+    const backBtn = document.getElementById('back-to-classes-btn');
+    if (backBtn) {
+      backBtn.textContent = this._classEnteredFromSchool ? '← Back to School' : '← Back to Classes';
+    }
 
     // Update header
     const currentUser = auth.getCurrentUser();
