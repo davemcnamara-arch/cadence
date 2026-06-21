@@ -3469,6 +3469,13 @@ class CadenceApp {
     }
   }
 
+  toggleAddToLearning(btn) {
+    const isActive = btn.dataset.active === 'true';
+    btn.dataset.active = isActive ? 'false' : 'true';
+    btn.className = isActive ? 'btn btn-primary' : 'btn btn-secondary';
+    btn.textContent = isActive ? 'Start Learning' : '✓ Added to Learning';
+  }
+
   async addSongToLearning(songId, instrumentId) {
     const user = auth.getCurrentUser();
     // Use student ID if in preview mode, otherwise use current user
@@ -4179,6 +4186,10 @@ class CadenceApp {
     this.selectedSimilarSongTutorials = [];
     this.similarSongsDismissed = false; // Reset dismissal state
     document.getElementById('song-grading-form').reset(); // Reset form first, before populating dropdowns
+    const addToLearningBtn = document.getElementById('add-to-learning-btn');
+    addToLearningBtn.dataset.active = 'false';
+    addToLearningBtn.className = 'btn btn-primary';
+    addToLearningBtn.textContent = 'Start Learning';
     document.getElementById('song-title').readOnly = false;
     document.getElementById('song-artist').readOnly = false;
     this.updateInstrumentDropdown(); // Populate instrument dropdown (sets current instrument)
@@ -4871,7 +4882,7 @@ class CadenceApp {
         p_youtube_url: this.gradingData.youtube_url || null,
         p_chords_url: this.gradingData.chords_url || null,
         p_tutorial_url: this.gradingData.tutorial_url || null,
-        p_add_to_learning: document.getElementById('add-to-learning').checked,
+        p_add_to_learning: document.getElementById('add-to-learning-btn').dataset.active === 'true',
         p_bass_tab_url: this.gradingData.bass_tab_url || null,
         p_drum_notation_url: this.gradingData.drum_notation_url || null
       };
