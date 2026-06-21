@@ -429,18 +429,24 @@ export class AuthManager {
       (selectedRole === 'teacher' && existingUser.role === 'student') ||
       (selectedRole === 'student' && existingUser.role === 'teacher');
     if (roleSwitch) {
-      const { error: patchError } = await this.patchDirect(
-        'users',
-        { role: selectedRole },
-        { eq: { id: existingUser.id } }
-      );
-      if (patchError) {
-        console.error('Error updating user role:', patchError);
+      if (selectedRole === 'teacher' && existingUser.role === 'student') {
+        // Use atomic RPC: updates role to 'teacher' AND creates the 90-day trial
+        // in one DB transaction, so create_teacher_auto_trial() in onUserSignedIn
+        // always finds a subscription and never bounces the user to subscribe.html.
+        const { error: switchError } = await this.rpcDirect('switch_student_to_teacher_with_trial', {});
+        if (switchError) {
+          console.error('Error switching student to teacher:', switchError);
+        }
+      } else {
+        const { error: patchError } = await this.patchDirect(
+          'users',
+          { role: selectedRole },
+          { eq: { id: existingUser.id } }
+        );
+        if (patchError) {
+          console.error('Error updating user role:', patchError);
+        }
       }
-      // Always apply the selected role in memory, even if the DB patch failed
-      // (e.g. blocked by RLS). This ensures the subscription gate in app.js
-      // fires for a student who selects "teacher" — they'll be redirected to
-      // subscribe rather than silently admitted as a student.
       existingUser.role = selectedRole;
     }
 
