@@ -6637,6 +6637,11 @@ class CadenceApp {
 
       const select = document.getElementById('co-teacher-select');
       const activePeers = (peersResult.data || []).filter(p => !existingIds.has(p.id));
+      // get_school_peer_teachers excludes the caller; if the caller is a school peer
+      // (not the owner), prepend themselves so they can add themselves to the class
+      if (isSchoolPeer && !isCoTeacherOfClass && currentUser && !existingIds.has(currentUser.id)) {
+        activePeers.unshift({ id: currentUser.id, name: (currentUser.name || currentUser.email) + ' (me)', email: currentUser.email });
+      }
       const pendingPeers = (pendingResult.data || []).filter(p => !existingEmails.has(p.email?.toLowerCase()));
 
       if (activePeers.length === 0 && pendingPeers.length === 0) {
